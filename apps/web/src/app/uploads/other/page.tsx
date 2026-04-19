@@ -13,7 +13,8 @@ export default function OtherUploadPage() {
           <FileUploadForm
             artifactType="other"
             title="Upload Other Artifact"
-            description="Use this for projects, portfolios, presentations, certifications, or other relevant files."
+            description="Use this for projects, portfolios, presentations, certifications, or other relevant files. PDF source documents are supported."
+            accept=".pdf,.txt,.md,.csv,.json,.doc,.docx,.ppt,.pptx,application/pdf,text/plain,text/markdown,text/csv,application/json,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation"
           />
         </SectionCard>
       </RequireRole>

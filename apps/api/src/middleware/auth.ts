@@ -5,7 +5,7 @@ import { verifySupabaseJwt } from "../services/auth/supabaseJwt";
 /**
  * Resolution order:
  * 1. Authorization: Bearer <token> (Supabase JWT)
- * 2. x-demo-user-id / x-demo-role-type fallback for local development
+ * 2. x-demo-user-id / x-demo-role-type fallback when ALLOW_DEMO_AUTH=true
  */
 export async function getAuthenticatedUser(req: IncomingMessage): Promise<AuthenticatedUser | null> {
   const authHeader = req.headers["authorization"];
@@ -23,6 +23,9 @@ export async function getAuthenticatedUser(req: IncomingMessage): Promise<Authen
   const userIdHeader = req.headers["x-demo-user-id"];
   const roleTypeHeader = req.headers["x-demo-role-type"];
   const emailHeader = req.headers["x-demo-email"];
+
+  const allowDemoAuth = process.env.ALLOW_DEMO_AUTH === "true";
+  if (!allowDemoAuth) return null;
 
   const userId = typeof userIdHeader === "string" ? userIdHeader : null;
   const roleType =

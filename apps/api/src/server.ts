@@ -88,6 +88,42 @@ export async function router(req: IncomingMessage, res: ServerResponse) {
     return;
   }
 
+  if (url === "/students/me/academic/catalog-assignment" && req.method === "POST") {
+    const { studentCatalogAssignmentRoute } = await import("./routes/academic");
+    await studentCatalogAssignmentRoute(req, res);
+    return;
+  }
+
+  if (url === "/students/me/academic/transcript/latest" && req.method === "GET") {
+    const { latestTranscriptGraphRoute } = await import("./routes/academic");
+    await latestTranscriptGraphRoute(req, res);
+    return;
+  }
+
+  if (url === "/students/me/academic/transcript/extract" && req.method === "POST") {
+    const { transcriptExtractRoute } = await import("./routes/academic");
+    await transcriptExtractRoute(req, res);
+    return;
+  }
+
+  if (url === "/students/me/academic/transcript/extract-from-artifact" && req.method === "POST") {
+    const { transcriptExtractFromArtifactRoute } = await import("./routes/academic");
+    await transcriptExtractFromArtifactRoute(req, res);
+    return;
+  }
+
+  if (url === "/students/me/academic/requirements/primary" && req.method === "GET") {
+    const { primaryRequirementGraphRoute } = await import("./routes/academic");
+    await primaryRequirementGraphRoute(req, res);
+    return;
+  }
+
+  if (url === "/v1/academic/catalogs/ingest" && req.method === "POST") {
+    const { catalogIngestionRoute } = await import("./routes/academic");
+    await catalogIngestionRoute(req, res);
+    return;
+  }
+
   if (url === "/v1/market/fixtures/validate") {
     const { validateFixtures } = await import("./services/market/fixtureValidation");
     res.statusCode = 200;

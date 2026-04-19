@@ -13,7 +13,8 @@ export default function TranscriptUploadPage() {
           <FileUploadForm
             artifactType="transcript"
             title="Upload Transcript"
-            description="Request a signed upload target for a transcript artifact."
+            description="Upload a transcript source document. PDF is supported and preferred."
+            accept=".pdf,.txt,.csv,.json,application/pdf,text/plain,text/csv,application/json"
           />
         </SectionCard>
       </RequireRole>

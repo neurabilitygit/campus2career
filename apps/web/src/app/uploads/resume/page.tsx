@@ -13,7 +13,8 @@ export default function ResumeUploadPage() {
           <FileUploadForm
             artifactType="resume"
             title="Upload Résumé"
-            description="Request a signed upload target for a résumé artifact."
+            description="Upload a résumé source document. PDF is supported and preferred."
+            accept=".pdf,.txt,.md,.doc,.docx,application/pdf,text/plain,text/markdown,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
           />
         </SectionCard>
       </RequireRole>

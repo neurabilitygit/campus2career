@@ -20,6 +20,7 @@ export default function StudentDashboardView() {
     scenarioQuestion: DEFAULT_SCENARIO_QUESTION,
     communicationStyle: "direct",
   });
+  const [requestedScenario, setRequestedScenario] = useState(false);
 
   const scenarioBody = useMemo(
     () => ({
@@ -31,7 +32,7 @@ export default function StudentDashboardView() {
     [applied.scenarioQuestion, applied.communicationStyle],
   );
 
-  const scenario = useApiJsonPost("/v1/chat/scenario/live", scenarioBody);
+  const scenario = useApiJsonPost("/v1/chat/scenario/live", scenarioBody, requestedScenario);
 
   return (
     <AppShell title="Student Dashboard" subtitle="Scoring, action signals, and scenario guidance.">
@@ -74,10 +75,13 @@ export default function StudentDashboardView() {
             <button
               type="button"
               onClick={() =>
-                setApplied({
-                  scenarioQuestion: draftQuestion.trim() || DEFAULT_SCENARIO_QUESTION,
-                  communicationStyle: draftStyle.trim() || "direct",
-                })
+                {
+                  setApplied({
+                    scenarioQuestion: draftQuestion.trim() || DEFAULT_SCENARIO_QUESTION,
+                    communicationStyle: draftStyle.trim() || "direct",
+                  });
+                  setRequestedScenario(true);
+                }
               }
             >
               {scenario.loading ? "Loading…" : "Get guidance"}

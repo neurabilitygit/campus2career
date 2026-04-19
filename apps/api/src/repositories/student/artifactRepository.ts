@@ -18,6 +18,16 @@ export interface CreateArtifactParseJobInput {
   parserType: string;
 }
 
+export interface AcademicArtifactRow {
+  academic_artifact_id: string;
+  student_profile_id: string;
+  artifact_type: string;
+  file_uri: string;
+  source_label: string | null;
+  parsed_status: "pending" | "parsed" | "failed";
+  extracted_summary: string | null;
+}
+
 export class ArtifactRepository {
   async createAcademicArtifact(input: CreateAcademicArtifactInput): Promise<void> {
     await query(
@@ -32,6 +42,12 @@ export class ArtifactRepository {
         parsed_status,
         extracted_summary
       ) values ($1,$2,$3,$4,$5,now(),$6,$7)
+      on conflict (academic_artifact_id) do update set
+        artifact_type = excluded.artifact_type,
+        file_uri = excluded.file_uri,
+        source_label = excluded.source_label,
+        parsed_status = excluded.parsed_status,
+        extracted_summary = excluded.extracted_summary
       `,
       [
         input.academicArtifactId,
@@ -57,6 +73,14 @@ export class ArtifactRepository {
         parser_type,
         queued_at
       ) values ($1,$2,$3,$4,'queued',$5,now())
+      on conflict (artifact_parse_job_id) do update set
+        status = 'queued',
+        parser_type = excluded.parser_type,
+        result_summary = null,
+        error_message = null,
+        queued_at = now(),
+        started_at = null,
+        completed_at = null
       `,
       [
         input.artifactParseJobId,
@@ -86,6 +110,26 @@ export class ArtifactRepository {
       `
     );
     return result.rows;
+  }
+
+  async getAcademicArtifactById(academicArtifactId: string): Promise<AcademicArtifactRow | null> {
+    const result = await query<AcademicArtifactRow>(
+      `
+      select
+        academic_artifact_id,
+        student_profile_id,
+        artifact_type,
+        file_uri,
+        source_label,
+        parsed_status,
+        extracted_summary
+      from academic_artifacts
+      where academic_artifact_id = $1
+      limit 1
+      `,
+      [academicArtifactId]
+    );
+    return result.rows[0] || null;
   }
 
   async markParseJobProcessing(jobId: string) {

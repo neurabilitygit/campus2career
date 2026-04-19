@@ -7,6 +7,7 @@ export function FileUploadForm(props: {
   artifactType: string;
   title: string;
   description: string;
+  accept?: string;
 }) {
   const [file, setFile] = useState<File | null>(null);
   const [result, setResult] = useState<any>(null);
@@ -39,6 +40,7 @@ export function FileUploadForm(props: {
       <p>{props.description}</p>
       <input
         type="file"
+        accept={props.accept}
         onChange={(e) => setFile(e.target.files?.[0] || null)}
       />
       <button onClick={upload}>Upload file</button>

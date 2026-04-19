@@ -42,15 +42,23 @@ export function useApiData<T = any>(path: string, enabled: boolean = true, refet
 }
 
 /** POST JSON and parse response; re-runs when `body` shallow-serialization changes. */
-export function useApiJsonPost<T = unknown>(path: string, body: Record<string, unknown>) {
+export function useApiJsonPost<T = unknown>(path: string, body: Record<string, unknown>, enabled: boolean = true) {
   const [data, setData] = useState<T | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(enabled);
   const [error, setError] = useState<string | null>(null);
 
   const bodyKey = JSON.stringify(body);
 
   useEffect(() => {
     let active = true;
+
+    if (!enabled) {
+      setLoading(false);
+      return () => {
+        active = false;
+      };
+    }
+
     setLoading(true);
     setError(null);
 
@@ -71,7 +79,7 @@ export function useApiJsonPost<T = unknown>(path: string, body: Record<string, u
     return () => {
       active = false;
     };
-  }, [path, bodyKey]);
+  }, [path, bodyKey, enabled]);
 
   return { data, loading, error };
 }

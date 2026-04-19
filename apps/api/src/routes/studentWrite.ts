@@ -23,6 +23,133 @@ async function ensureOnboardingState(studentProfileId: string) {
   await onboardingRepo.ensureState(studentProfileId, onboardingStateId);
 }
 
+function validateArtifactUpload(input: {
+  studentProfileId: string;
+  artifactType: string;
+  objectPath: string;
+}) {
+  const allowedArtifactTypes = new Set([
+    "resume",
+    "transcript",
+    "other",
+    "project",
+    "portfolio",
+    "presentation",
+    "certification",
+  ]);
+
+  if (!allowedArtifactTypes.has(input.artifactType)) {
+    throw new Error("INVALID_ARTIFACT_TYPE");
+  }
+
+  const expectedPrefix = `${input.studentProfileId}/${input.artifactType}/`;
+  if (!input.objectPath.startsWith(expectedPrefix)) {
+    throw new Error("INVALID_OBJECT_PATH");
+  }
+}
+
+function validateUploadSourceFile(input: {
+  artifactType: string;
+  fileName: string;
+  contentType: string;
+}) {
+  const normalizedFileName = input.fileName.trim().toLowerCase();
+  const normalizedContentType = input.contentType.trim().toLowerCase();
+  const extensionMatch = normalizedFileName.match(/\.([a-z0-9]+)$/);
+  const extension = extensionMatch?.[1] || "";
+
+  const allowedByArtifactType: Record<string, { extensions: string[]; contentTypes: string[] }> = {
+    resume: {
+      extensions: ["pdf", "txt", "md", "doc", "docx"],
+      contentTypes: [
+        "application/pdf",
+        "text/plain",
+        "text/markdown",
+        "application/msword",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "application/octet-stream",
+      ],
+    },
+    transcript: {
+      extensions: ["pdf", "txt", "csv", "json"],
+      contentTypes: [
+        "application/pdf",
+        "text/plain",
+        "text/csv",
+        "application/json",
+        "application/octet-stream",
+      ],
+    },
+    other: {
+      extensions: ["pdf", "txt", "md", "csv", "json", "doc", "docx", "ppt", "pptx"],
+      contentTypes: [
+        "application/pdf",
+        "text/plain",
+        "text/markdown",
+        "text/csv",
+        "application/json",
+        "application/msword",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "application/vnd.ms-powerpoint",
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        "application/octet-stream",
+      ],
+    },
+    project: {
+      extensions: ["pdf", "txt", "md", "csv", "json", "zip"],
+      contentTypes: [
+        "application/pdf",
+        "text/plain",
+        "text/markdown",
+        "text/csv",
+        "application/json",
+        "application/zip",
+        "application/octet-stream",
+      ],
+    },
+    portfolio: {
+      extensions: ["pdf", "txt", "md"],
+      contentTypes: [
+        "application/pdf",
+        "text/plain",
+        "text/markdown",
+        "application/octet-stream",
+      ],
+    },
+    presentation: {
+      extensions: ["pdf", "ppt", "pptx"],
+      contentTypes: [
+        "application/pdf",
+        "application/vnd.ms-powerpoint",
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        "application/octet-stream",
+      ],
+    },
+    certification: {
+      extensions: ["pdf", "png", "jpg", "jpeg"],
+      contentTypes: [
+        "application/pdf",
+        "image/png",
+        "image/jpeg",
+        "application/octet-stream",
+      ],
+    },
+  };
+
+  const allowed = allowedByArtifactType[input.artifactType];
+  if (!allowed) {
+    throw new Error("INVALID_ARTIFACT_TYPE");
+  }
+
+  if (!extension || !allowed.extensions.includes(extension)) {
+    throw new Error("INVALID_FILE_EXTENSION");
+  }
+
+  if (!allowed.contentTypes.includes(normalizedContentType)) {
+    throw new Error("INVALID_CONTENT_TYPE");
+  }
+}
+
 export async function studentProfileUpsertRoute(req: IncomingMessage, res: ServerResponse) {
   try {
     const ctx = await resolveRequestContext(req);
@@ -219,6 +346,25 @@ export async function uploadPresignRoute(req: IncomingMessage, res: ServerRespon
       return badRequest(res, "artifactType, fileName, and contentType are required");
     }
 
+    try {
+      validateUploadSourceFile({
+        artifactType: body.artifactType,
+        fileName: body.fileName,
+        contentType: body.contentType,
+      });
+    } catch (error: any) {
+      if (error?.message === "INVALID_ARTIFACT_TYPE") {
+        return badRequest(res, "Unsupported artifactType");
+      }
+      if (error?.message === "INVALID_FILE_EXTENSION") {
+        return badRequest(res, "Unsupported file extension for this artifact type");
+      }
+      if (error?.message === "INVALID_CONTENT_TYPE") {
+        return badRequest(res, "Unsupported contentType for this artifact type");
+      }
+      throw error;
+    }
+
     const bucket = process.env.SUPABASE_STORAGE_BUCKET || "campus2career";
     const objectPath = `${ctx.studentProfileId}/${body.artifactType}/${Date.now()}-${body.fileName}`;
 
@@ -256,6 +402,22 @@ export async function uploadCompleteRoute(req: IncomingMessage, res: ServerRespo
 
     if (!body.artifactType || !body.objectPath) {
       return badRequest(res, "artifactType and objectPath are required");
+    }
+
+    try {
+      validateArtifactUpload({
+        studentProfileId: ctx.studentProfileId,
+        artifactType: body.artifactType,
+        objectPath: body.objectPath,
+      });
+    } catch (error: any) {
+      if (error?.message === "INVALID_ARTIFACT_TYPE") {
+        return badRequest(res, "Unsupported artifactType");
+      }
+      if (error?.message === "INVALID_OBJECT_PATH") {
+        return badRequest(res, "objectPath must match the authenticated student's upload target");
+      }
+      throw error;
     }
 
     const result = await persistArtifactAndQueueParse({

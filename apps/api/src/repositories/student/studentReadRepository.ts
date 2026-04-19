@@ -126,27 +126,23 @@ export class StudentReadRepository {
   }
 
   async getUpcomingDeadlines(studentProfileId: string): Promise<DeadlineRow[]> {
-    try {
-      const result = await query<DeadlineRow>(
-        `
-        select
-          deadline_id,
-          title,
-          due_date,
-          deadline_type,
-          notes,
-          completed
-        from deadlines
-        where student_profile_id = $1
-        order by due_date asc
-        limit 25
-        `,
-        [studentProfileId]
-      );
-      return result.rows;
-    } catch {
-      return [];
-    }
+    const result = await query<DeadlineRow>(
+      `
+      select
+        deadline_id,
+        title,
+        due_date,
+        deadline_type,
+        notes,
+        completed
+      from deadlines
+      where student_profile_id = $1
+      order by due_date asc
+      limit 25
+      `,
+      [studentProfileId]
+    );
+    return result.rows;
   }
 
   async getRecentAccomplishments(studentProfileId: string): Promise<AccomplishmentRow[]> {
@@ -232,15 +228,11 @@ export class StudentReadRepository {
   }
 
   async getSelectedSectors(studentProfileId: string): Promise<SectorRow[]> {
-    try {
-      const result = await query<SectorRow>(
-        `select sector_cluster from student_sector_selections where student_profile_id = $1 order by created_at asc`,
-        [studentProfileId]
-      );
-      return result.rows;
-    } catch {
-      return [];
-    }
+    const result = await query<SectorRow>(
+      `select sector_cluster from student_sector_selections where student_profile_id = $1 order by created_at asc`,
+      [studentProfileId]
+    );
+    return result.rows;
   }
 
   async getOccupationSkillsForCanonicalRole(canonicalName: string): Promise<OccupationSkillRow[]> {
