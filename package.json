@@ -4,8 +4,9 @@
   "version": "0.1.0",
   "packageManager": "pnpm@10.0.0",
   "scripts": {
-    "dev:web": "echo Run the web app in apps/web",
-    "dev:api": "echo Run the api app in apps/api",
-    "dev:worker": "echo Run the worker app in apps/worker"
+    "dev:web": "pnpm --dir apps/web dev",
+    "dev:api": "pnpm --dir apps/api dev",
+    "dev:worker": "pnpm --dir apps/worker dev",
+    "dev:all": "zsh -lc 'set -m; pnpm --dir apps/api dev & API_PID=$!; pnpm --dir apps/web dev & WEB_PID=$!; pnpm --dir apps/worker dev & WORKER_PID=$!; trap \"kill $API_PID $WEB_PID $WORKER_PID 2>/dev/null\" EXIT INT TERM; wait'"
   }
 }

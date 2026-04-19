@@ -4,9 +4,9 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "tsx src/index.ts",
+    "dev": "node --env-file=.env.local --import tsx/esm src/index.ts",
     "typecheck": "tsc --noEmit",
-    "bootstrap": "tsx src/run-market-bootstrap.ts"
+    "bootstrap": "node --env-file=.env.local --import tsx/esm src/run-market-bootstrap.ts"
   },
   "dependencies": {
     "pg": "^8.16.3"

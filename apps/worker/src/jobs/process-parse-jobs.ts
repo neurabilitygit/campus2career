@@ -17,6 +17,18 @@ function stableId(namespace: string, key: string): string {
   return crypto.createHash("sha256").update(`${namespace}:${key}`).digest("hex").slice(0, 32);
 }
 
+function normalizeWhitespace(value: string): string {
+  return value.replace(/\s+/g, " ").trim();
+}
+
+function truncateSummary(value: string, maxLength: number = 280): string {
+  const normalized = normalizeWhitespace(value);
+  if (normalized.length <= maxLength) {
+    return normalized;
+  }
+  return `${normalized.slice(0, maxLength - 1).trimEnd()}...`;
+}
+
 async function enrichResume(job: any, summary: string) {
   await studentWriteRepo.createExperience({
     experienceId: stableId("experience", `${job.student_profile_id}:${job.academic_artifact_id}:resume`),
@@ -69,6 +81,59 @@ async function enrichTranscript(job: any, summary: string) {
     insightStatement: "Transcript parsing added at least one course-level signal.",
     parentSafeSummary: "Transcript parsing added an initial course and skill signal.",
   });
+}
+
+async function enrichOtherArtifact(job: any, summary: string) {
+  const artifact = await artifactRepo.getAcademicArtifactById(job.academic_artifact_id);
+  const fileLabel = artifact?.file_uri ? extractBaseFileName(artifact.file_uri) : "supporting artifact";
+
+  let extractedTextSummary: string | null = null;
+  let extractionMethod: string | null = null;
+
+  if (artifact?.file_uri) {
+    try {
+      const downloadedArtifact = await downloadArtifactFromStorage({
+        objectPath: artifact.file_uri,
+      });
+      const extracted = extractDocumentText({
+        buffer: downloadedArtifact.buffer,
+        fileName: downloadedArtifact.fileName,
+        contentType: downloadedArtifact.contentType,
+      });
+
+      if (extracted.text.trim()) {
+        extractedTextSummary = truncateSummary(extracted.text);
+        extractionMethod = extracted.method;
+      }
+    } catch (error) {
+      console.warn(
+        `Supporting artifact download/extraction failed for ${job.academic_artifact_id}:`,
+        error
+      );
+    }
+  }
+
+  const insightStatement = extractedTextSummary
+    ? `Student uploaded supporting artifact "${fileLabel}" with extractable content that can inform coaching and application evidence.`
+    : `Student uploaded supporting artifact "${fileLabel}" that can be reviewed for additional evidence.`;
+
+  const parentSafeSummary = extractedTextSummary
+    ? `Supporting artifact uploaded: ${truncateSummary(extractedTextSummary, 180)}`
+    : `Supporting artifact uploaded and recorded for later review.`;
+
+  await studentWriteRepo.createInsight({
+    insightId: stableId("insight", `${job.student_profile_id}:${job.academic_artifact_id}:other`),
+    studentProfileId: job.student_profile_id,
+    insightCategory: "strength",
+    insightStatement,
+    parentSafeSummary,
+  });
+
+  return {
+    summary: extractedTextSummary
+      ? `Supporting artifact parsed from ${extractionMethod}: ${extractedTextSummary}`
+      : summary,
+  };
 }
 
 function extractBaseFileName(fileUri: string): string {
@@ -180,7 +245,7 @@ export async function processParseJobs() {
   for (const job of jobs) {
     try {
       await artifactRepo.markParseJobProcessing(job.artifact_parse_job_id);
-      const summary = summarizeParser(job.artifact_type);
+      let summary = summarizeParser(job.artifact_type);
 
       if (job.artifact_type === "resume") {
         await enrichResume(job, summary);
@@ -190,6 +255,9 @@ export async function processParseJobs() {
         console.log(
           `Persisted transcript graph ${transcriptResult.studentTranscriptId} for artifact ${job.academic_artifact_id}${transcriptResult.extractionMethod ? ` using ${transcriptResult.extractionMethod}` : ""}`
         );
+      } else if (job.artifact_type === "other") {
+        const otherResult = await enrichOtherArtifact(job, summary);
+        summary = otherResult.summary;
       }
 
       await artifactRepo.markArtifactParsed(job.academic_artifact_id, summary);

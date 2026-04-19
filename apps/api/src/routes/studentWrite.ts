@@ -18,6 +18,16 @@ function stableId(namespace: string, key: string): string {
   return crypto.createHash("sha256").update(`${namespace}:${key}`).digest("hex").slice(0, 32);
 }
 
+function normalizeOptionalText(value: string | null | undefined) {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : null;
+}
+
+function normalizeOptionalDate(value: string | null | undefined) {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : null;
+}
+
 async function ensureOnboardingState(studentProfileId: string) {
   const onboardingStateId = stableId("onboarding_state", studentProfileId);
   await onboardingRepo.ensureState(studentProfileId, onboardingStateId);
@@ -173,12 +183,14 @@ export async function studentProfileUpsertRoute(req: IncomingMessage, res: Serve
       studentProfileId,
       userId: ctx.studentUserId || ctx.authenticatedUserId,
       householdId: ctx.householdId,
-      schoolName: body.schoolName ?? null,
-      expectedGraduationDate: body.expectedGraduationDate ?? null,
-      majorPrimary: body.majorPrimary ?? null,
-      majorSecondary: body.majorSecondary ?? null,
-      preferredGeographies: body.preferredGeographies ?? [],
-      careerGoalSummary: body.careerGoalSummary ?? null,
+      schoolName: normalizeOptionalText(body.schoolName),
+      expectedGraduationDate: normalizeOptionalDate(body.expectedGraduationDate),
+      majorPrimary: normalizeOptionalText(body.majorPrimary),
+      majorSecondary: normalizeOptionalText(body.majorSecondary),
+      preferredGeographies: Array.isArray(body.preferredGeographies)
+        ? body.preferredGeographies.map((item) => item.trim()).filter(Boolean)
+        : [],
+      careerGoalSummary: normalizeOptionalText(body.careerGoalSummary),
     });
 
     await ensureOnboardingState(studentProfileId);
@@ -193,6 +205,12 @@ export async function studentProfileUpsertRoute(req: IncomingMessage, res: Serve
     });
   } catch (error: any) {
     if (error?.message === "UNAUTHENTICATED") return unauthorized(res);
+    if (typeof error?.message === "string" && error.message.includes("The related resource does not exist")) {
+      return badRequest(
+        res,
+        "Supabase storage bucket is missing or misconfigured. Create the configured bucket before uploading files."
+      );
+    }
     throw error;
   }
 }

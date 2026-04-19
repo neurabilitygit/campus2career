@@ -7,6 +7,7 @@ const server = http.createServer(async (req, res) => {
   try {
     await router(req, res);
   } catch (error) {
+    console.error("Unhandled API error", error);
     res.statusCode = 500;
     res.setHeader("content-type", "application/json");
     res.end(JSON.stringify({ error: "internal_server_error" }));

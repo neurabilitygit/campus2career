@@ -1,4 +1,4 @@
-import { jwtVerify } from "jose";
+import { createRemoteJWKSet, decodeProtectedHeader, jwtVerify } from "jose";
 import { supabaseConfig } from "../../config/supabase";
 import type { AuthenticatedUser } from "../../types/auth";
 
@@ -11,13 +11,51 @@ export interface SupabaseJwtPayload {
   app_metadata?: Record<string, unknown>;
 }
 
-export async function verifySupabaseJwt(token: string): Promise<AuthenticatedUser | null> {
-  if (!supabaseConfig.jwtSecret) {
-    throw new Error("SUPABASE_JWT_SECRET is required for JWT verification");
+let remoteJwks: ReturnType<typeof createRemoteJWKSet> | null = null;
+
+function getRemoteJwks() {
+  if (!supabaseConfig.url) {
+    throw new Error("SUPABASE_URL is required for JWKS verification");
   }
 
-  const secret = new TextEncoder().encode(supabaseConfig.jwtSecret);
-  const { payload } = await jwtVerify(token, secret);
+  if (!remoteJwks) {
+    remoteJwks = createRemoteJWKSet(
+      new URL(`${supabaseConfig.url}/auth/v1/.well-known/jwks.json`)
+    );
+  }
+
+  return remoteJwks;
+}
+
+export async function verifySupabaseJwt(token: string): Promise<AuthenticatedUser | null> {
+  const protectedHeader = decodeProtectedHeader(token);
+  const algorithm = protectedHeader.alg;
+
+  if (typeof algorithm === "string" && algorithm.startsWith("HS")) {
+    if (!supabaseConfig.jwtSecret) {
+      throw new Error("SUPABASE_JWT_SECRET is required for JWT verification");
+    }
+
+    const secret = new TextEncoder().encode(supabaseConfig.jwtSecret);
+    const { payload } = await jwtVerify(token, secret, {
+      issuer: `${supabaseConfig.url}/auth/v1`,
+      audience: "authenticated",
+    });
+
+    const typed = payload as unknown as SupabaseJwtPayload;
+    if (!typed.sub) return null;
+
+    return {
+      userId: typed.sub,
+      email: typed.email,
+      roleType: mapSupabaseRole(typed),
+    };
+  }
+
+  const { payload } = await jwtVerify(token, getRemoteJwks(), {
+    issuer: `${supabaseConfig.url}/auth/v1`,
+    audience: "authenticated",
+  });
 
   const typed = payload as unknown as SupabaseJwtPayload;
   if (!typed.sub) return null;

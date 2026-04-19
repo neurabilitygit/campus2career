@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import { query } from "../../db/client";
 
 export interface OnboardingStateRow {
@@ -10,6 +11,17 @@ export interface OnboardingStateRow {
   deadlines_completed: boolean;
   onboarding_completed: boolean;
   first_diagnostic_generated: boolean;
+}
+
+function stableUuidFromKey(key: string): string {
+  const hex = crypto.createHash("sha256").update(key).digest("hex").slice(0, 32);
+  return [
+    hex.slice(0, 8),
+    hex.slice(8, 12),
+    hex.slice(12, 16),
+    hex.slice(16, 20),
+    hex.slice(20, 32),
+  ].join("-");
 }
 
 export class OnboardingRepository {
@@ -77,6 +89,7 @@ export class OnboardingRepository {
     );
 
     for (const sector of selections) {
+      const selectionId = stableUuidFromKey(`${studentProfileId}:${sector}`);
       await query(
         `
         insert into student_sector_selections (
@@ -84,10 +97,10 @@ export class OnboardingRepository {
           student_profile_id,
           sector_cluster,
           created_at
-        ) values (md5($1 || ':' || $2)::uuid, $1, $2, now())
+        ) values ($1,$2,$3,now())
         on conflict (student_profile_id, sector_cluster) do nothing
         `,
-        [studentProfileId, sector]
+        [selectionId, studentProfileId, sector]
       );
     }
   }

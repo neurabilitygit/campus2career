@@ -1,6 +1,8 @@
+import crypto from "node:crypto";
 import type { IncomingMessage } from "node:http";
 import { getAuthenticatedUser } from "../../middleware/auth";
 import { UserContextRepository } from "../../repositories/auth/userContextRepository";
+import { StudentWriteRepository } from "../../repositories/student/studentWriteRepository";
 import { syncAuthenticatedUser } from "./syncAuthenticatedUser";
 
 export interface RequestContext {
@@ -13,6 +15,7 @@ export interface RequestContext {
 }
 
 const repo = new UserContextRepository();
+const studentWriteRepo = new StudentWriteRepository();
 
 function normalizeRole(role: string | null | undefined): RequestContext["authenticatedRoleType"] {
   if (role === "student" || role === "parent" || role === "coach" || role === "admin") {
@@ -20,6 +23,10 @@ function normalizeRole(role: string | null | undefined): RequestContext["authent
   }
   // safe fallback
   return "student";
+}
+
+function stableId(namespace: string, key: string): string {
+  return crypto.createHash("sha256").update(`${namespace}:${key}`).digest("hex").slice(0, 32);
 }
 
 export async function resolveRequestContext(req: IncomingMessage): Promise<RequestContext> {
@@ -40,10 +47,21 @@ export async function resolveRequestContext(req: IncomingMessage): Promise<Reque
   const householdPromise = repo.resolveHouseholdStudentContextForUser(auth.userId);
 
   if (resolvedRole === "student") {
-    const [student, household] = await Promise.all([
+    let [student, household] = await Promise.all([
       repo.resolveStudentProfileForStudentUser(auth.userId),
       householdPromise,
     ]);
+
+    if (!student?.studentProfileId) {
+      const studentProfileId = stableId("student_profile", auth.userId);
+      await studentWriteRepo.upsertStudentProfile({
+        studentProfileId,
+        userId: auth.userId,
+        householdId: household?.householdId ?? null,
+      });
+
+      student = await repo.resolveStudentProfileForStudentUser(auth.userId);
+    }
 
     return {
       authenticatedUserId: auth.userId,
