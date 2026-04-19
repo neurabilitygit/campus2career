@@ -1,0 +1,20 @@
+openapi: 3.0.0
+info:
+  title: Campus2Career API
+  version: 1.0.0
+paths:
+  /students/me/profile:
+    post:
+      responses: {'200': {description: OK}}
+  /students/me/deadlines:
+    post:
+      responses: {'201': {description: Created}}
+  /students/me/uploads/presign:
+    post:
+      responses: {'200': {description: OK}}
+  /students/me/uploads/complete:
+    post:
+      responses: {'200': {description: OK}}
+  /students/me/diagnostic/first:
+    get:
+      responses: {'200': {description: OK}}

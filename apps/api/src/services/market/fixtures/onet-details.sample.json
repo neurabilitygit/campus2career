@@ -1,0 +1,8 @@
+{
+  "skills": [
+    { "name": "Critical Thinking", "importance": 78 },
+    { "name": "Active Listening", "importance": 72 },
+    { "name": "Judgment and Decision Making", "importance": 81 },
+    { "name": "Complex Problem Solving", "importance": 76 }
+  ]
+}

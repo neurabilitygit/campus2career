@@ -1,0 +1,33 @@
+import pg from "pg";
+
+const { Pool } = pg;
+
+let pool: pg.Pool | null = null;
+
+export function getDbPool(): pg.Pool {
+  if (!pool) {
+    const connectionString = process.env.DATABASE_URL;
+    if (!connectionString) {
+      throw new Error("DATABASE_URL is required");
+    }
+
+    pool = new Pool({
+      connectionString,
+      max: 10,
+      idleTimeoutMillis: 30000,
+      ssl: connectionString.includes("localhost")
+        ? undefined
+        : { rejectUnauthorized: false },
+    });
+  }
+
+  return pool;
+}
+
+export async function query<T extends pg.QueryResultRow = pg.QueryResultRow>(
+  text: string,
+  params: unknown[] = []
+): Promise<pg.QueryResult<T>> {
+  const db = getDbPool();
+  return db.query<T>(text, params);
+}

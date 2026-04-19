@@ -1,0 +1,11 @@
+{
+  "name": "campus2career",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@10.0.0",
+  "scripts": {
+    "dev:web": "echo Run the web app in apps/web",
+    "dev:api": "echo Run the api app in apps/api",
+    "dev:worker": "echo Run the worker app in apps/worker"
+  }
+}

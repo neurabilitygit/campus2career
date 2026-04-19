@@ -1,0 +1,142 @@
+export type TrajectoryStatus = "on_track" | "watch" | "at_risk";
+export type GapSeverity = "low" | "medium" | "high";
+export type ProficiencyBand = "none" | "basic" | "intermediate" | "advanced";
+
+export interface OccupationSkillRequirement {
+  skillName: string;
+  skillCategory:
+    | "technical"
+    | "analytical"
+    | "communication"
+    | "operational"
+    | "interpersonal"
+    | "creative"
+    | "managerial"
+    | "ai_fluency";
+  importanceScore: number; // 0-100
+  requiredProficiencyBand: Exclude<ProficiencyBand, "none">;
+}
+
+export interface CourseSkillCoverage {
+  courseId: string;
+  skillName: string;
+  coverageStrength: "low" | "medium" | "high";
+  confidenceScore: number; // 0-1
+}
+
+export interface ExperienceEvidence {
+  experienceId: string;
+  title: string;
+  toolsUsed?: string[];
+  deliverablesSummary?: string;
+  relevanceRating?: number; // 1-5
+}
+
+export interface ArtifactEvidence {
+  artifactId: string;
+  artifactType: string;
+  extractedSummary?: string;
+  tags?: string[];
+}
+
+export interface ContactEvidence {
+  contactId: string;
+  warmthLevel?: "cold" | "warm" | "strong";
+  relationshipType?: string;
+}
+
+export interface OutreachEvidence {
+  interactionId: string;
+  interactionType: string;
+  outcome?: string;
+}
+
+export interface DeadlineEvidence {
+  deadlineType: string;
+  dueDate: string;
+  completed?: boolean;
+}
+
+export interface StudentSignals {
+  currentAcademicYear?: "freshman" | "sophomore" | "junior" | "senior" | "other";
+  hasInternshipByJuniorYear: boolean;
+  hasIndependentProjectBySeniorYear: boolean;
+  hasFirstOrSecondDegreeProfessionalNetwork: boolean;
+  hasCarefullyCultivatedMentors: boolean;
+  aiToolComfortLevel?: "low" | "medium" | "high";
+  repeatedDeadlineMisses?: number;
+}
+
+export interface StudentScoringInput {
+  studentId: string;
+  targetRoleFamily: string;
+  targetSectorCluster: string;
+  preferredGeographies?: string[];
+  occupationSkills: OccupationSkillRequirement[];
+  courseCoverage: CourseSkillCoverage[];
+  experiences: ExperienceEvidence[];
+  artifacts: ArtifactEvidence[];
+  contacts: ContactEvidence[];
+  outreach: OutreachEvidence[];
+  deadlines?: DeadlineEvidence[];
+  signals: StudentSignals;
+}
+
+export interface SkillGapItem {
+  skillName: string;
+  requiredLevel: Exclude<ProficiencyBand, "none">;
+  estimatedCurrentLevel: ProficiencyBand;
+  gapSeverity: GapSeverity;
+  evidenceSummary: string;
+  recommendationPriority: 1 | 2 | 3 | 4 | 5;
+}
+
+export interface RecommendationItem {
+  recommendationType:
+    | "course"
+    | "project"
+    | "internship"
+    | "research"
+    | "volunteer"
+    | "certification"
+    | "networking"
+    | "ai_project"
+    | "portfolio_piece";
+  title: string;
+  description: string;
+  effortLevel: "low" | "medium" | "high";
+  estimatedSignalStrength: "low" | "medium" | "high";
+  whyThisMatchesStudent: string;
+  linkedSkillName?: string;
+}
+
+export interface SubScores {
+  roleAlignment: number;
+  marketDemand: number;
+  experienceStrength: number;
+  proofOfWorkStrength: number;
+  networkStrength: number;
+  executionMomentum: number;
+}
+
+export interface HeuristicFlag {
+  code: string;
+  severity: "info" | "warning" | "critical";
+  title: string;
+  explanation: string;
+  recommendedActions: string[];
+}
+
+export interface ScoringOutput {
+  studentId: string;
+  targetRoleFamily: string;
+  targetSectorCluster: string;
+  trajectoryStatus: TrajectoryStatus;
+  overallScore: number;
+  subScores: SubScores;
+  topStrengths: string[];
+  topRisks: string[];
+  heuristicFlags: HeuristicFlag[];
+  skillGaps: SkillGapItem[];
+  recommendations: RecommendationItem[];
+}
