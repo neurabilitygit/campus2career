@@ -5,6 +5,7 @@ import { readJsonBody } from "../utils/body";
 import { badRequest, json, unauthorized } from "../utils/http";
 import { StudentWriteRepository } from "../repositories/student/studentWriteRepository";
 import { OnboardingRepository } from "../repositories/student/onboardingRepository";
+import { StudentReadRepository } from "../repositories/student/studentReadRepository";
 import { createSignedUploadTarget } from "../services/storage/supabaseStorage";
 import { persistArtifactAndQueueParse } from "../services/student/artifactIntake";
 import { runScoring } from "../services/scoring";
@@ -13,6 +14,7 @@ import { buildStudentScoringInput } from "../services/student/aggregateStudentCo
 
 const repo = new StudentWriteRepository();
 const onboardingRepo = new OnboardingRepository();
+const studentReadRepo = new StudentReadRepository();
 
 function stableId(namespace: string, key: string): string {
   return crypto.createHash("sha256").update(`${namespace}:${key}`).digest("hex").slice(0, 32);
@@ -211,6 +213,29 @@ export async function studentProfileUpsertRoute(req: IncomingMessage, res: Serve
         "Supabase storage bucket is missing or misconfigured. Create the configured bucket before uploading files."
       );
     }
+    throw error;
+  }
+}
+
+export async function studentProfileReadRoute(req: IncomingMessage, res: ServerResponse) {
+  try {
+    const ctx = await resolveRequestContext(req);
+    if (ctx.authenticatedRoleType !== "student" && ctx.authenticatedRoleType !== "admin") {
+      return unauthorized(res);
+    }
+
+    const studentProfileId =
+      ctx.studentProfileId || stableId("student_profile", ctx.authenticatedUserId);
+
+    const profile = await studentReadRepo.getStudentProfile(studentProfileId);
+
+    return json(res, 200, {
+      ok: true,
+      studentProfileId,
+      profile,
+    });
+  } catch (error: any) {
+    if (error?.message === "UNAUTHENTICATED") return unauthorized(res);
     throw error;
   }
 }

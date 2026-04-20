@@ -14,7 +14,6 @@ export async function syncBls() {
         sourceName: `BLS:${series.id}`,
         signalType: series.signalType,
         geographyCode: series.geographyCode,
-        occupationCanonicalName: "macro",
       });
 
       if (!normalized) {

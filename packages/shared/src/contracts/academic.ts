@@ -73,6 +73,7 @@ export interface RequirementSetInput {
   displayName: string;
   totalCreditsRequired?: number;
   majorCanonicalName?: string;
+  minorCanonicalName?: string;
 }
 
 export interface RequirementGroupInput {

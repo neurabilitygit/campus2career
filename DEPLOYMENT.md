@@ -122,9 +122,11 @@ SUPABASE_STORAGE_BUCKET=campus2career
 APP_BASE_URL=
 BRIEF_MONTH_TZ=UTC
 
-ONET_USERNAME=
-ONET_PASSWORD=
+ONET_DATABASE_DIR=
 BLS_API_KEY=
+COLLEGE_SCORECARD_API_KEY=
+COLLEGE_SCORECARD_PER_PAGE=100
+COLLEGE_SCORECARD_MAX_PAGES=
 ALLOW_DEMO_AUTH=false
 ```
 
@@ -191,9 +193,11 @@ SUPABASE_STORAGE_BUCKET=campus2career
 WORKER_JOB=process-parse-jobs
 WORKER_POLL_INTERVAL_MS=30000
 
-ONET_USERNAME=
-ONET_PASSWORD=
+ONET_DATABASE_DIR=
 BLS_API_KEY=
+COLLEGE_SCORECARD_API_KEY=
+COLLEGE_SCORECARD_PER_PAGE=100
+COLLEGE_SCORECARD_MAX_PAGES=
 ```
 
 ### Worker modes
@@ -207,6 +211,7 @@ Use one of these values for `WORKER_JOB`:
 - `seed-broad-skill-requirements`
 - `sync-onet`
 - `sync-bls`
+- `sync-college-scorecard`
 - `recompute-scores`
 - `generate-parent-briefs`
 - `generate-alerts`
@@ -274,8 +279,7 @@ Check:
 
 Check:
 
-- `ONET_USERNAME`
-- `ONET_PASSWORD`
+- `ONET_DATABASE_DIR`
 - `BLS_API_KEY`
 
 ### Briefs or chat fail

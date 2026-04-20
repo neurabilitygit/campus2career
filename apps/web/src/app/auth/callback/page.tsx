@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { getSupabaseBrowserClient, getSupabaseConfigError } from "../../../lib/supabaseClient";
+import { refreshSession } from "../../../lib/sessionStore";
 
 function readHashParams() {
   const hash = window.location.hash.startsWith("#")
@@ -12,7 +12,6 @@ function readHashParams() {
 }
 
 export default function AuthCallbackPage() {
-  const router = useRouter();
   const [message, setMessage] = useState("Completing sign-in...");
 
   useEffect(() => {
@@ -48,13 +47,14 @@ export default function AuthCallbackPage() {
       }
       if (data.session) {
         setMessage("Signed in. Redirecting you into the app...");
-        router.replace("/app");
+        await refreshSession({ force: true });
+        window.location.replace("/app");
       } else {
         setMessage("No active session found.");
       }
     }
     complete();
-  }, [router]);
+  }, []);
 
   return (
     <main style={{ padding: 32 }}>

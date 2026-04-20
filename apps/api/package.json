@@ -5,7 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "node --env-file=.env.local --import tsx/esm src/index.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "db:migrate": "node --env-file=.env.local --import tsx/esm src/scripts/applyDbMigrations.ts",
+    "db:seed:ci": "node --env-file=.env.local --import tsx/esm src/scripts/seedCiBaseline.ts",
+    "synthetic:run": "node --env-file=.env.local --import tsx/esm src/scripts/runSyntheticScenarios.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.1",

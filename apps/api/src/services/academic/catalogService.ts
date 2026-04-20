@@ -130,6 +130,51 @@ export async function upsertMajor(input: MajorInput) {
   return majorId;
 }
 
+export async function upsertMinor(input: {
+  institutionCanonicalName: string;
+  catalogLabel: string;
+  degreeType: string;
+  programName: string;
+  canonicalName: string;
+  displayName: string;
+  departmentName?: string;
+}) {
+  const institution = await repo.getInstitutionByCanonicalName(input.institutionCanonicalName);
+  if (!institution) {
+    throw new Error(`Institution not found: ${input.institutionCanonicalName}`);
+  }
+
+  const catalog = await repo.getAcademicCatalog(institution.institution_id, input.catalogLabel);
+  if (!catalog) {
+    throw new Error(`Academic catalog not found: ${input.catalogLabel}`);
+  }
+
+  const degreeProgram = await repo.getDegreeProgram(
+    catalog.academic_catalog_id,
+    input.degreeType,
+    input.programName
+  );
+  if (!degreeProgram) {
+    throw new Error(`Degree program not found: ${input.degreeType} ${input.programName}`);
+  }
+
+  const minorId = stableId(
+    "minor",
+    `${normalizeKeyPart(input.institutionCanonicalName)}:${normalizeKeyPart(input.catalogLabel)}:${normalizeKeyPart(input.degreeType)}:${normalizeKeyPart(input.programName)}:${normalizeKeyPart(input.canonicalName)}`
+  );
+
+  await repo.upsertMinor({
+    minorId,
+    degreeProgramId: degreeProgram.degree_program_id,
+    canonicalName: input.canonicalName,
+    displayName: input.displayName,
+    departmentName: input.departmentName ?? null,
+    isActive: true,
+  });
+
+  return minorId;
+}
+
 export async function assignStudentCatalog(input: StudentCatalogAssignmentInput) {
   const institution = await repo.getInstitutionByCanonicalName(input.institutionCanonicalName);
   if (!institution) {
@@ -143,6 +188,8 @@ export async function assignStudentCatalog(input: StudentCatalogAssignmentInput)
 
   let degreeProgramId: string | null = null;
   let majorId: string | null = null;
+  let minorId: string | null = null;
+  let concentrationId: string | null = null;
 
   if (input.degreeType && input.programName) {
     const degreeProgram = await repo.getDegreeProgram(
@@ -161,6 +208,22 @@ export async function assignStudentCatalog(input: StudentCatalogAssignmentInput)
         throw new Error(`Major not found: ${input.majorCanonicalName}`);
       }
       majorId = major.major_id;
+
+      if (input.concentrationCanonicalName) {
+        const concentration = await repo.getConcentration(major.major_id, input.concentrationCanonicalName);
+        if (!concentration) {
+          throw new Error(`Concentration not found: ${input.concentrationCanonicalName}`);
+        }
+        concentrationId = concentration.concentration_id;
+      }
+    }
+
+    if (input.minorCanonicalName) {
+      const minor = await repo.getMinor(degreeProgram.degree_program_id, input.minorCanonicalName);
+      if (!minor) {
+        throw new Error(`Minor not found: ${input.minorCanonicalName}`);
+      }
+      minorId = minor.minor_id;
     }
   }
 
@@ -176,8 +239,8 @@ export async function assignStudentCatalog(input: StudentCatalogAssignmentInput)
     academicCatalogId: catalog.academic_catalog_id,
     degreeProgramId,
     majorId,
-    minorId: null,
-    concentrationId: null,
+    minorId,
+    concentrationId,
     assignmentSource: input.assignmentSource,
     isPrimary: input.isPrimary ?? true,
   });
@@ -340,15 +403,24 @@ export async function upsertRequirementSet(input: RequirementSetInput) {
     majorId = major.major_id;
   }
 
+  let minorId: string | null = null;
+  if (input.minorCanonicalName) {
+    const minor = await repo.getMinor(degreeProgram.degree_program_id, input.minorCanonicalName);
+    if (!minor) {
+      throw new Error(`Minor not found: ${input.minorCanonicalName}`);
+    }
+    minorId = minor.minor_id;
+  }
+
   const requirementSetId = stableId(
     "requirement_set",
-    `${degreeProgram.degree_program_id}:${input.setType}:${normalizeKeyPart(input.majorCanonicalName || input.displayName)}`
+    `${degreeProgram.degree_program_id}:${input.setType}:${normalizeKeyPart(input.majorCanonicalName || input.minorCanonicalName || input.displayName)}`
   );
 
   await repo.upsertRequirementSet({
     requirementSetId,
     majorId,
-    minorId: null,
+    minorId,
     concentrationId: null,
     setType: input.setType,
     displayName: input.displayName,

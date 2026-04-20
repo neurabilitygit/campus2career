@@ -1,5 +1,10 @@
 import { StudentReadRepository } from "../../repositories/student/studentReadRepository";
 import type { StudentScoringInput } from "../../../../../packages/shared/src/scoring/types";
+import {
+  TARGET_ROLE_SEEDS,
+  getTargetRoleSeedByCanonicalName,
+} from "../../../../../packages/shared/src/market/targetRoleSeeds";
+import { buildAcademicScoringEvidence } from "../academic/scoringEvidence";
 
 export interface AggregatedStudentContext {
   studentProfileId: string;
@@ -12,17 +17,42 @@ export interface AggregatedStudentContext {
 
 const repo = new StudentReadRepository();
 
-const sectorToRole: Record<string, { role: string; sector: string }> = {
-  "technology & startups": { role: "software developer", sector: "technology_startups" },
-  "fintech": { role: "business analyst", sector: "fintech" },
-  "management consulting": { role: "management consulting analyst", sector: "management_consulting" },
-  "finance & financial services": { role: "financial analyst", sector: "finance_financial_services" },
-  "accounting, audit & risk": { role: "staff accountant", sector: "accounting_audit_risk" },
-  "data & analytics": { role: "data analyst", sector: "data_analytics" },
-  "healthcare": { role: "healthcare analyst", sector: "healthcare" },
-  "pharmaceutical, biotech & clinical research": { role: "clinical research coordinator", sector: "pharma_biotech_clinical_research" },
-  "operations & strategy": { role: "operations analyst", sector: "operations_strategy" },
-};
+const sectorToRole = new Map(
+  TARGET_ROLE_SEEDS.map((seed) => [seed.sectorCluster, { role: seed.canonicalName, sector: seed.sectorCluster }] as const)
+);
+
+function normalizeSectorCluster(value: string | undefined | null): string | null {
+  if (!value) return null;
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/\s*&\s*/g, "_")
+    .replace(/,\s*/g, "_")
+    .replace(/\s*\/\s*/g, "_")
+    .replace(/\s+/g, "_")
+    .replace(/[^a-z0-9_]/g, "");
+}
+
+function resolveTargetRole(input: {
+  selectedSector?: string | null;
+  overrideTargetRoleFamily?: string;
+  overrideTargetSectorCluster?: string;
+}) {
+  if (input.overrideTargetRoleFamily) {
+    const seed = getTargetRoleSeedByCanonicalName(input.overrideTargetRoleFamily);
+    return {
+      targetRoleFamily: seed?.canonicalName || input.overrideTargetRoleFamily,
+      targetSectorCluster: input.overrideTargetSectorCluster || seed?.sectorCluster || "finance_financial_services",
+    };
+  }
+
+  const normalizedSector = normalizeSectorCluster(input.selectedSector);
+  const mapped = normalizedSector ? sectorToRole.get(normalizedSector) : undefined;
+  return {
+    targetRoleFamily: mapped?.role || "financial analyst",
+    targetSectorCluster: mapped?.sector || "finance_financial_services",
+  };
+}
 
 function deriveAcademicYear(expectedGraduationDate?: string | null): "freshman" | "sophomore" | "junior" | "senior" | "other" {
   if (!expectedGraduationDate) return "other";
@@ -67,25 +97,47 @@ export async function aggregateStudentContext(studentProfileId: string): Promise
   };
 }
 
-export async function buildStudentScoringInput(studentProfileId: string): Promise<StudentScoringInput> {
+export async function buildStudentScoringInput(
+  studentProfileId: string,
+  options?: {
+    targetRoleFamily?: string;
+    targetSectorCluster?: string;
+  }
+): Promise<StudentScoringInput> {
   const profile = await repo.getStudentProfile(studentProfileId);
   if (!profile) throw new Error(`Student profile not found for ${studentProfileId}`);
 
   const sectors = await repo.getSelectedSectors(studentProfileId);
   const selectedSector = sectors[0]?.sector_cluster;
-  const mapped = selectedSector ? sectorToRole[selectedSector.toLowerCase()] : undefined;
-  const targetRoleFamily = mapped?.role || "financial analyst";
-  const targetSectorCluster = mapped?.sector || "finance_financial_services";
+  const { targetRoleFamily, targetSectorCluster } = resolveTargetRole({
+    selectedSector,
+    overrideTargetRoleFamily: options?.targetRoleFamily,
+    overrideTargetSectorCluster: options?.targetSectorCluster,
+  });
 
-  const [occupationSkillRows, courseCoverageRows, experiences, artifacts, contacts, outreach, deadlines] = await Promise.all([
+  const [
+    occupationMetadata,
+    occupationSkillRows,
+    marketSignals,
+    courseCoverageRows,
+    experiences,
+    artifacts,
+    contacts,
+    outreach,
+    deadlines,
+    academicEvidence,
+  ] = await Promise.all([
+    repo.getOccupationMetadataForCanonicalRole(targetRoleFamily),
     repo.getOccupationSkillsForCanonicalRole(targetRoleFamily),
+    repo.getMarketSignalsForCanonicalRole(targetRoleFamily),
     repo.getCourseCoverage(studentProfileId),
     repo.getRecentAccomplishments(studentProfileId),
     repo.getArtifacts(studentProfileId),
     repo.getContacts(studentProfileId),
     repo.getOutreach(studentProfileId),
     repo.getUpcomingDeadlines(studentProfileId),
-  ]);
+    buildAcademicScoringEvidence(studentProfileId),
+  ] as const);
 
   const completedDeadlines = deadlines.filter((d) => d.completed).length;
   const overdueOpenDeadlines = deadlines.filter((d) => !d.completed && new Date(d.due_date) < new Date()).length;
@@ -95,6 +147,15 @@ export async function buildStudentScoringInput(studentProfileId: string): Promis
     targetRoleFamily,
     targetSectorCluster,
     preferredGeographies: profile.preferred_geographies || [],
+    occupationMetadata: occupationMetadata
+      ? {
+          onetCode: occupationMetadata.onet_code || undefined,
+          jobZone: occupationMetadata.job_zone ?? undefined,
+          description: occupationMetadata.description || undefined,
+        }
+      : undefined,
+    transcript: academicEvidence.transcript,
+    requirementProgress: academicEvidence.requirementProgress,
     occupationSkills: occupationSkillRows.length ? occupationSkillRows.map((r) => ({
       skillName: r.skill_name,
       skillCategory: r.skill_category,
@@ -104,6 +165,15 @@ export async function buildStudentScoringInput(studentProfileId: string): Promis
       { skillName: "stakeholder_communication", skillCategory: "communication", importanceScore: 70, requiredProficiencyBand: "intermediate" },
       { skillName: "ai_fluency", skillCategory: "ai_fluency", importanceScore: 50, requiredProficiencyBand: "basic" },
     ],
+    marketSignals: marketSignals.map((signal) => ({
+      signalType: signal.signal_type,
+      signalValue: signal.signal_value == null ? undefined : Number(signal.signal_value),
+      signalDirection: signal.signal_direction || undefined,
+      sourceName: signal.source_name,
+      effectiveDate: signal.effective_date,
+      confidenceLevel: signal.confidence_level || undefined,
+      scope: signal.scope,
+    })),
     courseCoverage: courseCoverageRows.map((r) => ({
       courseId: r.course_id,
       skillName: r.skill_name,

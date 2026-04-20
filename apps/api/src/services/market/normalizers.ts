@@ -3,6 +3,7 @@ export interface NormalizedOccupation {
   onetCode?: string;
   title: string;
   description?: string;
+  jobZone?: number;
   source: "onet";
 }
 
@@ -24,7 +25,7 @@ export interface NormalizedSkillRequirement {
 }
 
 export interface NormalizedMarketSignal {
-  occupationCanonicalName: string;
+  occupationCanonicalName?: string;
   geographyCode?: string;
   signalType:
     | "wage"

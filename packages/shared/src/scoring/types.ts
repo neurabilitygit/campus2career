@@ -67,12 +67,69 @@ export interface StudentSignals {
   repeatedDeadlineMisses?: number;
 }
 
+export interface OccupationMetadata {
+  onetCode?: string;
+  jobZone?: number;
+  description?: string;
+}
+
+export interface MarketSignalEvidence {
+  signalType:
+    | "wage"
+    | "demand_growth"
+    | "unemployment_pressure"
+    | "openings_trend"
+    | "internship_availability"
+    | "ai_disruption_signal"
+    | "hiring_slowdown";
+  signalValue?: number;
+  signalDirection?: "rising" | "falling" | "stable";
+  sourceName: string;
+  effectiveDate: string;
+  confidenceLevel?: "low" | "medium" | "high";
+  scope: "role" | "macro";
+}
+
+export interface TranscriptEvidenceSummary {
+  parsedStatus?: "pending" | "parsed" | "matched" | "review_required" | "failed";
+  transcriptSummary?: string;
+  termCount: number;
+  courseCount: number;
+  completedCourseCount: number;
+  matchedCatalogCourseCount: number;
+  unmatchedCourseCount: number;
+  creditsEarned: number;
+}
+
+export interface RequirementProgressSummary {
+  boundToCatalog: boolean;
+  institutionDisplayName?: string;
+  catalogLabel?: string;
+  degreeType?: string;
+  programName?: string;
+  majorDisplayName?: string;
+  requirementSetDisplayName?: string;
+  totalRequirementItems: number;
+  satisfiedRequirementItems: number;
+  totalRequirementGroups: number;
+  satisfiedRequirementGroups: number;
+  creditsApplied: number;
+  totalCreditsRequired?: number;
+  completionPercent: number;
+  missingRequiredCourses: string[];
+  inferredConfidence: "low" | "medium" | "high";
+}
+
 export interface StudentScoringInput {
   studentId: string;
   targetRoleFamily: string;
   targetSectorCluster: string;
   preferredGeographies?: string[];
+  occupationMetadata?: OccupationMetadata;
   occupationSkills: OccupationSkillRequirement[];
+  marketSignals?: MarketSignalEvidence[];
+  transcript?: TranscriptEvidenceSummary;
+  requirementProgress?: RequirementProgressSummary;
   courseCoverage: CourseSkillCoverage[];
   experiences: ExperienceEvidence[];
   artifacts: ArtifactEvidence[];
@@ -113,6 +170,7 @@ export interface RecommendationItem {
 export interface SubScores {
   roleAlignment: number;
   marketDemand: number;
+  academicReadiness: number;
   experienceStrength: number;
   proofOfWorkStrength: number;
   networkStrength: number;

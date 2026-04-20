@@ -1,0 +1,947 @@
+{
+  "schemaVersion": "synthetic-scenarios.v1",
+  "generatedAt": "2026-04-20",
+  "description": "Twelve lightweight synthetic scenarios for early-stage Campus2Career testing using fictional students anchored to public institution and labor-market information.",
+  "scenarios": [
+    {
+      "id": "S01",
+      "label": "ASU CS sophomore targeting data analyst with one early project",
+      "publicBasis": {
+        "institutionDisplayName": "Arizona State University",
+        "institutionCanonicalName": "college-scorecard-104151-arizona-state-university-campus-immersion",
+        "majorDisplayName": "Computer Science",
+        "majorCanonicalName": "computer-science",
+        "minorDisplayName": "Data Science",
+        "minorCanonicalName": "data-science",
+        "targetRoleFamily": "data analyst",
+        "targetSectorCluster": "data_analytics"
+      },
+      "profile": {
+        "schoolName": "Arizona State University",
+        "expectedGraduationDate": "2028-05-15",
+        "majorPrimary": "Computer Science",
+        "majorSecondary": "Data Science",
+        "preferredGeographies": ["Phoenix", "Remote"],
+        "careerGoalSummary": "Use software and analytics skills to break into an entry-level data analyst role."
+      },
+      "sectorSelection": {
+        "sectorClusters": ["data_analytics", "technology_startups"]
+      },
+      "catalogAssignment": {
+        "catalogLabel": "Auto-discovered 2026-2027",
+        "degreeType": "Undergraduate",
+        "programName": "Auto-discovered undergraduate programs",
+        "majorCanonicalName": "computer-science",
+        "minorCanonicalName": "data-science"
+      },
+      "transcript": {
+        "institutionCanonicalName": "college-scorecard-104151-arizona-state-university-campus-immersion",
+        "transcriptSummary": "Sophomore transcript with strong CS fundamentals and one statistics course.",
+        "terms": [
+          {
+            "termLabel": "Fall 2025",
+            "courses": [
+              { "rawCourseCode": "CSE110", "rawCourseTitle": "Principles of Programming", "creditsEarned": 3, "grade": "A", "completionStatus": "completed" },
+              { "rawCourseCode": "MAT265", "rawCourseTitle": "Calculus for Engineers I", "creditsEarned": 3, "grade": "A-", "completionStatus": "completed" },
+              { "rawCourseCode": "ENG101", "rawCourseTitle": "First-Year Composition", "creditsEarned": 3, "grade": "B+", "completionStatus": "completed" }
+            ]
+          },
+          {
+            "termLabel": "Spring 2026",
+            "courses": [
+              { "rawCourseCode": "CSE205", "rawCourseTitle": "Object-Oriented Programming and Data Structures", "creditsEarned": 3, "grade": "A-", "completionStatus": "completed" },
+              { "rawCourseCode": "STP226", "rawCourseTitle": "Elements of Statistics", "creditsEarned": 3, "grade": "B+", "completionStatus": "completed" },
+              { "rawCourseCode": "CIS105", "rawCourseTitle": "Computer Applications and Information Technology", "creditsEarned": 3, "grade": "A", "completionStatus": "completed" }
+            ]
+          }
+        ]
+      },
+      "experiences": [
+        {
+          "title": "Meal Spend Tracker",
+          "organization": "Independent",
+          "deliverablesSummary": "Built a small Python project to analyze monthly meal and grocery spending.",
+          "toolsUsed": ["Python", "Pandas"],
+          "relevanceRating": 3
+        }
+      ],
+      "artifacts": [
+        {
+          "artifactType": "project",
+          "extractedSummary": "A small personal project that cleans CSV data and charts weekly expense patterns."
+        }
+      ],
+      "contacts": [
+        {
+          "contactName": "Jordan Lee",
+          "relationshipType": "teaching_assistant",
+          "warmthLevel": "warm",
+          "notes": "Discussed coursework and internship timing."
+        }
+      ],
+      "outreach": [],
+      "deadlines": [
+        {
+          "title": "Summer internship shortlist",
+          "dueDate": "2026-10-01",
+          "deadlineType": "internship_application"
+        }
+      ],
+      "expectedAssertions": {
+        "requirementGraphExpected": true,
+        "scoring": {
+          "targetRoleFamily": "data analyst",
+          "trajectoryStatusOneOf": ["watch", "at_risk"],
+          "overallScoreRange": [40, 62]
+        }
+      }
+    },
+    {
+      "id": "S02",
+      "label": "ASU CS plus Data Science junior with internship and strong portfolio",
+      "publicBasis": {
+        "institutionDisplayName": "Arizona State University",
+        "institutionCanonicalName": "college-scorecard-104151-arizona-state-university-campus-immersion",
+        "majorDisplayName": "Computer Science",
+        "majorCanonicalName": "computer-science",
+        "minorDisplayName": "Data Science",
+        "minorCanonicalName": "data-science",
+        "targetRoleFamily": "data analyst",
+        "targetSectorCluster": "data_analytics"
+      },
+      "profile": {
+        "schoolName": "Arizona State University",
+        "expectedGraduationDate": "2027-05-15",
+        "majorPrimary": "Computer Science",
+        "majorSecondary": "Data Science",
+        "preferredGeographies": ["Seattle", "Phoenix"],
+        "careerGoalSummary": "Land a data analyst role with strong SQL, visualization, and experimentation skills."
+      },
+      "sectorSelection": {
+        "sectorClusters": ["data_analytics"]
+      },
+      "catalogAssignment": {
+        "catalogLabel": "Auto-discovered 2026-2027",
+        "degreeType": "Undergraduate",
+        "programName": "Auto-discovered undergraduate programs",
+        "majorCanonicalName": "computer-science",
+        "minorCanonicalName": "data-science"
+      },
+      "transcript": {
+        "institutionCanonicalName": "college-scorecard-104151-arizona-state-university-campus-immersion",
+        "transcriptSummary": "Junior transcript with programming, statistics, and database coursework.",
+        "terms": [
+          {
+            "termLabel": "Fall 2025",
+            "courses": [
+              { "rawCourseCode": "CSE310", "rawCourseTitle": "Data Structures and Algorithms", "creditsEarned": 3, "grade": "A-", "completionStatus": "completed" },
+              { "rawCourseCode": "CIS325", "rawCourseTitle": "Business Database Systems", "creditsEarned": 3, "grade": "A", "completionStatus": "completed" },
+              { "rawCourseCode": "STP420", "rawCourseTitle": "Introductory Applied Statistics", "creditsEarned": 3, "grade": "A-", "completionStatus": "completed" }
+            ]
+          },
+          {
+            "termLabel": "Spring 2026",
+            "courses": [
+              { "rawCourseCode": "CSE412", "rawCourseTitle": "Database Management", "creditsEarned": 3, "grade": "A", "completionStatus": "completed" },
+              { "rawCourseCode": "DAT301", "rawCourseTitle": "Introduction to Data Science Analytics", "creditsEarned": 3, "grade": "A-", "completionStatus": "completed" },
+              { "rawCourseCode": "CSE445", "rawCourseTitle": "Distributed Software Development", "creditsEarned": 3, "grade": "B+", "completionStatus": "completed" }
+            ]
+          }
+        ]
+      },
+      "experiences": [
+        {
+          "title": "Data Analytics Intern",
+          "organization": "Regional Retail Insights",
+          "deliverablesSummary": "Built weekly SQL reporting and dashboard refresh process for marketing analytics.",
+          "toolsUsed": ["SQL", "Tableau", "Excel"],
+          "relevanceRating": 5
+        }
+      ],
+      "artifacts": [
+        {
+          "artifactType": "portfolio",
+          "extractedSummary": "Portfolio includes dashboard screenshots, SQL notes, and an A/B test analysis writeup."
+        },
+        {
+          "artifactType": "presentation",
+          "extractedSummary": "A concise stakeholder deck explaining regional churn and campaign performance."
+        }
+      ],
+      "contacts": [
+        { "contactName": "Priya Raman", "relationshipType": "manager", "warmthLevel": "strong", "notes": "Internship manager and referral source." },
+        { "contactName": "Luis Ortega", "relationshipType": "mentor", "warmthLevel": "warm", "notes": "Monthly career conversation." }
+      ],
+      "outreach": [
+        { "interactionType": "informational_interview", "outcome": "follow_up_planned" }
+      ],
+      "deadlines": [
+        { "title": "Full-time analyst applications", "dueDate": "2026-09-15", "deadlineType": "job_application" }
+      ],
+      "expectedAssertions": {
+        "requirementGraphExpected": true,
+        "scoring": {
+          "targetRoleFamily": "data analyst",
+          "trajectoryStatusOneOf": ["watch", "at_risk"],
+          "overallScoreRange": [48, 68]
+        }
+      }
+    },
+    {
+      "id": "S03",
+      "label": "UF Biology sophomore targeting healthcare analyst with no quant evidence",
+      "publicBasis": {
+        "institutionDisplayName": "University of Florida",
+        "institutionCanonicalName": "college-scorecard-134130-university-of-florida",
+        "majorDisplayName": "Biology",
+        "majorCanonicalName": "biology",
+        "targetRoleFamily": "healthcare analyst",
+        "targetSectorCluster": "healthcare"
+      },
+      "profile": {
+        "schoolName": "University of Florida",
+        "expectedGraduationDate": "2028-05-01",
+        "majorPrimary": "Biology",
+        "majorSecondary": "",
+        "preferredGeographies": ["Florida"],
+        "careerGoalSummary": "Eventually work in healthcare analytics, but has mainly pursued pre-health coursework so far."
+      },
+      "sectorSelection": {
+        "sectorClusters": ["healthcare"]
+      },
+      "catalogAssignment": {
+        "catalogLabel": "Auto-discovered 2026-2027",
+        "degreeType": "Undergraduate",
+        "programName": "Auto-discovered undergraduate programs",
+        "majorCanonicalName": "biology"
+      },
+      "transcript": {
+        "institutionCanonicalName": "college-scorecard-134130-university-of-florida",
+        "transcriptSummary": "Biology-first transcript with chemistry and life sciences but very little analytics.",
+        "terms": [
+          {
+            "termLabel": "Fall 2025",
+            "courses": [
+              { "rawCourseCode": "BSC2010", "rawCourseTitle": "Integrated Principles of Biology 1", "creditsEarned": 4, "grade": "A-", "completionStatus": "completed" },
+              { "rawCourseCode": "CHM2045", "rawCourseTitle": "General Chemistry 1", "creditsEarned": 3, "grade": "B+", "completionStatus": "completed" },
+              { "rawCourseCode": "ENC1101", "rawCourseTitle": "Expository and Argumentative Writing", "creditsEarned": 3, "grade": "B", "completionStatus": "completed" }
+            ]
+          },
+          {
+            "termLabel": "Spring 2026",
+            "courses": [
+              { "rawCourseCode": "BSC2011", "rawCourseTitle": "Integrated Principles of Biology 2", "creditsEarned": 4, "grade": "A-", "completionStatus": "completed" },
+              { "rawCourseCode": "CHM2046", "rawCourseTitle": "General Chemistry 2", "creditsEarned": 3, "grade": "B", "completionStatus": "completed" },
+              { "rawCourseCode": "STA2023", "rawCourseTitle": "Introduction to Statistics 1", "creditsEarned": 3, "grade": "C+", "completionStatus": "completed" }
+            ]
+          }
+        ]
+      },
+      "experiences": [],
+      "artifacts": [],
+      "contacts": [],
+      "outreach": [],
+      "deadlines": [
+        { "title": "Explore healthcare analytics roles", "dueDate": "2026-08-20", "deadlineType": "career_milestone" }
+      ],
+      "expectedAssertions": {
+        "requirementGraphExpected": true,
+        "scoring": {
+          "targetRoleFamily": "healthcare analyst",
+          "trajectoryStatusOneOf": ["at_risk", "watch"],
+          "overallScoreRange": [28, 48]
+        }
+      }
+    },
+    {
+      "id": "S04",
+      "label": "UF Biology senior with research poster targeting healthcare analyst",
+      "publicBasis": {
+        "institutionDisplayName": "University of Florida",
+        "institutionCanonicalName": "college-scorecard-134130-university-of-florida",
+        "majorDisplayName": "Biology",
+        "majorCanonicalName": "biology",
+        "targetRoleFamily": "healthcare analyst",
+        "targetSectorCluster": "healthcare"
+      },
+      "profile": {
+        "schoolName": "University of Florida",
+        "expectedGraduationDate": "2026-05-01",
+        "majorPrimary": "Biology",
+        "majorSecondary": "Statistics",
+        "preferredGeographies": ["Atlanta", "Florida"],
+        "careerGoalSummary": "Translate life-science and public health interests into a healthcare analyst role."
+      },
+      "sectorSelection": {
+        "sectorClusters": ["healthcare", "pharma_biotech_clinical_research"]
+      },
+      "catalogAssignment": {
+        "catalogLabel": "Auto-discovered 2026-2027",
+        "degreeType": "Undergraduate",
+        "programName": "Auto-discovered undergraduate programs",
+        "majorCanonicalName": "biology"
+      },
+      "transcript": {
+        "institutionCanonicalName": "college-scorecard-134130-university-of-florida",
+        "transcriptSummary": "Senior biology transcript with stats and research methods supporting healthcare analysis.",
+        "terms": [
+          {
+            "termLabel": "Fall 2025",
+            "courses": [
+              { "rawCourseCode": "PCB3063", "rawCourseTitle": "Genetics", "creditsEarned": 4, "grade": "A-", "completionStatus": "completed" },
+              { "rawCourseCode": "STA3024", "rawCourseTitle": "Introduction to Probability", "creditsEarned": 3, "grade": "B+", "completionStatus": "completed" },
+              { "rawCourseCode": "PHC4101", "rawCourseTitle": "Public Health Concepts", "creditsEarned": 3, "grade": "A", "completionStatus": "completed" }
+            ]
+          },
+          {
+            "termLabel": "Spring 2026",
+            "courses": [
+              { "rawCourseCode": "BSC4936", "rawCourseTitle": "Research Methods in Biology", "creditsEarned": 3, "grade": "A", "completionStatus": "completed" },
+              { "rawCourseCode": "PHC4509", "rawCourseTitle": "Public Health Program Planning", "creditsEarned": 3, "grade": "A-", "completionStatus": "completed" },
+              { "rawCourseCode": "STA4321", "rawCourseTitle": "Introduction to Statistics Theory", "creditsEarned": 3, "grade": "B+", "completionStatus": "completed" }
+            ]
+          }
+        ]
+      },
+      "experiences": [
+        {
+          "title": "Undergraduate Research Assistant",
+          "organization": "Health Outcomes Lab",
+          "deliverablesSummary": "Cleaned survey data and supported literature review for care access outcomes study.",
+          "toolsUsed": ["Excel", "R"],
+          "relevanceRating": 4
+        }
+      ],
+      "artifacts": [
+        {
+          "artifactType": "presentation",
+          "extractedSummary": "Research poster on patient adherence and care access barriers."
+        }
+      ],
+      "contacts": [
+        { "contactName": "Maya Chen", "relationshipType": "faculty_mentor", "warmthLevel": "strong", "notes": "Research mentor." }
+      ],
+      "outreach": [
+        { "interactionType": "informational_interview", "outcome": "completed" }
+      ],
+      "deadlines": [],
+      "expectedAssertions": {
+        "requirementGraphExpected": true,
+        "scoring": {
+          "targetRoleFamily": "healthcare analyst",
+          "trajectoryStatusOneOf": ["at_risk", "watch"],
+          "overallScoreRange": [44, 62]
+        }
+      }
+    },
+    {
+      "id": "S05",
+      "label": "Ohio State finance junior with case deck targeting financial analyst",
+      "publicBasis": {
+        "institutionDisplayName": "The Ohio State University",
+        "institutionCanonicalName": "college-scorecard-204796-ohio-state-university-main-campus",
+        "majorDisplayName": "Finance",
+        "majorCanonicalName": "finance",
+        "targetRoleFamily": "financial analyst",
+        "targetSectorCluster": "finance_financial_services"
+      },
+      "profile": {
+        "schoolName": "The Ohio State University",
+        "expectedGraduationDate": "2027-05-10",
+        "majorPrimary": "Finance",
+        "majorSecondary": "",
+        "preferredGeographies": ["Chicago", "New York"],
+        "careerGoalSummary": "Build toward corporate finance or financial planning analyst work."
+      },
+      "sectorSelection": {
+        "sectorClusters": ["finance_financial_services"]
+      },
+      "catalogAssignment": {
+        "catalogLabel": "Auto-discovered 2026-2027",
+        "degreeType": "Undergraduate",
+        "programName": "Auto-discovered undergraduate programs",
+        "majorCanonicalName": "finance"
+      },
+      "transcript": {
+        "institutionCanonicalName": "college-scorecard-204796-ohio-state-university-main-campus",
+        "transcriptSummary": "Finance transcript with accounting, corporate finance, and economics foundation.",
+        "terms": [
+          {
+            "termLabel": "Fall 2025",
+            "courses": [
+              { "rawCourseCode": "BUSFIN3220", "rawCourseTitle": "Foundations of Finance", "creditsEarned": 3, "grade": "A-", "completionStatus": "completed" },
+              { "rawCourseCode": "ACCTMIS2200", "rawCourseTitle": "Accounting 1", "creditsEarned": 3, "grade": "B+", "completionStatus": "completed" },
+              { "rawCourseCode": "ECON2001", "rawCourseTitle": "Principles of Microeconomics", "creditsEarned": 3, "grade": "A", "completionStatus": "completed" }
+            ]
+          },
+          {
+            "termLabel": "Spring 2026",
+            "courses": [
+              { "rawCourseCode": "BUSFIN3500", "rawCourseTitle": "Corporate Finance", "creditsEarned": 3, "grade": "A-", "completionStatus": "completed" },
+              { "rawCourseCode": "ACCTMIS2300", "rawCourseTitle": "Accounting 2", "creditsEarned": 3, "grade": "B", "completionStatus": "completed" },
+              { "rawCourseCode": "STAT1430", "rawCourseTitle": "Statistics for Business", "creditsEarned": 3, "grade": "B+", "completionStatus": "completed" }
+            ]
+          }
+        ]
+      },
+      "experiences": [
+        {
+          "title": "Student Investment Fund Analyst",
+          "organization": "Buckeye Finance Society",
+          "deliverablesSummary": "Built a short valuation memo and defended a stock thesis in a student-run fund meeting.",
+          "toolsUsed": ["Excel", "PowerPoint"],
+          "relevanceRating": 4
+        }
+      ],
+      "artifacts": [
+        {
+          "artifactType": "presentation",
+          "extractedSummary": "Equity research deck with valuation comps and business risks."
+        }
+      ],
+      "contacts": [
+        { "contactName": "Nina Patel", "relationshipType": "alumni", "warmthLevel": "warm", "notes": "One informational call completed." }
+      ],
+      "outreach": [
+        { "interactionType": "informational_interview", "outcome": "completed" }
+      ],
+      "deadlines": [],
+      "expectedAssertions": {
+        "requirementGraphExpected": true,
+        "scoring": {
+          "targetRoleFamily": "financial analyst",
+          "trajectoryStatusOneOf": ["at_risk", "watch"],
+          "overallScoreRange": [44, 62]
+        }
+      }
+    },
+    {
+      "id": "S06",
+      "label": "Ohio State finance senior with weak execution and overdue deadlines",
+      "publicBasis": {
+        "institutionDisplayName": "The Ohio State University",
+        "institutionCanonicalName": "college-scorecard-204796-ohio-state-university-main-campus",
+        "majorDisplayName": "Finance",
+        "majorCanonicalName": "finance",
+        "targetRoleFamily": "financial analyst",
+        "targetSectorCluster": "finance_financial_services"
+      },
+      "profile": {
+        "schoolName": "The Ohio State University",
+        "expectedGraduationDate": "2026-05-10",
+        "majorPrimary": "Finance",
+        "majorSecondary": "",
+        "preferredGeographies": ["Columbus", "Chicago"],
+        "careerGoalSummary": "Wants a financial analyst role but has been inconsistent with applications and deadlines."
+      },
+      "sectorSelection": {
+        "sectorClusters": ["finance_financial_services"]
+      },
+      "catalogAssignment": {
+        "catalogLabel": "Auto-discovered 2026-2027",
+        "degreeType": "Undergraduate",
+        "programName": "Auto-discovered undergraduate programs",
+        "majorCanonicalName": "finance"
+      },
+      "transcript": {
+        "institutionCanonicalName": "college-scorecard-204796-ohio-state-university-main-campus",
+        "transcriptSummary": "Mostly complete finance coursework with adequate but not standout grades.",
+        "terms": [
+          {
+            "termLabel": "Fall 2025",
+            "courses": [
+              { "rawCourseCode": "BUSFIN4211", "rawCourseTitle": "Advanced Corporate Finance", "creditsEarned": 3, "grade": "B", "completionStatus": "completed" },
+              { "rawCourseCode": "BUSMHR3200", "rawCourseTitle": "Organizational Behavior", "creditsEarned": 3, "grade": "B-", "completionStatus": "completed" },
+              { "rawCourseCode": "BUSOBA3232", "rawCourseTitle": "Operations Management", "creditsEarned": 3, "grade": "B", "completionStatus": "completed" }
+            ]
+          }
+        ]
+      },
+      "experiences": [],
+      "artifacts": [],
+      "contacts": [],
+      "outreach": [],
+      "deadlines": [
+        { "title": "Finance rotational applications", "dueDate": "2026-02-15", "deadlineType": "job_application" },
+        { "title": "Resume revision", "dueDate": "2026-02-01", "deadlineType": "career_milestone" }
+      ],
+      "expectedAssertions": {
+        "requirementGraphExpected": true,
+        "scoring": {
+          "targetRoleFamily": "financial analyst",
+          "trajectoryStatusOneOf": ["at_risk", "watch"],
+          "overallScoreRange": [28, 45]
+        }
+      }
+    },
+    {
+      "id": "S07",
+      "label": "Ohio State accounting junior targeting financial analyst mismatch case",
+      "publicBasis": {
+        "institutionDisplayName": "The Ohio State University",
+        "institutionCanonicalName": "college-scorecard-204796-ohio-state-university-main-campus",
+        "majorDisplayName": "Accounting",
+        "majorCanonicalName": "accounting",
+        "targetRoleFamily": "financial analyst",
+        "targetSectorCluster": "finance_financial_services"
+      },
+      "profile": {
+        "schoolName": "The Ohio State University",
+        "expectedGraduationDate": "2027-05-10",
+        "majorPrimary": "Accounting",
+        "majorSecondary": "",
+        "preferredGeographies": ["Chicago"],
+        "careerGoalSummary": "Currently in accounting but exploring whether financial analysis is a better fit."
+      },
+      "sectorSelection": {
+        "sectorClusters": ["accounting_audit_risk", "finance_financial_services"]
+      },
+      "catalogAssignment": {
+        "catalogLabel": "Auto-discovered 2026-2027",
+        "degreeType": "Undergraduate",
+        "programName": "Auto-discovered undergraduate programs",
+        "majorCanonicalName": "accounting"
+      },
+      "transcript": {
+        "institutionCanonicalName": "college-scorecard-204796-ohio-state-university-main-campus",
+        "transcriptSummary": "Accounting-heavy transcript with audit and tax emphasis but less core finance signal.",
+        "terms": [
+          {
+            "termLabel": "Fall 2025",
+            "courses": [
+              { "rawCourseCode": "ACCTMIS3201", "rawCourseTitle": "Intermediate Accounting I", "creditsEarned": 3, "grade": "A-", "completionStatus": "completed" },
+              { "rawCourseCode": "ACCTMIS3400", "rawCourseTitle": "Accounting Information Systems", "creditsEarned": 3, "grade": "B+", "completionStatus": "completed" },
+              { "rawCourseCode": "BUSFIN3220", "rawCourseTitle": "Foundations of Finance", "creditsEarned": 3, "grade": "B", "completionStatus": "completed" }
+            ]
+          },
+          {
+            "termLabel": "Spring 2026",
+            "courses": [
+              { "rawCourseCode": "ACCTMIS3202", "rawCourseTitle": "Intermediate Accounting II", "creditsEarned": 3, "grade": "B+", "completionStatus": "completed" },
+              { "rawCourseCode": "ACCTMIS3600", "rawCourseTitle": "Auditing", "creditsEarned": 3, "grade": "A-", "completionStatus": "completed" },
+              { "rawCourseCode": "ACCTMIS4300", "rawCourseTitle": "Taxation", "creditsEarned": 3, "grade": "B", "completionStatus": "completed" }
+            ]
+          }
+        ]
+      },
+      "experiences": [],
+      "artifacts": [],
+      "contacts": [],
+      "outreach": [],
+      "deadlines": [],
+      "expectedAssertions": {
+        "requirementGraphExpected": true,
+        "scoring": {
+          "targetRoleFamily": "financial analyst",
+          "trajectoryStatusOneOf": ["watch", "at_risk"],
+          "overallScoreRange": [30, 48],
+          "comparisonHint": "Should score more naturally for staff accountant than for financial analyst."
+        }
+      }
+    },
+    {
+      "id": "S08",
+      "label": "Georgia Tech industrial engineering junior targeting operations analyst",
+      "publicBasis": {
+        "institutionDisplayName": "Georgia Institute of Technology-Main Campus",
+        "institutionCanonicalName": "college-scorecard-139755-georgia-institute-of-technology-main-campus",
+        "majorDisplayName": "Industrial Engineering",
+        "majorCanonicalName": "industrial-engineering",
+        "targetRoleFamily": "operations analyst",
+        "targetSectorCluster": "operations_strategy"
+      },
+      "profile": {
+        "schoolName": "Georgia Tech",
+        "expectedGraduationDate": "2027-05-05",
+        "majorPrimary": "Industrial Engineering",
+        "majorSecondary": "",
+        "preferredGeographies": ["Atlanta", "Dallas"],
+        "careerGoalSummary": "Build toward operations analyst or strategy analyst roles that value process and analytics."
+      },
+      "sectorSelection": {
+        "sectorClusters": ["operations_strategy", "data_analytics"]
+      },
+      "catalogAssignment": {
+        "catalogLabel": "Auto-discovered 2026-2027",
+        "degreeType": "Undergraduate",
+        "programName": "Auto-discovered undergraduate programs",
+        "majorCanonicalName": "industrial-engineering"
+      },
+      "transcript": {
+        "institutionCanonicalName": "college-scorecard-139755-georgia-institute-of-technology-main-campus",
+        "transcriptSummary": "Operations and optimization-focused transcript with quantitative fit for analyst work.",
+        "terms": [
+          {
+            "termLabel": "Fall 2025",
+            "courses": [
+              { "rawCourseCode": "ISYE2027", "rawCourseTitle": "Probability with Applications", "creditsEarned": 3, "grade": "A-", "completionStatus": "completed" },
+              { "rawCourseCode": "ISYE3133", "rawCourseTitle": "Engineering Optimization", "creditsEarned": 3, "grade": "A", "completionStatus": "completed" },
+              { "rawCourseCode": "MGT2250", "rawCourseTitle": "Management Statistics", "creditsEarned": 3, "grade": "B+", "completionStatus": "completed" }
+            ]
+          },
+          {
+            "termLabel": "Spring 2026",
+            "courses": [
+              { "rawCourseCode": "ISYE3103", "rawCourseTitle": "Supply Chain Modeling", "creditsEarned": 3, "grade": "A-", "completionStatus": "completed" },
+              { "rawCourseCode": "CS1301", "rawCourseTitle": "Introduction to Computing", "creditsEarned": 3, "grade": "A", "completionStatus": "completed" },
+              { "rawCourseCode": "MGT3078", "rawCourseTitle": "Finance and Investments", "creditsEarned": 3, "grade": "B+", "completionStatus": "completed" }
+            ]
+          }
+        ]
+      },
+      "experiences": [
+        {
+          "title": "Supply Chain Process Improvement Project",
+          "organization": "Student Consulting Team",
+          "deliverablesSummary": "Mapped warehouse delays and recommended inventory process changes.",
+          "toolsUsed": ["Excel", "Python", "PowerPoint"],
+          "relevanceRating": 4
+        }
+      ],
+      "artifacts": [
+        {
+          "artifactType": "project",
+          "extractedSummary": "Project memo quantifying bottlenecks and proposing process changes."
+        }
+      ],
+      "contacts": [
+        { "contactName": "Rhea Singh", "relationshipType": "club_alumni", "warmthLevel": "warm", "notes": "Operations alum from student consulting club." }
+      ],
+      "outreach": [
+        { "interactionType": "informational_interview", "outcome": "completed" }
+      ],
+      "deadlines": [],
+      "expectedAssertions": {
+        "requirementGraphExpected": true,
+        "scoring": {
+          "targetRoleFamily": "operations analyst",
+          "trajectoryStatusOneOf": ["at_risk", "watch"],
+          "overallScoreRange": [44, 62]
+        }
+      }
+    },
+    {
+      "id": "S09",
+      "label": "Georgia Tech IE plus business minor senior with internship targeting operations analyst",
+      "publicBasis": {
+        "institutionDisplayName": "Georgia Institute of Technology-Main Campus",
+        "institutionCanonicalName": "college-scorecard-139755-georgia-institute-of-technology-main-campus",
+        "majorDisplayName": "Industrial Engineering",
+        "majorCanonicalName": "industrial-engineering",
+        "minorDisplayName": "Business",
+        "minorCanonicalName": "business",
+        "targetRoleFamily": "operations analyst",
+        "targetSectorCluster": "operations_strategy"
+      },
+      "profile": {
+        "schoolName": "Georgia Tech",
+        "expectedGraduationDate": "2026-05-05",
+        "majorPrimary": "Industrial Engineering",
+        "majorSecondary": "Business",
+        "preferredGeographies": ["Atlanta", "Austin"],
+        "careerGoalSummary": "Use process improvement, analytics, and business judgment in operations strategy work."
+      },
+      "sectorSelection": {
+        "sectorClusters": ["operations_strategy"]
+      },
+      "catalogAssignment": {
+        "catalogLabel": "Auto-discovered 2026-2027",
+        "degreeType": "Undergraduate",
+        "programName": "Auto-discovered undergraduate programs",
+        "majorCanonicalName": "industrial-engineering",
+        "minorCanonicalName": "business"
+      },
+      "transcript": {
+        "institutionCanonicalName": "college-scorecard-139755-georgia-institute-of-technology-main-campus",
+        "transcriptSummary": "Senior IE transcript with operations, analytics, and business breadth.",
+        "terms": [
+          {
+            "termLabel": "Fall 2025",
+            "courses": [
+              { "rawCourseCode": "ISYE4106", "rawCourseTitle": "Senior Design in Industrial Engineering", "creditsEarned": 3, "grade": "A-", "completionStatus": "completed" },
+              { "rawCourseCode": "ISYE4031", "rawCourseTitle": "Logistics Systems", "creditsEarned": 3, "grade": "A", "completionStatus": "completed" },
+              { "rawCourseCode": "MGT3501", "rawCourseTitle": "Operations and Supply Chain Management", "creditsEarned": 3, "grade": "A-", "completionStatus": "completed" }
+            ]
+          }
+        ]
+      },
+      "experiences": [
+        {
+          "title": "Operations Strategy Intern",
+          "organization": "Regional Logistics Network",
+          "deliverablesSummary": "Modeled route delays and presented improvement recommendations to leadership.",
+          "toolsUsed": ["Excel", "SQL", "PowerPoint"],
+          "relevanceRating": 5
+        }
+      ],
+      "artifacts": [
+        {
+          "artifactType": "presentation",
+          "extractedSummary": "Executive-ready deck with throughput and route optimization recommendations."
+        }
+      ],
+      "contacts": [
+        { "contactName": "Alex Romero", "relationshipType": "manager", "warmthLevel": "strong", "notes": "Internship manager." },
+        { "contactName": "Tanya Brooks", "relationshipType": "mentor", "warmthLevel": "strong", "notes": "Monthly career guidance." }
+      ],
+      "outreach": [
+        { "interactionType": "informational_interview", "outcome": "completed" },
+        { "interactionType": "coffee_chat", "outcome": "completed" }
+      ],
+      "deadlines": [],
+      "expectedAssertions": {
+        "requirementGraphExpected": true,
+        "scoring": {
+          "targetRoleFamily": "operations analyst",
+          "trajectoryStatusOneOf": ["at_risk", "watch"],
+          "overallScoreRange": [48, 66]
+        }
+      }
+    },
+    {
+      "id": "S10",
+      "label": "ASU Information Systems sophomore with AI workflow artifact targeting data analyst",
+      "publicBasis": {
+        "institutionDisplayName": "Arizona State University",
+        "institutionCanonicalName": "college-scorecard-104151-arizona-state-university-campus-immersion",
+        "majorDisplayName": "Information Systems",
+        "majorCanonicalName": "information-systems",
+        "targetRoleFamily": "data analyst",
+        "targetSectorCluster": "data_analytics"
+      },
+      "profile": {
+        "schoolName": "Arizona State University",
+        "expectedGraduationDate": "2028-05-15",
+        "majorPrimary": "Information Systems",
+        "majorSecondary": "",
+        "preferredGeographies": ["Phoenix", "Remote"],
+        "careerGoalSummary": "Use business systems and analytics tools to move into data analytics."
+      },
+      "sectorSelection": {
+        "sectorClusters": ["data_analytics", "fintech"]
+      },
+      "catalogAssignment": {
+        "catalogLabel": "Auto-discovered 2026-2027",
+        "degreeType": "Undergraduate",
+        "programName": "Auto-discovered undergraduate programs",
+        "majorCanonicalName": "information-systems"
+      },
+      "transcript": {
+        "institutionCanonicalName": "college-scorecard-104151-arizona-state-university-campus-immersion",
+        "transcriptSummary": "Early-stage business systems transcript with one programming course and business analytics exposure.",
+        "terms": [
+          {
+            "termLabel": "Fall 2025",
+            "courses": [
+              { "rawCourseCode": "CIS235", "rawCourseTitle": "Business Information Systems", "creditsEarned": 3, "grade": "A-", "completionStatus": "completed" },
+              { "rawCourseCode": "ECN211", "rawCourseTitle": "Macroeconomic Principles", "creditsEarned": 3, "grade": "B+", "completionStatus": "completed" },
+              { "rawCourseCode": "MAT210", "rawCourseTitle": "Brief Calculus", "creditsEarned": 3, "grade": "B", "completionStatus": "completed" }
+            ]
+          },
+          {
+            "termLabel": "Spring 2026",
+            "courses": [
+              { "rawCourseCode": "CIS236", "rawCourseTitle": "Business Data Communications", "creditsEarned": 3, "grade": "A", "completionStatus": "completed" },
+              { "rawCourseCode": "CSE110", "rawCourseTitle": "Principles of Programming", "creditsEarned": 3, "grade": "B+", "completionStatus": "completed" },
+              { "rawCourseCode": "STP226", "rawCourseTitle": "Elements of Statistics", "creditsEarned": 3, "grade": "B+", "completionStatus": "completed" }
+            ]
+          }
+        ]
+      },
+      "experiences": [],
+      "artifacts": [
+        {
+          "artifactType": "project",
+          "extractedSummary": "Built an AI-assisted workflow to summarize weekly marketing KPI spreadsheets and draft client notes."
+        }
+      ],
+      "contacts": [],
+      "outreach": [],
+      "deadlines": [],
+      "expectedAssertions": {
+        "requirementGraphExpected": true,
+        "scoring": {
+          "targetRoleFamily": "data analyst",
+          "trajectoryStatusOneOf": ["watch", "at_risk"],
+          "overallScoreRange": [36, 54]
+        }
+      }
+    },
+    {
+      "id": "S11",
+      "label": "UF Public Health junior targeting healthcare analyst",
+      "publicBasis": {
+        "institutionDisplayName": "University of Florida",
+        "institutionCanonicalName": "college-scorecard-134130-university-of-florida",
+        "majorDisplayName": "Public Health",
+        "majorCanonicalName": "public-health",
+        "targetRoleFamily": "healthcare analyst",
+        "targetSectorCluster": "healthcare"
+      },
+      "profile": {
+        "schoolName": "University of Florida",
+        "expectedGraduationDate": "2027-05-01",
+        "majorPrimary": "Public Health",
+        "majorSecondary": "",
+        "preferredGeographies": ["Florida", "North Carolina"],
+        "careerGoalSummary": "Combine public health and quantitative work in healthcare operations or healthcare analyst roles."
+      },
+      "sectorSelection": {
+        "sectorClusters": ["healthcare"]
+      },
+      "catalogAssignment": {
+        "catalogLabel": "Auto-discovered 2026-2027",
+        "degreeType": "Undergraduate",
+        "programName": "Auto-discovered undergraduate programs",
+        "majorCanonicalName": "public-health"
+      },
+      "transcript": {
+        "institutionCanonicalName": "college-scorecard-134130-university-of-florida",
+        "transcriptSummary": "Public health transcript with epidemiology and biostatistics foundations.",
+        "terms": [
+          {
+            "termLabel": "Fall 2025",
+            "courses": [
+              { "rawCourseCode": "PHC4101", "rawCourseTitle": "Public Health Concepts", "creditsEarned": 3, "grade": "A", "completionStatus": "completed" },
+              { "rawCourseCode": "PHC6050", "rawCourseTitle": "Epidemiology Methods I", "creditsEarned": 3, "grade": "B+", "completionStatus": "completed" },
+              { "rawCourseCode": "STA2023", "rawCourseTitle": "Introduction to Statistics 1", "creditsEarned": 3, "grade": "A-", "completionStatus": "completed" }
+            ]
+          },
+          {
+            "termLabel": "Spring 2026",
+            "courses": [
+              { "rawCourseCode": "PHC6001", "rawCourseTitle": "Principles of Epidemiology in Public Health", "creditsEarned": 3, "grade": "A-", "completionStatus": "completed" },
+              { "rawCourseCode": "PHC6052", "rawCourseTitle": "Biostatistical Methods", "creditsEarned": 3, "grade": "B+", "completionStatus": "completed" },
+              { "rawCourseCode": "PHC4509", "rawCourseTitle": "Public Health Program Planning", "creditsEarned": 3, "grade": "A", "completionStatus": "completed" }
+            ]
+          }
+        ]
+      },
+      "experiences": [
+        {
+          "title": "Community Health Volunteer Analyst",
+          "organization": "County Health Outreach Program",
+          "deliverablesSummary": "Tracked attendance and summarized recurring barriers for outreach programs.",
+          "toolsUsed": ["Excel"],
+          "relevanceRating": 4
+        }
+      ],
+      "artifacts": [
+        {
+          "artifactType": "presentation",
+          "extractedSummary": "Short deck summarizing community health event participation trends."
+        }
+      ],
+      "contacts": [
+        { "contactName": "Deja Morris", "relationshipType": "program_supervisor", "warmthLevel": "warm", "notes": "Volunteer supervisor." }
+      ],
+      "outreach": [],
+      "deadlines": [],
+      "expectedAssertions": {
+        "requirementGraphExpected": true,
+        "scoring": {
+          "targetRoleFamily": "healthcare analyst",
+          "trajectoryStatusOneOf": ["at_risk", "watch"],
+          "overallScoreRange": [44, 60]
+        }
+      }
+    },
+    {
+      "id": "S12",
+      "label": "UF Economics plus Data Science senior comparison case",
+      "publicBasis": {
+        "institutionDisplayName": "University of Florida",
+        "institutionCanonicalName": "college-scorecard-134130-university-of-florida",
+        "majorDisplayName": "Economics",
+        "majorCanonicalName": "economics",
+        "minorDisplayName": "Data Science",
+        "minorCanonicalName": "data-science",
+        "targetRoleFamily": "financial analyst",
+        "targetSectorCluster": "finance_financial_services"
+      },
+      "profile": {
+        "schoolName": "University of Florida",
+        "expectedGraduationDate": "2026-05-01",
+        "majorPrimary": "Economics",
+        "majorSecondary": "Data Science",
+        "preferredGeographies": ["New York", "Atlanta"],
+        "careerGoalSummary": "Can plausibly aim at either financial analyst or data analyst work; comparison behavior matters."
+      },
+      "sectorSelection": {
+        "sectorClusters": ["finance_financial_services", "data_analytics"]
+      },
+      "catalogAssignment": {
+        "catalogLabel": "Auto-discovered 2026-2027",
+        "degreeType": "Undergraduate",
+        "programName": "Auto-discovered undergraduate programs",
+        "majorCanonicalName": "economics",
+        "minorCanonicalName": "data-science"
+      },
+      "transcript": {
+        "institutionCanonicalName": "college-scorecard-134130-university-of-florida",
+        "transcriptSummary": "Economics and econometrics transcript with clear data-leaning electives.",
+        "terms": [
+          {
+            "termLabel": "Fall 2025",
+            "courses": [
+              { "rawCourseCode": "ECO3101", "rawCourseTitle": "Intermediate Microeconomics", "creditsEarned": 4, "grade": "A-", "completionStatus": "completed" },
+              { "rawCourseCode": "ECO3203", "rawCourseTitle": "Intermediate Macroeconomics", "creditsEarned": 4, "grade": "B+", "completionStatus": "completed" },
+              { "rawCourseCode": "ECO4421", "rawCourseTitle": "Econometrics", "creditsEarned": 4, "grade": "A", "completionStatus": "completed" }
+            ]
+          },
+          {
+            "termLabel": "Spring 2026",
+            "courses": [
+              { "rawCourseCode": "STA4321", "rawCourseTitle": "Statistics Theory", "creditsEarned": 3, "grade": "B+", "completionStatus": "completed" },
+              { "rawCourseCode": "COP3530", "rawCourseTitle": "Data Structures and Algorithms", "creditsEarned": 3, "grade": "B", "completionStatus": "completed" },
+              { "rawCourseCode": "CAP4770", "rawCourseTitle": "Introduction to Data Science", "creditsEarned": 3, "grade": "A-", "completionStatus": "completed" }
+            ]
+          }
+        ]
+      },
+      "experiences": [
+        {
+          "title": "Student Analytics Consultant",
+          "organization": "Campus Rec Strategy Team",
+          "deliverablesSummary": "Analyzed participation and retention trends for student recreation offerings.",
+          "toolsUsed": ["SQL", "Excel", "Tableau"],
+          "relevanceRating": 4
+        }
+      ],
+      "artifacts": [
+        {
+          "artifactType": "project",
+          "extractedSummary": "Capstone analysis of pricing and participation behavior with clear charts and recommendations."
+        }
+      ],
+      "contacts": [
+        { "contactName": "Marcus Hill", "relationshipType": "alumni", "warmthLevel": "warm", "notes": "Works in FP&A." }
+      ],
+      "outreach": [
+        { "interactionType": "informational_interview", "outcome": "completed" }
+      ],
+      "deadlines": [],
+      "expectedAssertions": {
+        "requirementGraphExpected": true,
+        "scoring": {
+          "targetRoleFamily": "financial analyst",
+          "trajectoryStatusOneOf": ["at_risk", "watch"],
+          "overallScoreRange": [44, 60],
+          "comparisonTargets": [
+            {
+              "targetRoleFamily": "financial analyst",
+              "targetSectorCluster": "finance_financial_services",
+              "expectation": "Should show strong analytics and decent finance fit."
+            },
+            {
+              "targetRoleFamily": "data analyst",
+              "targetSectorCluster": "data_analytics",
+              "expectation": "Should score similarly or higher than financial analyst because of econometrics and data-science evidence.",
+              "expectedOverallScoreRelationToBase": "greater_or_equal_minus_5"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

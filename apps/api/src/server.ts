@@ -5,7 +5,10 @@ function applyCors(req: IncomingMessage, res: ServerResponse) {
   const origin = req.headers.origin || "*";
   res.setHeader("access-control-allow-origin", origin);
   res.setHeader("vary", "origin");
-  res.setHeader("access-control-allow-headers", "authorization, content-type, x-demo-user-id, x-demo-role-type, x-demo-email");
+  res.setHeader(
+    "access-control-allow-headers",
+    "authorization, content-type, x-demo-user-id, x-demo-role-type, x-demo-email, x-test-context-role"
+  );
   res.setHeader("access-control-allow-methods", "GET, POST, PATCH, OPTIONS");
   res.setHeader("access-control-allow-credentials", "true");
 }
@@ -46,9 +49,21 @@ export async function router(req: IncomingMessage, res: ServerResponse) {
     return;
   }
 
+  if (url === "/students/me/scoring/preview" && req.method === "POST") {
+    const { scoringPreviewRoute } = await import("./routes/scoring");
+    await scoringPreviewRoute(req, res);
+    return;
+  }
+
   if (url === "/students/me/profile" && req.method === "POST") {
     const { studentProfileUpsertRoute } = await import("./routes/studentWrite");
     await studentProfileUpsertRoute(req, res);
+    return;
+  }
+
+  if (url === "/students/me/profile" && req.method === "GET") {
+    const { studentProfileReadRoute } = await import("./routes/studentWrite");
+    await studentProfileReadRoute(req, res);
     return;
   }
 
@@ -94,6 +109,24 @@ export async function router(req: IncomingMessage, res: ServerResponse) {
     return;
   }
 
+  if (url === "/students/me/academic/catalog-assignment" && req.method === "GET") {
+    const { studentCatalogAssignmentReadRoute } = await import("./routes/institutionDirectory");
+    await studentCatalogAssignmentReadRoute(req, res);
+    return;
+  }
+
+  if (url === "/students/me/academic/catalog-discovery" && req.method === "POST") {
+    const { catalogDiscoveryRoute } = await import("./routes/academic");
+    await catalogDiscoveryRoute(req, res);
+    return;
+  }
+
+  if (url === "/students/me/academic/program-requirements/discover" && req.method === "POST") {
+    const { programRequirementDiscoveryRoute } = await import("./routes/academic");
+    await programRequirementDiscoveryRoute(req, res);
+    return;
+  }
+
   if (url === "/students/me/academic/transcript/latest" && req.method === "GET") {
     const { latestTranscriptGraphRoute } = await import("./routes/academic");
     await latestTranscriptGraphRoute(req, res);
@@ -112,6 +145,12 @@ export async function router(req: IncomingMessage, res: ServerResponse) {
     return;
   }
 
+  if (url === "/students/me/academic/catalog/extract-from-artifact" && req.method === "POST") {
+    const { catalogExtractFromArtifactRoute } = await import("./routes/academic");
+    await catalogExtractFromArtifactRoute(req, res);
+    return;
+  }
+
   if (url === "/students/me/academic/requirements/primary" && req.method === "GET") {
     const { primaryRequirementGraphRoute } = await import("./routes/academic");
     await primaryRequirementGraphRoute(req, res);
@@ -124,10 +163,34 @@ export async function router(req: IncomingMessage, res: ServerResponse) {
     return;
   }
 
+  if (url === "/v1/academic/institutions/search" && req.method === "GET") {
+    const { institutionDirectorySearchRoute } = await import("./routes/institutionDirectory");
+    await institutionDirectorySearchRoute(req, res);
+    return;
+  }
+
+  if (url === "/v1/academic/institutions/bulk-upsert" && req.method === "POST") {
+    const { institutionDirectoryBulkUpsertRoute } = await import("./routes/institutionDirectory");
+    await institutionDirectoryBulkUpsertRoute(req, res);
+    return;
+  }
+
+  if (url === "/v1/academic/directory/options" && req.method === "GET") {
+    const { institutionDirectoryOptionsRoute } = await import("./routes/institutionDirectory");
+    await institutionDirectoryOptionsRoute(req, res);
+    return;
+  }
+
   if (url === "/v1/market/fixtures/validate") {
     const { validateFixtures } = await import("./services/market/fixtureValidation");
     res.statusCode = 200;
     res.end(JSON.stringify(validateFixtures(), null, 2));
+    return;
+  }
+
+  if (url === "/v1/market/diagnostics/role-mappings" && req.method === "GET") {
+    const { roleMappingsDiagnosticsRoute } = await import("./routes/market");
+    await roleMappingsDiagnosticsRoute(req, res);
     return;
   }
 

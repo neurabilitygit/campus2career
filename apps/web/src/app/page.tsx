@@ -1,9 +1,16 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { AuthButtons } from "../components/AuthButtons";
 import { useSession } from "../hooks/useSession";
 import { useApiData } from "../hooks/useApiData";
+import {
+  getStoredTestContextRole,
+  setStoredTestContextRole,
+  subscribeToTestContextRole,
+  type TestContextRole,
+} from "../lib/testContext";
 
 const roleDescriptions = {
   guest: {
@@ -62,9 +69,129 @@ const roleCards = [
   },
 ];
 
+type AuthMeResponse = {
+  context?: {
+    authenticatedRoleType?: "student" | "parent" | "coach" | "admin";
+    testContextSwitchingEnabled?: boolean;
+    testContextAllowedRoles?: TestContextRole[];
+    testContextOverrideRole?: TestContextRole | null;
+    email?: string;
+  };
+};
+
+function ContextSwitcher(props: {
+  isAuthenticated: boolean;
+  auth: ReturnType<typeof useApiData<AuthMeResponse>>;
+}) {
+  const [selectedRole, setSelectedRole] = useState<TestContextRole | null>(null);
+
+  useEffect(() => {
+    setSelectedRole(getStoredTestContextRole());
+    return subscribeToTestContextRole(setSelectedRole);
+  }, []);
+
+  const canSwitch = !!props.auth.data?.context?.testContextSwitchingEnabled;
+  const allowedRoles = props.auth.data?.context?.testContextAllowedRoles || [];
+  const effectiveRole = props.auth.data?.context?.authenticatedRoleType;
+
+  if (!props.isAuthenticated) {
+    return null;
+  }
+
+  if (props.auth.loading) {
+    return (
+      <div
+        style={{
+          padding: 18,
+          borderRadius: 22,
+          background: "rgba(255,255,255,0.08)",
+          border: "1px solid rgba(255,255,255,0.12)",
+        }}
+      >
+        <strong style={{ display: "block", marginBottom: 8 }}>Testing context</strong>
+        <p style={{ margin: 0, color: "#dbe7ff" }}>Checking whether this account can switch between roles.</p>
+      </div>
+    );
+  }
+
+  if (!canSwitch) {
+    return null;
+  }
+
+  const handleRoleSelection = (role: TestContextRole | null) => {
+    setStoredTestContextRole(role);
+    window.location.reload();
+  };
+
+  return (
+    <div
+      style={{
+        padding: 18,
+        borderRadius: 22,
+        background: "rgba(255,255,255,0.08)",
+        border: "1px solid rgba(255,255,255,0.12)",
+        display: "grid",
+        gap: 14,
+      }}
+    >
+      <div style={{ display: "grid", gap: 6 }}>
+        <strong style={{ fontSize: 16 }}>Testing context switcher</strong>
+        <p style={{ margin: 0, color: "#dbe7ff", lineHeight: 1.5 }}>
+          This account can temporarily act as a student, parent, or coach for local testing without a second login.
+        </p>
+        <p style={{ margin: 0, color: "#c7d8ff", fontSize: 13 }}>
+          Effective API role: <strong>{effectiveRole || "unknown"}</strong>
+          {" · "}
+          Selected override: <strong>{selectedRole || "account default"}</strong>
+        </p>
+      </div>
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+        {allowedRoles.map((role) => {
+          const isActive = selectedRole === role;
+          return (
+            <button
+              key={role}
+              onClick={() => handleRoleSelection(role)}
+              style={{
+                border: "none",
+                borderRadius: 999,
+                padding: "11px 16px",
+                cursor: "pointer",
+                fontWeight: 800,
+                textTransform: "capitalize",
+                background: isActive
+                  ? "linear-gradient(135deg, #34d399 0%, #7dd3fc 100%)"
+                  : "rgba(255,255,255,0.12)",
+                color: isActive ? "#082f49" : "#f8fafc",
+                boxShadow: isActive ? "0 14px 28px rgba(52, 211, 153, 0.22)" : "none",
+              }}
+            >
+              {role}
+            </button>
+          );
+        })}
+        <button
+          onClick={() => handleRoleSelection(null)}
+          style={{
+            borderRadius: 999,
+            padding: "11px 16px",
+            cursor: "pointer",
+            fontWeight: 800,
+            border: "1px solid rgba(255,255,255,0.18)",
+            background: selectedRole === null ? "#f8fafc" : "transparent",
+            color: selectedRole === null ? "#0f172a" : "#f8fafc",
+          }}
+        >
+          Default
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function HomePage() {
   const { isAuthenticated } = useSession();
-  const auth = useApiData<{ context?: { authenticatedRoleType?: "student" | "parent" | "coach" | "admin" } }>(
+  const auth = useApiData<AuthMeResponse>(
     "/auth/me",
     isAuthenticated
   );
@@ -176,6 +303,7 @@ export default function HomePage() {
                   </p>
                 </div>
                 <AuthButtons />
+                <ContextSwitcher isAuthenticated={isAuthenticated} auth={auth} />
               </div>
             </div>
 

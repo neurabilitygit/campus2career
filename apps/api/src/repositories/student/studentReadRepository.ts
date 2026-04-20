@@ -79,6 +79,23 @@ export interface OccupationSkillRow {
   required_proficiency_band: "basic" | "intermediate" | "advanced";
 }
 
+export interface OccupationMetadataRow {
+  canonical_name: string;
+  onet_code: string | null;
+  description: string | null;
+  job_zone: number | null;
+}
+
+export interface MarketSignalRow {
+  signal_type: "wage" | "demand_growth" | "unemployment_pressure" | "openings_trend" | "internship_availability" | "ai_disruption_signal" | "hiring_slowdown";
+  signal_value: number | null;
+  signal_direction: "rising" | "falling" | "stable" | null;
+  source_name: string;
+  effective_date: string;
+  confidence_level: "low" | "medium" | "high" | null;
+  scope: "role" | "macro";
+}
+
 export class StudentReadRepository {
   async getStudentProfile(studentProfileId: string): Promise<StudentProfileRow | null> {
     const result = await query<StudentProfileRow>(
@@ -247,6 +264,51 @@ export class StudentReadRepository {
       join occupation_clusters oc on oc.occupation_cluster_id = osr.occupation_cluster_id
       where lower(oc.canonical_name) = lower($1)
       order by osr.importance_score desc
+      limit 20
+      `,
+      [canonicalName]
+    );
+    return result.rows;
+  }
+
+  async getOccupationMetadataForCanonicalRole(canonicalName: string): Promise<OccupationMetadataRow | null> {
+    const result = await query<OccupationMetadataRow>(
+      `
+      select canonical_name, onet_code, description, job_zone
+      from occupation_clusters
+      where lower(canonical_name) = lower($1)
+      limit 1
+      `,
+      [canonicalName]
+    );
+    return result.rows[0] || null;
+  }
+
+  async getMarketSignalsForCanonicalRole(canonicalName: string): Promise<MarketSignalRow[]> {
+    const result = await query<MarketSignalRow>(
+      `
+      with role_cluster as (
+        select occupation_cluster_id
+        from occupation_clusters
+        where lower(canonical_name) = lower($1)
+        limit 1
+      )
+      select
+        ms.signal_type,
+        ms.signal_value,
+        ms.signal_direction,
+        ms.source_name,
+        ms.effective_date::text,
+        ms.confidence_level,
+        case
+          when ms.occupation_cluster_id is null then 'macro'
+          else 'role'
+        end as scope
+      from market_signals ms
+      where
+        ms.occupation_cluster_id in (select occupation_cluster_id from role_cluster)
+        or ms.occupation_cluster_id is null
+      order by ms.effective_date desc, ms.source_name asc
       limit 20
       `,
       [canonicalName]

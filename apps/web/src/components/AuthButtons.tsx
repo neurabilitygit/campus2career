@@ -1,7 +1,8 @@
 "use client";
 
-import type { CSSProperties } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import { getSupabaseBrowserClient, getSupabaseConfigError } from "../lib/supabaseClient";
+import { setStoredTestContextRole } from "../lib/testContext";
 import { useSession } from "../hooks/useSession";
 
 const buttonBaseStyle: CSSProperties = {
@@ -17,25 +18,53 @@ const buttonBaseStyle: CSSProperties = {
 export function AuthButtons() {
   const supabase = getSupabaseBrowserClient();
   const disabledReason = getSupabaseConfigError();
-  const { isAuthenticated, loading } = useSession();
+  const { isAuthenticated, loading, error, refresh } = useSession();
+  const [actionBusy, setActionBusy] = useState<"sign_in" | "sign_out" | null>(null);
+  const [showSlowNotice, setShowSlowNotice] = useState(false);
 
-  const signInDisabled = !supabase || loading || isAuthenticated;
-  const signOutDisabled = !supabase || loading || !isAuthenticated;
+  useEffect(() => {
+    if (!loading) {
+      setShowSlowNotice(false);
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setShowSlowNotice(true);
+    }, 2500);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [loading]);
+
+  const signInDisabled = !supabase || isAuthenticated || actionBusy !== null;
+  const signOutDisabled = !supabase || !isAuthenticated || actionBusy !== null;
 
   async function signInWithGoogle() {
     if (!supabase) return;
-    await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-      },
-    });
+    setActionBusy("sign_in");
+    try {
+      await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+    } finally {
+      setActionBusy(null);
+    }
   }
 
   async function signOut() {
     if (!supabase) return;
-    await supabase.auth.signOut();
-    window.location.href = "/";
+    setActionBusy("sign_out");
+    try {
+      await supabase.auth.signOut();
+      setStoredTestContextRole(null);
+      window.location.href = "/";
+    } finally {
+      setActionBusy(null);
+    }
   }
 
   return (
@@ -52,7 +81,11 @@ export function AuthButtons() {
             opacity: signInDisabled ? 0.8 : 1,
           }}
         >
-          {loading ? "Checking session..." : "Sign in with Google"}
+          {actionBusy === "sign_in"
+            ? "Opening Google..."
+            : loading
+              ? "Checking session..."
+              : "Sign in with Google"}
         </button>
         <button
           onClick={signOut}
@@ -65,10 +98,34 @@ export function AuthButtons() {
             opacity: signOutDisabled ? 0.8 : 1,
           }}
         >
-          Sign out
+          {actionBusy === "sign_out" ? "Signing out..." : "Sign out"}
         </button>
       </div>
       {disabledReason ? <p style={{ margin: 0, color: "crimson" }}>{disabledReason}</p> : null}
+      {showSlowNotice ? (
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+          <p style={{ margin: 0, color: "#475569" }}>
+            Session check is taking longer than expected. You can still try signing in or retry the check.
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              void refresh();
+            }}
+            style={{
+              borderRadius: 999,
+              border: "1px solid #cbd5e1",
+              background: "#fff",
+              padding: "8px 12px",
+              fontWeight: 700,
+              cursor: "pointer",
+            }}
+          >
+            Retry auth check
+          </button>
+        </div>
+      ) : null}
+      {error ? <p style={{ margin: 0, color: "crimson" }}>Session error: {error}</p> : null}
     </div>
   );
 }

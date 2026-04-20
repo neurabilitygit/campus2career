@@ -2,6 +2,7 @@ import { seedTargetRoleFamilies } from "./jobs/seed-target-role-families";
 import { seedBroadSkillRequirements } from "./jobs/seed-broad-skill-requirements";
 import { syncOnet } from "./jobs/sync-onet";
 import { syncBls } from "./jobs/sync-bls";
+import { syncCollegeScorecardInstitutions } from "./jobs/sync-college-scorecard";
 import { recomputeScores } from "./jobs/recompute-scores";
 import { generateParentBriefsJob } from "./jobs/generate-parent-briefs";
 import { generateAlerts } from "./jobs/generate-alerts";
@@ -13,6 +14,7 @@ const jobRegistry = {
   "seed-broad-skill-requirements": seedBroadSkillRequirements,
   "sync-onet": syncOnet,
   "sync-bls": syncBls,
+  "sync-college-scorecard": syncCollegeScorecardInstitutions,
   "recompute-scores": recomputeScores,
   "generate-parent-briefs": generateParentBriefsJob,
   "generate-alerts": generateAlerts,
@@ -78,6 +80,7 @@ export {
   seedBroadSkillRequirements,
   syncOnet,
   syncBls,
+  syncCollegeScorecardInstitutions,
   recomputeScores,
   generateParentBriefsJob,
   generateAlerts,

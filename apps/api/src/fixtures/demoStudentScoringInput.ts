@@ -11,11 +11,23 @@ export const demoFinanceAnalystScoringInput: StudentScoringInput = {
   targetRoleFamily: "financial analyst",
   targetSectorCluster: "finance_financial_services",
   preferredGeographies: ["New York", "Boston"],
+  occupationMetadata: { onetCode: "13-2031.00", jobZone: 4, description: "Budget and financial analysis surrogate" },
   occupationSkills: [
     { skillName: "excel_modeling", skillCategory: "technical", importanceScore: 90, requiredProficiencyBand: "intermediate" },
     { skillName: "stakeholder_communication", skillCategory: "communication", importanceScore: 70, requiredProficiencyBand: "intermediate" },
     { skillName: "ai_fluency", skillCategory: "ai_fluency", importanceScore: 50, requiredProficiencyBand: "basic" },
     { skillName: "finance_analysis", skillCategory: "analytical", importanceScore: 85, requiredProficiencyBand: "intermediate" },
+  ],
+  marketSignals: [
+    {
+      signalType: "unemployment_pressure",
+      signalValue: 4.3,
+      signalDirection: "stable",
+      sourceName: "BLS:LNS14000000",
+      effectiveDate: "2026-01-01",
+      confidenceLevel: "high",
+      scope: "macro",
+    },
   ],
   courseCoverage: [
     { courseId: "c1", skillName: "finance_analysis", coverageStrength: "medium", confidenceScore: 0.7 },
@@ -42,10 +54,22 @@ export const demoDataAnalystScoringInput: StudentScoringInput = {
   targetRoleFamily: "data analyst",
   targetSectorCluster: "data_analytics",
   preferredGeographies: ["New York", "Boston"],
+  occupationMetadata: { onetCode: "15-2041.00", jobZone: 4, description: "Statistics-aligned data analyst surrogate" },
   occupationSkills: [
     { skillName: "sql", skillCategory: "technical", importanceScore: 85, requiredProficiencyBand: "intermediate" },
     { skillName: "data_visualization", skillCategory: "technical", importanceScore: 75, requiredProficiencyBand: "intermediate" },
     { skillName: "ai_fluency", skillCategory: "ai_fluency", importanceScore: 55, requiredProficiencyBand: "basic" },
+  ],
+  marketSignals: [
+    {
+      signalType: "unemployment_pressure",
+      signalValue: 4.3,
+      signalDirection: "stable",
+      sourceName: "BLS:LNS14000000",
+      effectiveDate: "2026-01-01",
+      confidenceLevel: "high",
+      scope: "macro",
+    },
   ],
   courseCoverage: [{ courseId: "c1", skillName: "data_visualization", coverageStrength: "low", confidenceScore: 0.4 }],
   experiences: [],

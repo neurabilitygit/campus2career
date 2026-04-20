@@ -13,6 +13,7 @@ export default function UploadsHomePage() {
           <ul>
             <li><Link href="/uploads/resume">Upload résumé</Link></li>
             <li><Link href="/uploads/transcript">Upload transcript</Link></li>
+            <li><Link href="/uploads/catalog">Upload catalog or program PDF</Link></li>
             <li><Link href="/uploads/other">Upload other relevant artifacts</Link></li>
           </ul>
         </SectionCard>

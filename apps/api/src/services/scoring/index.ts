@@ -32,9 +32,14 @@ function textContainsEvidence(text: string | undefined, terms: string[]) {
   return terms.some((t) => hay.includes(t.toLowerCase()));
 }
 
+function skillLexiconTerms(skillName: string): string[] {
+  const key = skillName.toLowerCase();
+  return SKILL_LEXICON[key] || [key];
+}
+
 function inferSkillEvidenceScore(input: StudentScoringInput, skillName: string): number {
   const key = skillName.toLowerCase();
-  const lexiconTerms = SKILL_LEXICON[key] || [key];
+  const lexiconTerms = skillLexiconTerms(skillName);
 
   let score = 0;
 
@@ -62,6 +67,109 @@ function inferSkillEvidenceScore(input: StudentScoringInput, skillName: string):
   }
 
   return Math.min(score, 100);
+}
+
+function scoreExperienceRoleRelevance(input: StudentScoringInput): number {
+  const topSkills = input.occupationSkills
+    .sort((a, b) => b.importanceScore - a.importanceScore)
+    .slice(0, 8);
+
+  if (!topSkills.length || !input.experiences.length) {
+    return 0;
+  }
+
+  let matchedEvidence = 0;
+
+  for (const exp of input.experiences) {
+    const tools = (exp.toolsUsed || []).join(" ");
+    const summary = `${exp.title} ${exp.deliverablesSummary || ""} ${tools}`;
+    for (const skill of topSkills) {
+      if (textContainsEvidence(summary, skillLexiconTerms(skill.skillName))) {
+        matchedEvidence += skill.importanceScore;
+      }
+    }
+  }
+
+  const maxEvidence = topSkills.reduce((sum, skill) => sum + skill.importanceScore, 0) * Math.max(input.experiences.length, 1);
+  return clamp((matchedEvidence / Math.max(maxEvidence, 1)) * 100);
+}
+
+function computeMarketDemand(input: StudentScoringInput): number {
+  const signals = input.marketSignals || [];
+  if (!signals.length) {
+    return 70;
+  }
+
+  let score = 60;
+
+  for (const signal of signals) {
+    const weight = signal.scope === "role" ? 1.15 : 0.8;
+    const confidenceMultiplier =
+      signal.confidenceLevel === "high" ? 1 :
+      signal.confidenceLevel === "medium" ? 0.8 :
+      signal.confidenceLevel === "low" ? 0.6 : 0.75;
+
+    const value = signal.signalValue ?? 0;
+
+    if (signal.signalType === "unemployment_pressure") {
+      score += (10 - Math.min(value, 10)) * 4.2 * weight * confidenceMultiplier;
+    } else if (signal.signalType === "demand_growth" || signal.signalType === "openings_trend" || signal.signalType === "internship_availability" || signal.signalType === "wage") {
+      score += Math.min(value, 10) * 2.5 * weight * confidenceMultiplier;
+    } else if (signal.signalType === "hiring_slowdown" || signal.signalType === "ai_disruption_signal") {
+      score -= Math.min(value, 10) * 2.5 * weight * confidenceMultiplier;
+    }
+
+    if (signal.signalDirection === "rising" && (signal.signalType === "demand_growth" || signal.signalType === "openings_trend" || signal.signalType === "internship_availability" || signal.signalType === "wage")) {
+      score += 6 * confidenceMultiplier;
+    }
+    if (signal.signalDirection === "falling" && signal.signalType === "unemployment_pressure") {
+      score += 5 * confidenceMultiplier;
+    }
+    if (signal.signalDirection === "rising" && signal.signalType === "unemployment_pressure") {
+      score -= 6 * confidenceMultiplier;
+    }
+    if (signal.signalDirection === "rising" && (signal.signalType === "hiring_slowdown" || signal.signalType === "ai_disruption_signal")) {
+      score -= 5 * confidenceMultiplier;
+    }
+  }
+
+  return clamp(Math.round(score));
+}
+
+function computeAcademicReadiness(input: StudentScoringInput): number {
+  const transcript = input.transcript;
+  const requirementProgress = input.requirementProgress;
+
+  if (!transcript && !requirementProgress?.boundToCatalog) {
+    return 35;
+  }
+
+  let score = 35;
+
+  if (transcript) {
+    score += 10;
+    score += Math.min(transcript.completedCourseCount, 12) * 1.5;
+    const matchRate =
+      transcript.completedCourseCount > 0
+        ? transcript.matchedCatalogCourseCount / transcript.completedCourseCount
+        : 0;
+    score += matchRate * 20;
+  }
+
+  if (requirementProgress?.boundToCatalog) {
+    score += 10;
+    score += requirementProgress.completionPercent * 0.32;
+    const groupRate =
+      requirementProgress.totalRequirementGroups > 0
+        ? requirementProgress.satisfiedRequirementGroups / requirementProgress.totalRequirementGroups
+        : 0;
+    score += groupRate * 15;
+
+    if (requirementProgress.inferredConfidence === "high") score += 6;
+    else if (requirementProgress.inferredConfidence === "medium") score += 3;
+  }
+
+  return clamp(Math.round(score));
 }
 
 function estimateBandFromScore(score: number): ProficiencyBand {
@@ -106,23 +214,39 @@ function buildSkillGaps(input: StudentScoringInput): SkillGapItem[] {
 }
 
 function computeSubScores(input: StudentScoringInput, gaps: SkillGapItem[]): SubScores {
-  const totalSkills = Math.max(input.occupationSkills.length, 1);
   const unmetWeight = gaps.reduce((acc, g) => {
     const req = input.occupationSkills.find((r) => r.skillName.toLowerCase() === g.skillName.toLowerCase());
     return acc + (req?.importanceScore || 10);
   }, 0);
 
   const totalWeight = input.occupationSkills.reduce((acc, s) => acc + (s.importanceScore || 10), 0) || 1;
-  const roleAlignment = clamp(100 - (unmetWeight / totalWeight) * 100);
+  const academicReadiness = computeAcademicReadiness(input);
+  const requirementCompletionBoost =
+    input.requirementProgress?.boundToCatalog
+      ? Math.round((input.requirementProgress.completionPercent - 50) * 0.12)
+      : 0;
+  const transcriptPenalty =
+    input.transcript && input.transcript.completedCourseCount > 0 && input.transcript.matchedCatalogCourseCount === 0
+      ? -6
+      : 0;
+  const roleAlignment = clamp(100 - (unmetWeight / totalWeight) * 100 + requirementCompletionBoost + transcriptPenalty);
+  const experienceRoleRelevance = scoreExperienceRoleRelevance(input);
+  const jobZoneAdjustment =
+    input.occupationMetadata?.jobZone === 5 ? -6 :
+    input.occupationMetadata?.jobZone === 4 ? -3 :
+    input.occupationMetadata?.jobZone === 1 ? 3 : 0;
 
   const experienceStrength = clamp(
     (input.experiences.length * 18) +
-    input.experiences.reduce((a, e) => a + ((e.relevanceRating || 3) * 4), 0)
+    input.experiences.reduce((a, e) => a + ((e.relevanceRating || 3) * 4), 0) +
+    (experienceRoleRelevance * 0.35) +
+    jobZoneAdjustment
   );
 
   const proofOfWorkStrength = clamp(
     input.artifacts.length * 12 +
-    (input.signals.hasIndependentProjectBySeniorYear ? 25 : 0)
+    (input.signals.hasIndependentProjectBySeniorYear ? 25 : 0) +
+    (input.occupationMetadata?.jobZone === 5 ? -4 : 0)
   );
 
   const networkStrength = clamp(
@@ -133,15 +257,18 @@ function computeSubScores(input: StudentScoringInput, gaps: SkillGapItem[]): Sub
   );
 
   const executionMomentum = clamp(
-    80 - ((input.signals.repeatedDeadlineMisses || 0) * 12)
+    80 -
+      ((input.signals.repeatedDeadlineMisses || 0) * 12) +
+      (input.transcript?.parsedStatus === "matched" ? 6 : 0) -
+      ((input.requirementProgress?.missingRequiredCourses.length || 0) > 5 ? 6 : 0)
   );
 
-  // v1 static default; should later come from market_signals aggregation
-  const marketDemand = 70;
+  const marketDemand = computeMarketDemand(input);
 
   return {
     roleAlignment,
     marketDemand,
+    academicReadiness,
     experienceStrength,
     proofOfWorkStrength,
     networkStrength,
@@ -155,12 +282,13 @@ function deriveTrajectoryStatus(
   signals: StudentScoringInput["signals"]
 ): "on_track" | "watch" | "at_risk" {
   const weighted =
-    subscores.roleAlignment * 0.23 +
-    subscores.marketDemand * 0.12 +
-    subscores.experienceStrength * 0.20 +
-    subscores.proofOfWorkStrength * 0.15 +
-    subscores.networkStrength * 0.15 +
-    subscores.executionMomentum * 0.15;
+    subscores.roleAlignment * 0.18 +
+    subscores.marketDemand * 0.10 +
+    subscores.academicReadiness * 0.20 +
+    subscores.experienceStrength * 0.16 +
+    subscores.proofOfWorkStrength * 0.12 +
+    subscores.networkStrength * 0.12 +
+    subscores.executionMomentum * 0.12;
 
   if (heuristicFlagsCountCritical >= 2) return "at_risk";
   if (!signals.hasInternshipByJuniorYear && signals.currentAcademicYear === "junior") return "at_risk";
@@ -183,17 +311,19 @@ export function runScoring(input: StudentScoringInput): ScoringOutput {
 
   const overallScore = clamp(
     Math.round(
-      subScores.roleAlignment * 0.23 +
-      subScores.marketDemand * 0.12 +
-      subScores.experienceStrength * 0.20 +
-      subScores.proofOfWorkStrength * 0.15 +
-      subScores.networkStrength * 0.15 +
-      subScores.executionMomentum * 0.15
+      subScores.roleAlignment * 0.18 +
+      subScores.marketDemand * 0.10 +
+      subScores.academicReadiness * 0.20 +
+      subScores.experienceStrength * 0.16 +
+      subScores.proofOfWorkStrength * 0.12 +
+      subScores.networkStrength * 0.12 +
+      subScores.executionMomentum * 0.12
     )
   );
 
   const topStrengths: string[] = [];
   if (subScores.roleAlignment >= 75) topStrengths.push("Good alignment between current evidence and target role family");
+  if (subScores.academicReadiness >= 70) topStrengths.push("Transcript and degree-requirement progress are supporting the target path");
   if (subScores.experienceStrength >= 60) topStrengths.push("Experience profile is stronger than a typical early candidate");
   if (subScores.networkStrength >= 55) topStrengths.push("Professional network is becoming a meaningful asset");
   if (subScores.proofOfWorkStrength >= 50) topStrengths.push("Proof-of-work signal is visible and helpful");
@@ -208,6 +338,16 @@ export function runScoring(input: StudentScoringInput): ScoringOutput {
       .map((g) => `Gap in ${g.skillName}`),
   ].slice(0, 5);
 
+  if (subScores.academicReadiness <= 45) {
+    topRisks.unshift("Transcript and degree progress are not yet strongly supporting the stated target");
+  }
+
+  if (input.requirementProgress?.missingRequiredCourses.length) {
+    topRisks.push(
+      `Missing or unmapped core requirements include ${input.requirementProgress.missingRequiredCourses.slice(0, 3).join(", ")}`
+    );
+  }
+
   return {
     studentId: input.studentId,
     targetRoleFamily: input.targetRoleFamily,
@@ -216,7 +356,7 @@ export function runScoring(input: StudentScoringInput): ScoringOutput {
     overallScore,
     subScores,
     topStrengths,
-    topRisks,
+    topRisks: topRisks.slice(0, 5),
     heuristicFlags,
     skillGaps,
     recommendations,

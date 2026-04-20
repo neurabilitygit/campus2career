@@ -30,7 +30,7 @@ export function normalizeBlsSeriesToMarketSignal(input: {
   const numericValue = point.value != null ? Number(point.value) : undefined;
 
   return {
-    occupationCanonicalName: input.occupationCanonicalName || "macro",
+    occupationCanonicalName: input.occupationCanonicalName,
     geographyCode: input.geographyCode,
     signalType: input.signalType,
     signalValue: Number.isFinite(numericValue) ? numericValue : undefined,

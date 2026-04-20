@@ -1,7 +1,7 @@
 # Day 1 Market Bootstrap
 
 1. Apply database migrations.
-2. Set DATABASE_URL, ONET_USERNAME, ONET_PASSWORD, BLS_API_KEY if needed, and OPENAI_API_KEY.
+2. Set DATABASE_URL, ONET_DATABASE_DIR, BLS_API_KEY if needed, and OPENAI_API_KEY.
 3. Run the worker bootstrap:
    - seed target role families
    - seed broad skill requirements

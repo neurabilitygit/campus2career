@@ -78,8 +78,21 @@ Added:
 ## UI forms wired to backend
 Current live-wired flows:
 - student profile save -> `POST /students/me/profile`
+- student profile read -> `GET /students/me/profile`
 - deadline creation -> `POST /students/me/deadlines`
 - upload-target request -> `POST /students/me/uploads/presign`
+
+## Institution directory
+Added:
+- authenticated institution search -> `GET /v1/academic/institutions/search?q=...`
+- directory options lookup -> `GET /v1/academic/directory/options?institutionCanonicalName=...`
+- student catalog assignment read/write -> `GET|POST /students/me/academic/catalog-assignment`
+- worker job `sync-college-scorecard` to populate `institutions` from the official College Scorecard API
+
+Required worker env for the institution import:
+- `COLLEGE_SCORECARD_API_KEY`
+- optional `COLLEGE_SCORECARD_PER_PAGE` default `100`
+- optional `COLLEGE_SCORECARD_MAX_PAGES` for test-sized imports
 
 
 ## Real signed upload flow
@@ -97,3 +110,20 @@ Added live endpoints:
 
 Added frontend page:
 - `/diagnostic`
+
+## Synthetic Regression CI
+The repo now includes a deterministic regression path for scoring and curriculum
+logic that does not depend on Neon, Supabase, O*NET downloads, or BLS API
+availability.
+
+Local verification flow:
+- `pnpm typecheck`
+- `pnpm db:migrate`
+- `pnpm db:seed:ci`
+- `pnpm synthetic:run`
+
+Convenience command:
+- `pnpm verify:ci`
+
+GitHub Actions runs the same sequence against a fresh local Postgres service in
+`.github/workflows/ci.yml`.

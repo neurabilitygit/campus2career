@@ -42,6 +42,22 @@ export interface MajorRow {
   is_active: boolean;
 }
 
+export interface MinorRow {
+  minor_id: string;
+  degree_program_id: string;
+  canonical_name: string;
+  display_name: string;
+  department_name: string | null;
+  is_active: boolean;
+}
+
+export interface ConcentrationRow {
+  concentration_id: string;
+  major_id: string;
+  canonical_name: string;
+  display_name: string;
+}
+
 export interface StudentCatalogAssignmentRow {
   student_catalog_assignment_id: string;
   student_profile_id: string;
@@ -69,6 +85,12 @@ export interface StudentCatalogContextRow {
   major_id: string | null;
   major_canonical_name: string | null;
   major_display_name: string | null;
+  minor_id: string | null;
+  minor_canonical_name: string | null;
+  minor_display_name: string | null;
+  concentration_id: string | null;
+  concentration_canonical_name: string | null;
+  concentration_display_name: string | null;
   assignment_source: "student_selected" | "transcript_inferred" | "advisor_confirmed" | "system_inferred";
   is_primary: boolean;
 }
@@ -119,6 +141,36 @@ export interface RequirementItemRow {
 }
 
 export class CatalogRepository {
+  async searchInstitutions(input: { query?: string; limit?: number }): Promise<InstitutionRow[]> {
+    const normalizedQuery = input.query?.trim() || "";
+    const limit = Math.max(1, Math.min(input.limit || 20, 50));
+
+    const result = await query<InstitutionRow>(
+      `
+      select *
+      from institutions
+      where
+        $1 = ''
+        or lower(display_name) like lower('%' || $1 || '%')
+        or lower(canonical_name) like lower('%' || $1 || '%')
+        or lower(coalesce(city, '')) like lower('%' || $1 || '%')
+        or lower(coalesce(state_region, '')) like lower('%' || $1 || '%')
+      order by
+        case
+          when lower(display_name) = lower($1) then 0
+          when lower(display_name) like lower($1 || '%') then 1
+          when lower(display_name) like lower('%' || $1 || '%') then 2
+          else 3
+        end,
+        display_name asc
+      limit $2
+      `,
+      [normalizedQuery, limit]
+    );
+
+    return result.rows;
+  }
+
   async upsertInstitution(input: {
     institutionId: string;
     canonicalName: string;
@@ -235,6 +287,19 @@ export class CatalogRepository {
     return result.rows[0] || null;
   }
 
+  async listAcademicCatalogsForInstitution(institutionId: string): Promise<AcademicCatalogRow[]> {
+    const result = await query<AcademicCatalogRow>(
+      `
+      select *
+      from academic_catalogs
+      where institution_id = $1
+      order by end_year desc, start_year desc, catalog_label desc
+      `,
+      [institutionId]
+    );
+    return result.rows;
+  }
+
   async upsertDegreeProgram(input: {
     degreeProgramId: string;
     academicCatalogId: string;
@@ -289,6 +354,19 @@ export class CatalogRepository {
       [academicCatalogId, degreeType, programName]
     );
     return result.rows[0] || null;
+  }
+
+  async listDegreeProgramsForCatalog(academicCatalogId: string): Promise<DegreeProgramRow[]> {
+    const result = await query<DegreeProgramRow>(
+      `
+      select *
+      from degree_programs
+      where academic_catalog_id = $1
+      order by degree_type asc, program_name asc
+      `,
+      [academicCatalogId]
+    );
+    return result.rows;
   }
 
   async upsertMajor(input: {
@@ -351,6 +429,92 @@ export class CatalogRepository {
       order by display_name asc
       `,
       [degreeProgramId]
+    );
+    return result.rows;
+  }
+
+  async getMinor(degreeProgramId: string, canonicalName: string): Promise<MinorRow | null> {
+    const result = await query<MinorRow>(
+      `
+      select *
+      from minors
+      where degree_program_id = $1 and canonical_name = $2
+      limit 1
+      `,
+      [degreeProgramId, canonicalName]
+    );
+    return result.rows[0] || null;
+  }
+
+  async upsertMinor(input: {
+    minorId: string;
+    degreeProgramId: string;
+    canonicalName: string;
+    displayName: string;
+    departmentName?: string | null;
+    isActive?: boolean;
+  }): Promise<void> {
+    await query(
+      `
+      insert into minors (
+        minor_id,
+        degree_program_id,
+        canonical_name,
+        display_name,
+        department_name,
+        is_active
+      ) values ($1,$2,$3,$4,$5,$6)
+      on conflict (degree_program_id, canonical_name) do update set
+        display_name = excluded.display_name,
+        department_name = excluded.department_name,
+        is_active = excluded.is_active
+      `,
+      [
+        input.minorId,
+        input.degreeProgramId,
+        input.canonicalName,
+        input.displayName,
+        input.departmentName ?? null,
+        input.isActive ?? true,
+      ]
+    );
+  }
+
+  async listMinorsForDegreeProgram(degreeProgramId: string): Promise<MinorRow[]> {
+    const result = await query<MinorRow>(
+      `
+      select *
+      from minors
+      where degree_program_id = $1
+      order by display_name asc
+      `,
+      [degreeProgramId]
+    );
+    return result.rows;
+  }
+
+  async getConcentration(majorId: string, canonicalName: string): Promise<ConcentrationRow | null> {
+    const result = await query<ConcentrationRow>(
+      `
+      select *
+      from concentrations
+      where major_id = $1 and canonical_name = $2
+      limit 1
+      `,
+      [majorId, canonicalName]
+    );
+    return result.rows[0] || null;
+  }
+
+  async listConcentrationsForMajor(majorId: string): Promise<ConcentrationRow[]> {
+    const result = await query<ConcentrationRow>(
+      `
+      select *
+      from concentrations
+      where major_id = $1
+      order by display_name asc
+      `,
+      [majorId]
     );
     return result.rows;
   }
@@ -744,6 +908,12 @@ export class CatalogRepository {
         sca.major_id,
         m.canonical_name as major_canonical_name,
         m.display_name as major_display_name,
+        sca.minor_id,
+        mi.canonical_name as minor_canonical_name,
+        mi.display_name as minor_display_name,
+        sca.concentration_id,
+        c.canonical_name as concentration_canonical_name,
+        c.display_name as concentration_display_name,
         sca.assignment_source,
         sca.is_primary
       from student_catalog_assignments sca
@@ -751,6 +921,8 @@ export class CatalogRepository {
       join academic_catalogs ac on ac.academic_catalog_id = sca.academic_catalog_id
       left join degree_programs dp on dp.degree_program_id = sca.degree_program_id
       left join majors m on m.major_id = sca.major_id
+      left join minors mi on mi.minor_id = sca.minor_id
+      left join concentrations c on c.concentration_id = sca.concentration_id
       where sca.student_profile_id = $1
         and sca.is_primary = true
       limit 1

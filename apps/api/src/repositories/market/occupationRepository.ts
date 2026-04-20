@@ -50,7 +50,26 @@ export interface MarketSignalRecord {
   confidenceLevel?: "low" | "medium" | "high";
 }
 
+export interface OccupationMappingDiagnosticRecord {
+  canonicalName: string;
+  onetCode: string | null;
+  description: string | null;
+  jobZone: number | null;
+  skillCount: number;
+  topSkills: string[];
+}
+
 export class OccupationRepository {
+  async deleteSkillRequirementsForOccupationCluster(occupationClusterId: string): Promise<void> {
+    await query(
+      `
+      delete from occupation_skill_requirements
+      where occupation_cluster_id = $1
+      `,
+      [occupationClusterId]
+    );
+  }
+
   async upsertOccupationCluster(record: OccupationClusterRecord): Promise<void> {
     await query(
       `
@@ -162,5 +181,48 @@ export class OccupationRepository {
         record.confidenceLevel ?? null,
       ]
     );
+  }
+
+  async listOccupationMappingDiagnostics(): Promise<OccupationMappingDiagnosticRecord[]> {
+    const result = await query<{
+      canonical_name: string;
+      onet_code: string | null;
+      description: string | null;
+      job_zone: number | null;
+      skill_count: string | number;
+      top_skills: string[] | null;
+    }>(
+      `
+      select
+        oc.canonical_name,
+        oc.onet_code,
+        oc.description,
+        oc.job_zone,
+        count(osr.occupation_skill_requirement_id)::int as skill_count,
+        coalesce(
+          array_agg(osr.skill_name order by osr.importance_score desc)
+            filter (where osr.skill_name is not null),
+          '{}'
+        ) as top_skills
+      from occupation_clusters oc
+      left join occupation_skill_requirements osr
+        on osr.occupation_cluster_id = oc.occupation_cluster_id
+      group by
+        oc.canonical_name,
+        oc.onet_code,
+        oc.description,
+        oc.job_zone
+      order by oc.canonical_name asc
+      `
+    );
+
+    return result.rows.map((row) => ({
+      canonicalName: row.canonical_name,
+      onetCode: row.onet_code,
+      description: row.description,
+      jobZone: row.job_zone,
+      skillCount: Number(row.skill_count) || 0,
+      topSkills: (row.top_skills || []).slice(0, 5),
+    }));
   }
 }

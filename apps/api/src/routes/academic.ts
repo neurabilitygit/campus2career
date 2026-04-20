@@ -17,6 +17,11 @@ import {
 } from "../services/academic/catalogService";
 import { extractStructuredTranscript } from "../services/academic/transcriptExtraction";
 import {
+  discoverInstitutionCatalog,
+  discoverProgramRequirements,
+} from "../services/academic/catalogDiscoveryService";
+import { extractCatalogRequirementsFromArtifact } from "../services/academic/catalogArtifactExtractionService";
+import {
   autoMatchTranscriptToPrimaryCatalog,
   getLatestStudentTranscriptGraphForStudent,
   persistStudentTranscriptGraph,
@@ -34,6 +39,8 @@ const studentCatalogAssignmentBodySchema = z.object({
   degreeType: z.string().trim().min(1),
   programName: z.string().trim().min(1),
   majorCanonicalName: z.string().trim().min(1),
+  minorCanonicalName: z.string().trim().min(1).optional(),
+  concentrationCanonicalName: z.string().trim().min(1).optional(),
   assignmentSource: z
     .enum(["student_selected", "transcript_inferred", "advisor_confirmed", "system_inferred"])
     .optional(),
@@ -51,6 +58,17 @@ const transcriptExtractionFromArtifactBodySchema = z.object({
   academicArtifactId: z.string().trim().min(1),
   institutionCanonicalName: z.string().trim().optional(),
   transcriptSummary: z.string().trim().max(2000).optional(),
+});
+
+const catalogExtractionFromArtifactBodySchema = z.object({
+  academicArtifactId: z.string().trim().min(1),
+  institutionCanonicalName: z.string().trim().min(1),
+  catalogLabel: z.string().trim().min(1).optional(),
+  degreeType: z.string().trim().min(1).optional(),
+  programName: z.string().trim().min(1).optional(),
+  programKind: z.enum(["major", "minor"]),
+  programCanonicalName: z.string().trim().min(1).optional(),
+  programDisplayName: z.string().trim().min(1).optional(),
 });
 
 const catalogIngestionBodySchema = z.object({
@@ -141,6 +159,19 @@ const catalogIngestionBodySchema = z.object({
   }),
 });
 
+const catalogDiscoveryBodySchema = z.object({
+  institutionCanonicalName: z.string().trim().min(1),
+});
+
+const programRequirementDiscoveryBodySchema = z.object({
+  institutionCanonicalName: z.string().trim().min(1),
+  catalogLabel: z.string().trim().min(1),
+  degreeType: z.string().trim().min(1),
+  programName: z.string().trim().min(1),
+  majorCanonicalName: z.string().trim().min(1).optional(),
+  minorCanonicalName: z.string().trim().min(1).optional(),
+});
+
 function formatZodErrorMessage(error: z.ZodError): string {
   return (
     error.issues.map((issue) => `${issue.path.join(".") || "body"}: ${issue.message}`).join("; ") ||
@@ -174,6 +205,8 @@ export async function studentCatalogAssignmentRoute(req: IncomingMessage, res: S
       degreeType: parsed.data.degreeType,
       programName: parsed.data.programName,
       majorCanonicalName: parsed.data.majorCanonicalName,
+      minorCanonicalName: parsed.data.minorCanonicalName,
+      concentrationCanonicalName: parsed.data.concentrationCanonicalName,
       assignmentSource: parsed.data.assignmentSource ?? "student_selected",
       isPrimary: parsed.data.isPrimary ?? true,
     });
@@ -210,6 +243,87 @@ export async function latestTranscriptGraphRoute(req: IncomingMessage, res: Serv
   } catch (error: any) {
     if (error?.message === "UNAUTHENTICATED") {
       return unauthorized(res);
+    }
+    throw error;
+  }
+}
+
+export async function catalogDiscoveryRoute(req: IncomingMessage, res: ServerResponse) {
+  try {
+    let raw: unknown;
+    try {
+      raw = await readJsonBody(req);
+    } catch {
+      return badRequest(res, "Invalid JSON body");
+    }
+
+    const parsed = catalogDiscoveryBodySchema.safeParse(raw);
+    if (!parsed.success) {
+      return badRequest(res, formatZodErrorMessage(parsed.error));
+    }
+
+    const ctx = await resolveRequestContext(req);
+    if (!ctx.studentProfileId) {
+      return badRequest(res, "No student profile could be resolved for the authenticated user");
+    }
+
+    const result = await discoverInstitutionCatalog({
+      institutionCanonicalName: parsed.data.institutionCanonicalName,
+    });
+
+    return json(res, 200, {
+      ok: true,
+      ...result,
+    });
+  } catch (error: any) {
+    if (error?.message === "UNAUTHENTICATED") {
+      return unauthorized(res);
+    }
+    if (typeof error?.message === "string" && error.message.includes("not found")) {
+      return badRequest(res, error.message);
+    }
+    throw error;
+  }
+}
+
+export async function programRequirementDiscoveryRoute(req: IncomingMessage, res: ServerResponse) {
+  try {
+    let raw: unknown;
+    try {
+      raw = await readJsonBody(req);
+    } catch {
+      return badRequest(res, "Invalid JSON body");
+    }
+
+    const parsed = programRequirementDiscoveryBodySchema.safeParse(raw);
+    if (!parsed.success) {
+      return badRequest(res, formatZodErrorMessage(parsed.error));
+    }
+
+    const ctx = await resolveRequestContext(req);
+    if (!ctx.studentProfileId) {
+      return badRequest(res, "No student profile could be resolved for the authenticated user");
+    }
+
+    const result = await discoverProgramRequirements({
+      institutionCanonicalName: parsed.data.institutionCanonicalName,
+      catalogLabel: parsed.data.catalogLabel,
+      degreeType: parsed.data.degreeType,
+      programName: parsed.data.programName,
+      majorCanonicalName: parsed.data.majorCanonicalName,
+      minorCanonicalName: parsed.data.minorCanonicalName,
+    });
+
+    return json(res, 200, {
+      ok: true,
+      ...result,
+    });
+  } catch (error: any) {
+    if (error?.message === "UNAUTHENTICATED") {
+      return unauthorized(res);
+    }
+    if (typeof error?.message === "string" && error.message.includes("not found")) {
+      return badRequest(res, error.message);
     }
     throw error;
   }
@@ -469,6 +583,83 @@ export async function transcriptExtractFromArtifactRoute(req: IncomingMessage, r
     }
     if (error?.message === "TRANSCRIPT_EXTRACTION_EMPTY") {
       return badRequest(res, "No transcript courses could be extracted from the stored artifact");
+    }
+    throw error;
+  }
+}
+
+export async function catalogExtractFromArtifactRoute(req: IncomingMessage, res: ServerResponse) {
+  try {
+    let raw: unknown;
+    try {
+      raw = await readJsonBody(req);
+    } catch {
+      return badRequest(res, "Invalid JSON body");
+    }
+
+    const parsed = catalogExtractionFromArtifactBodySchema.safeParse(raw);
+    if (!parsed.success) {
+      return badRequest(res, formatZodErrorMessage(parsed.error));
+    }
+
+    const ctx = await resolveRequestContext(req);
+    if (!ctx.studentProfileId) {
+      return badRequest(res, "No student profile could be resolved for the authenticated user");
+    }
+
+    const artifact = await artifactRepo.getAcademicArtifactById(parsed.data.academicArtifactId);
+    if (!artifact || artifact.student_profile_id !== ctx.studentProfileId) {
+      return badRequest(res, "Academic artifact not found for the authenticated student");
+    }
+
+    const downloadedArtifact = await downloadArtifactFromStorage({
+      objectPath: artifact.file_uri,
+    });
+    const extractedDocument = extractDocumentText({
+      buffer: downloadedArtifact.buffer,
+      fileName: downloadedArtifact.fileName,
+      contentType: downloadedArtifact.contentType,
+    });
+
+    if (!extractedDocument.text.trim()) {
+      return badRequest(res, "No readable text could be extracted from the stored artifact");
+    }
+
+    const extracted = await extractCatalogRequirementsFromArtifact({
+      artifactText: extractedDocument.text,
+      institutionCanonicalName: parsed.data.institutionCanonicalName,
+      catalogLabel: parsed.data.catalogLabel,
+      degreeType: parsed.data.degreeType,
+      programName: parsed.data.programName,
+      programKind: parsed.data.programKind,
+      programCanonicalName: parsed.data.programCanonicalName,
+      programDisplayName: parsed.data.programDisplayName,
+      academicArtifactId: artifact.academic_artifact_id,
+    });
+
+    await artifactRepo.markArtifactParsed(
+      artifact.academic_artifact_id,
+      `Catalog PDF extracted via ${extractedDocument.method}. ${extracted.extractedCourseCount} courses parsed for ${extracted.programDisplayName}.`
+    );
+
+    return json(res, 200, {
+      ok: true,
+      extractionMethod: extractedDocument.method,
+      ...extracted,
+      message: "Catalog requirements extracted from uploaded PDF artifact",
+    });
+  } catch (error: any) {
+    if (error?.message === "UNAUTHENTICATED") {
+      return unauthorized(res);
+    }
+    if (error?.message === "CATALOG_ARTIFACT_EXTRACTION_EMPTY") {
+      return badRequest(res, "Not enough recognizable course rows were found in the uploaded PDF");
+    }
+    if (error?.message === "CATALOG_PROGRAM_NAME_UNRESOLVED") {
+      return badRequest(res, "The program name could not be resolved from the uploaded PDF");
+    }
+    if (typeof error?.message === "string" && error.message.includes("not found")) {
+      return badRequest(res, error.message);
     }
     throw error;
   }

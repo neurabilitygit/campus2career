@@ -17,3 +17,11 @@ export function badRequest(res: ServerResponse, message: string) {
 export function forbidden(res: ServerResponse, message: string) {
   return json(res, 403, { error: "forbidden", message });
 }
+
+export function serviceUnavailable(res: ServerResponse, message: string, details?: Record<string, unknown>) {
+  return json(res, 503, {
+    error: "service_unavailable",
+    message,
+    ...(details || {}),
+  });
+}

@@ -19,7 +19,22 @@ function Redirector() {
     else router.replace("/onboarding");
   }, [auth.data, router]);
 
-  return <p>Resolving your dashboard...</p>;
+  if (auth.loading) {
+    return <p>Resolving your dashboard and role context...</p>;
+  }
+
+  if (auth.error) {
+    return (
+      <div style={{ display: "grid", gap: 10 }}>
+        <p style={{ color: "crimson", marginBottom: 0 }}>{auth.error}</p>
+        <p style={{ margin: 0, color: "#475569" }}>
+          The API could not resolve your role context yet. Refresh after the API is healthy and the session is active.
+        </p>
+      </div>
+    );
+  }
+
+  return <p>Opening the dashboard for your current role...</p>;
 }
 
 export default function AppLandingPage() {

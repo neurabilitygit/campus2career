@@ -10,6 +10,7 @@ export async function persistNormalizedOccupation(occ: NormalizedOccupation) {
     canonicalName: occ.canonicalName,
     onetCode: occ.onetCode,
     description: occ.description,
+    jobZone: occ.jobZone,
   });
 }
 
@@ -23,6 +24,18 @@ export async function persistNormalizedSkill(req: NormalizedSkillRequirement) {
     requiredProficiencyBand: req.requiredProficiencyBand,
     evidenceSource: req.evidenceSource,
   });
+}
+
+export async function replaceNormalizedSkillsForOccupation(
+  occupationCanonicalName: string,
+  skills: NormalizedSkillRequirement[]
+) {
+  const occupationClusterId = stableId("occupation_cluster", occupationCanonicalName);
+  await repo.deleteSkillRequirementsForOccupationCluster(occupationClusterId);
+
+  for (const skill of skills) {
+    await persistNormalizedSkill(skill);
+  }
 }
 
 export async function persistNormalizedMarketSignal(signal: NormalizedMarketSignal) {
