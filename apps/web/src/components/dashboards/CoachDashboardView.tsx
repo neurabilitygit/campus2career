@@ -20,26 +20,33 @@ type MappingDiagnosticsResponse = {
 };
 
 export default function CoachDashboardView() {
-  const auth = useApiData("/auth/me");
   const mappings = useApiData<MappingDiagnosticsResponse>("/v1/market/diagnostics/role-mappings");
   const fixtures = useApiData("/v1/market/fixtures/validate");
 
   return (
-    <AppShell title="Coach Dashboard" subtitle="Inspect market role mappings, imported skill coverage, and normalization diagnostics.">
+    <AppShell
+      title="Coach dashboard"
+      subtitle="Review market-role mappings, imported skill coverage, and platform readiness checks from one place."
+    >
       <RequireRole expectedRoles={["coach", "admin"]} fallbackTitle="Coach sign-in required">
-        <SectionCard title="Resolved Context">
+        <SectionCard
+          title="Coach overview"
+          subtitle="Use this view to confirm that role mapping quality and market imports are healthy before relying on scoring."
+          tone="highlight"
+        >
           <KeyValueList items={[
-            { label: "Authenticated role", value: auth.data?.context?.authenticatedRoleType || "Unknown" },
-            { label: "Household ID", value: auth.data?.context?.householdId || "None" },
-            { label: "Student profile ID", value: auth.data?.context?.studentProfileId || "None" },
             { label: "Imported role mappings", value: mappings.data?.mappingCount ?? "Unknown" },
+            { label: "Fixture validation", value: fixtures.loading ? "Checking..." : fixtures.error ? "Needs attention" : "Loaded" },
           ]} />
         </SectionCard>
 
-        <SectionCard title="Canonical Role Mapping Inspector">
+        <SectionCard
+          title="Role mapping inspector"
+          subtitle="This is the fastest way to spot weak O*NET mappings, missing skills, or suspicious occupation substitutions."
+        >
           <p style={{ marginTop: 0, color: "#475569", lineHeight: 1.6 }}>
             This view shows which O*NET occupation each canonical application role is currently tied to, along with
-            job zone and visible skill coverage. It is the fastest way to spot bad surrogate mappings after an import.
+            job zone and visible skill coverage.
           </p>
           {mappings.loading ? <p>Loading role mappings...</p> : null}
           {mappings.error ? <p style={{ color: "crimson" }}>{mappings.error}</p> : null}
@@ -101,11 +108,27 @@ export default function CoachDashboardView() {
           ) : null}
         </SectionCard>
 
-        <SectionCard title="Fixture Validation">
+        <SectionCard
+          title="Validation details"
+          subtitle="These checks help confirm that market fixtures and derived scoring inputs still behave the way the app expects."
+          tone="quiet"
+        >
           {fixtures.loading ? <p>Loading fixtures...</p> : null}
           {fixtures.error ? <p style={{ color: "crimson" }}>{fixtures.error}</p> : null}
           {!fixtures.loading && !fixtures.error ? (
-            <pre style={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{JSON.stringify(fixtures.data, null, 2)}</pre>
+            <details
+              style={{
+                borderRadius: 18,
+                padding: "14px 16px",
+                background: "rgba(255,255,255,0.82)",
+                border: "1px solid rgba(73, 102, 149, 0.12)",
+              }}
+            >
+              <summary style={{ fontWeight: 800 }}>Open validation payload</summary>
+              <pre style={{ whiteSpace: "pre-wrap", wordBreak: "break-word", marginBottom: 0 }}>
+                {JSON.stringify(fixtures.data, null, 2)}
+              </pre>
+            </details>
           ) : null}
         </SectionCard>
       </RequireRole>

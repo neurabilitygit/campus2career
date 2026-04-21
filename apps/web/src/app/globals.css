@@ -1,0 +1,95 @@
+:root {
+  --font-body: "Avenir Next", "Segoe UI", "Helvetica Neue", sans-serif;
+  --font-display: "Trebuchet MS", "Avenir Next Condensed", "Arial Narrow", sans-serif;
+  --bg-page: #f6efe3;
+  --bg-panel: rgba(255, 255, 255, 0.82);
+  --bg-panel-strong: #ffffff;
+  --bg-panel-soft: #f8fbff;
+  --ink-strong: #132238;
+  --ink-body: #334155;
+  --ink-muted: #5f728a;
+  --line-soft: rgba(129, 140, 169, 0.22);
+  --line-strong: rgba(73, 102, 149, 0.18);
+  --shadow-soft: 0 18px 40px rgba(15, 23, 42, 0.08);
+  --shadow-strong: 0 28px 60px rgba(15, 23, 42, 0.12);
+  --accent-blue: #155eef;
+  --accent-cyan: #0891b2;
+  --accent-gold: #f59e0b;
+  --accent-rose: #df5a49;
+  --accent-green: #0f9f74;
+  --danger: #b42318;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  color: var(--ink-strong);
+  font-family: var(--font-body);
+  background:
+    radial-gradient(circle at top left, rgba(255, 205, 117, 0.26), transparent 28%),
+    radial-gradient(circle at top right, rgba(107, 191, 255, 0.18), transparent 24%),
+    linear-gradient(180deg, #fffaf1 0%, #f8fbff 42%, #eef5ff 100%);
+}
+
+a {
+  color: inherit;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button {
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease,
+    background 160ms ease,
+    opacity 160ms ease;
+}
+
+button:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+input,
+select,
+textarea {
+  color: var(--ink-strong);
+}
+
+textarea {
+  line-height: 1.5;
+}
+
+::selection {
+  background: rgba(21, 94, 239, 0.18);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-display);
+  letter-spacing: -0.03em;
+}
+
+details summary {
+  cursor: pointer;
+}

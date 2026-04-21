@@ -20,26 +20,36 @@ function Redirector() {
   }, [auth.data, router]);
 
   if (auth.loading) {
-    return <p>Resolving your dashboard and role context...</p>;
+    return (
+      <div style={{ display: "grid", gap: 10 }}>
+        <p style={{ margin: 0, fontWeight: 700 }}>Opening your workspace...</p>
+        <p style={{ margin: 0, color: "#52657d" }}>
+          We&apos;re checking your account and sending you to the right dashboard.
+        </p>
+      </div>
+    );
   }
 
   if (auth.error) {
     return (
       <div style={{ display: "grid", gap: 10 }}>
         <p style={{ color: "crimson", marginBottom: 0 }}>{auth.error}</p>
-        <p style={{ margin: 0, color: "#475569" }}>
-          The API could not resolve your role context yet. Refresh after the API is healthy and the session is active.
+        <p style={{ margin: 0, color: "#52657d", lineHeight: 1.6 }}>
+          We couldn&apos;t finish opening your workspace yet. Refresh after the API is available and your sign-in session is active.
         </p>
       </div>
     );
   }
 
-  return <p>Opening the dashboard for your current role...</p>;
+  return <p style={{ margin: 0, color: "#52657d" }}>Sending you to the best next page for this account...</p>;
 }
 
 export default function AppLandingPage() {
   return (
-    <AppShell title="Campus2Career App">
+    <AppShell
+      title="Welcome back"
+      subtitle="Campus2Career will open the dashboard that matches your account so you can pick up where you left off."
+    >
       <SessionGate fallbackTitle="Sign in required">
         <Redirector />
       </SessionGate>

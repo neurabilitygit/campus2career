@@ -168,7 +168,6 @@ function academicBindingLabel(
 const roleOptions = listTargetRoleOptions();
 
 export default function StudentDashboardView() {
-  const auth = useApiData("/auth/me");
   const [selectedRole, setSelectedRole] = useState("");
   const [compareRole, setCompareRole] = useState("");
   const [draftQuestion, setDraftQuestion] = useState(DEFAULT_SCENARIO_QUESTION);
@@ -223,23 +222,74 @@ export default function StudentDashboardView() {
       requirementProgress.majorDisplayName
     );
   const usesLlmAssistedRequirements = requirementProgress?.provenanceMethod === "llm_assisted";
+  const topRecommendation = scoring.data?.scoring?.recommendations?.[0];
+  const primaryRisk = scoring.data?.scoring?.topRisks?.[0];
+  const targetRoleLabel = titleCase(scoring.data?.scoring?.targetRoleFamily);
+  const targetSectorLabel = titleCase(scoring.data?.scoring?.targetSectorCluster);
+  const trajectoryLabel = titleCase(scoring.data?.scoring?.trajectoryStatus);
 
   return (
-    <AppShell title="Student Dashboard" subtitle="Scoring, academic progress, market inputs, and role-specific guidance.">
+    <AppShell
+      title="Student dashboard"
+      subtitle="Track the student’s target role, current readiness, academic progress, and the most important next move."
+    >
       <RequireRole expectedRoles={["student", "admin"]} fallbackTitle="Student sign-in required">
-        <SectionCard title="Resolved Context">
-          <KeyValueList items={[
-            { label: "Authenticated role", value: auth.data?.context?.authenticatedRoleType || "Unknown" },
-            { label: "Student profile ID", value: auth.data?.context?.studentProfileId || "None" },
-            { label: "Household ID", value: auth.data?.context?.householdId || "None" },
-          ]} />
+        <SectionCard
+          title="Your path at a glance"
+          subtitle="This is the fastest read on what the system believes you are aiming for and what needs attention next."
+          tone="highlight"
+        >
+          {scoring.loading ? <p style={{ margin: 0 }}>Building your current snapshot...</p> : null}
+          {scoring.error ? <p style={{ margin: 0, color: "crimson" }}>{scoring.error}</p> : null}
+          {!scoring.loading && !scoring.error ? (
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+                gap: 14,
+              }}
+            >
+              <div style={{ borderRadius: 18, padding: 18, background: "#ffffff", border: "1px solid rgba(73, 102, 149, 0.12)" }}>
+                <div style={{ color: "#5f728a", fontSize: 12, fontWeight: 800, textTransform: "uppercase", letterSpacing: 0.05 }}>
+                  Current target
+                </div>
+                <div style={{ fontSize: 28, fontWeight: 800, marginTop: 8 }}>{targetRoleLabel}</div>
+                <div style={{ marginTop: 6, color: "#52657d" }}>{targetSectorLabel}</div>
+              </div>
+              <div style={{ borderRadius: 18, padding: 18, background: "#ffffff", border: "1px solid rgba(73, 102, 149, 0.12)" }}>
+                <div style={{ color: "#5f728a", fontSize: 12, fontWeight: 800, textTransform: "uppercase", letterSpacing: 0.05 }}>
+                  Overall readiness
+                </div>
+                <div style={{ fontSize: 34, fontWeight: 800, marginTop: 8 }}>
+                  {scoring.data?.scoring?.overallScore ?? "?"}
+                </div>
+                <div style={{ marginTop: 6, color: "#52657d" }}>
+                  {trajectoryLabel} · {scoreLabel(scoring.data?.scoring?.overallScore)}
+                </div>
+              </div>
+              <div style={{ borderRadius: 18, padding: 18, background: "#ffffff", border: "1px solid rgba(73, 102, 149, 0.12)" }}>
+                <div style={{ color: "#5f728a", fontSize: 12, fontWeight: 800, textTransform: "uppercase", letterSpacing: 0.05 }}>
+                  Biggest concern
+                </div>
+                <div style={{ marginTop: 8, lineHeight: 1.55 }}>{primaryRisk || "No specific concern is showing yet."}</div>
+              </div>
+              <div style={{ borderRadius: 18, padding: 18, background: "#ffffff", border: "1px solid rgba(73, 102, 149, 0.12)" }}>
+                <div style={{ color: "#5f728a", fontSize: 12, fontWeight: 800, textTransform: "uppercase", letterSpacing: 0.05 }}>
+                  Best next move
+                </div>
+                <div style={{ marginTop: 8, lineHeight: 1.55 }}>
+                  {topRecommendation?.title || "Add more student information to unlock a clearer next step."}
+                </div>
+              </div>
+            </div>
+          ) : null}
         </SectionCard>
 
-        <SectionCard title="Target Job Selection">
+        <SectionCard
+          title="Choose the role you want to aim for"
+          subtitle="You can score the current path against a specific job and compare it with a second option before making changes."
+        >
           <div style={{ display: "grid", gap: 16 }}>
-            <p style={{ margin: 0, color: "#475569", lineHeight: 1.6 }}>
-              Choose the specific job path you want the system to score. You can also compare your current path against a second target to see how the score changes.
-            </p>
             <div
               style={{
                 display: "grid",
@@ -275,7 +325,10 @@ export default function StudentDashboardView() {
           </div>
         </SectionCard>
 
-        <SectionCard title="Score Summary">
+        <SectionCard
+          title="Current score snapshot"
+          subtitle="This is the headline view before you drill into academics, market signals, and recommendations."
+        >
           {scoring.loading ? <p>Loading scoring...</p> : null}
           {scoring.error ? <p style={{ color: "crimson" }}>{scoring.error}</p> : null}
           {!scoring.loading && !scoring.error ? (
@@ -315,7 +368,10 @@ export default function StudentDashboardView() {
           ) : null}
         </SectionCard>
 
-        <SectionCard title="Academic Progress Used In Scoring">
+        <SectionCard
+          title="What your academic record is contributing"
+          subtitle="This section explains how much the system currently understands about your transcript and degree path."
+        >
           {scoring.loading ? <p>Loading academic progress...</p> : null}
           {scoring.error ? <p style={{ color: "crimson" }}>Academic scoring context is unavailable because the scoring request failed.</p> : null}
           {!scoring.loading && !scoring.error ? (
@@ -380,13 +436,13 @@ export default function StudentDashboardView() {
                 </div>
               ) : null}
               <div>
-                <strong>Missing or unmapped core requirements</strong>
+                <strong>Missing or still-unmapped core requirements</strong>
                 {requirementProgress?.missingRequiredCourses?.length ? (
                   <ul style={{ marginBottom: 0 }}>
                     {requirementProgress.missingRequiredCourses.map((course) => <li key={course}>{course}</li>)}
                   </ul>
                 ) : (
-                  <p style={{ marginBottom: 0, color: "#64748b" }}>No missing core requirement list is currently surfaced.</p>
+                  <p style={{ marginBottom: 0, color: "#64748b" }}>No missing core requirement list is being shown yet.</p>
                 )}
               </div>
               {requirementProgress?.sourceUrl ? (
@@ -411,7 +467,11 @@ export default function StudentDashboardView() {
           ) : null}
         </SectionCard>
 
-        <SectionCard title="Market Inputs Used In Scoring">
+        <SectionCard
+          title="Market outlook behind this score"
+          subtitle="These signals help explain whether the target role looks favorable and which skills matter most in that market."
+          tone="quiet"
+        >
           {scoring.loading ? <p>Loading market inputs...</p> : null}
           {scoring.error ? <p style={{ color: "crimson" }}>Scoring input unavailable because the scoring request failed.</p> : null}
           {!scoring.loading && !scoring.error ? (
@@ -467,7 +527,10 @@ export default function StudentDashboardView() {
           ) : null}
         </SectionCard>
 
-        <SectionCard title="Subscores And Guidance">
+        <SectionCard
+          title="Where the score is coming from"
+          subtitle="Use these subscores to see whether the biggest weakness is academics, experience, proof of work, networking, or execution."
+        >
           {scoring.loading ? <p>Loading subscores...</p> : null}
           {scoring.error ? <p style={{ color: "crimson" }}>{scoring.error}</p> : null}
           {!scoring.loading && !scoring.error ? (
@@ -511,20 +574,40 @@ export default function StudentDashboardView() {
           ) : null}
         </SectionCard>
 
-        <SectionCard title="Scenario Guidance">
+        <SectionCard
+          title="Ask for guidance"
+          subtitle="Use a specific scenario question to get practical advice for the next semester, internship cycle, or decision point."
+        >
           <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 16 }}>
             <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              <span>Your question</span>
+              <span>What do you want help thinking through?</span>
               <textarea
                 value={draftQuestion}
                 onChange={(e) => setDraftQuestion(e.target.value)}
                 rows={4}
-                style={{ width: "100%", maxWidth: 640, fontFamily: "inherit" }}
+                style={{
+                  width: "100%",
+                  maxWidth: 720,
+                  fontFamily: "inherit",
+                  borderRadius: 18,
+                  border: "1px solid rgba(73, 102, 149, 0.18)",
+                  padding: "14px 16px",
+                  background: "rgba(255,255,255,0.82)",
+                }}
               />
             </label>
             <label style={{ display: "flex", flexDirection: "column", gap: 4, maxWidth: 280 }}>
-              <span>Communication style</span>
-              <select value={draftStyle} onChange={(e) => setDraftStyle(e.target.value)}>
+              <span>How should the response feel?</span>
+              <select
+                value={draftStyle}
+                onChange={(e) => setDraftStyle(e.target.value)}
+                style={{
+                  borderRadius: 16,
+                  border: "1px solid rgba(73, 102, 149, 0.18)",
+                  padding: "12px 14px",
+                  background: "rgba(255,255,255,0.82)",
+                }}
+              >
                 <option value="direct">Direct</option>
                 <option value="supportive">Supportive</option>
                 <option value="coaching">Coaching</option>
@@ -538,6 +621,15 @@ export default function StudentDashboardView() {
                   communicationStyle: draftStyle.trim() || "direct",
                 });
                 setRequestedScenario(true);
+              }}
+              style={{
+                width: "fit-content",
+                border: "none",
+                borderRadius: 999,
+                padding: "13px 18px",
+                background: "linear-gradient(135deg, #155eef, #16a3ff)",
+                color: "#ffffff",
+                fontWeight: 800,
               }}
             >
               {scenario.loading ? "Processing…" : "Get guidance"}

@@ -52,8 +52,8 @@ export default function CatalogUploadPage() {
 function CatalogUploadPageLoading() {
   return (
     <AppShell
-      title="Upload Catalog Or Program PDF"
-      subtitle="Preparing the catalog upload flow..."
+      title="Add a program requirement PDF"
+      subtitle="Preparing the document flow for coursework and degree requirements..."
     >
       <RequireRole expectedRoles={["student", "admin"]} fallbackTitle="Student sign-in required">
         <SectionCard title="Loading">
@@ -219,34 +219,28 @@ function CatalogUploadPageInner() {
 
   return (
     <AppShell
-      title="Upload Catalog Or Program PDF"
-      subtitle="Use this when the school website cannot be parsed reliably for your major or minor requirements."
+      title="Add a program requirement PDF"
+      subtitle="Use this when the school website is incomplete or unclear and you want the system to learn from an official PDF instead."
     >
       <RequireRole expectedRoles={["student", "admin"]} fallbackTitle="Student sign-in required">
-        <SectionCard title="Program context">
+        <SectionCard
+          title="Program details"
+          subtitle="This tells the system which school and academic path the uploaded document belongs to."
+          tone="highlight"
+        >
           <div style={{ display: "grid", gap: 14 }}>
             <p style={{ margin: 0, color: "#4b5d79", lineHeight: 1.6 }}>
-              Upload a PDF from the college catalog, department site, degree checklist, or requirement page.
-              The system will extract recognizable courses and store them into the academic directory and requirement graph.
+              Upload a PDF from the college catalog, department site, degree checklist, or official requirement page.
+              We&apos;ll extract recognizable courses and use them to strengthen the student&apos;s academic path.
             </p>
 
             <label style={labelStyle}>
-              Institution
+              School
               <input
                 style={inputStyle}
                 value={form.institutionDisplayName || form.institutionCanonicalName}
                 onChange={(event) => setField("institutionDisplayName", event.target.value)}
-                placeholder="Institution name"
-              />
-            </label>
-
-            <label style={labelStyle}>
-              Institution canonical name
-              <input
-                style={inputStyle}
-                value={form.institutionCanonicalName}
-                onChange={(event) => setField("institutionCanonicalName", event.target.value)}
-                placeholder="institution canonical name"
+                placeholder="School name"
               />
             </label>
 
@@ -256,12 +250,12 @@ function CatalogUploadPageInner() {
                 style={inputStyle}
                 value={form.catalogLabel}
                 onChange={(event) => setField("catalogLabel", event.target.value)}
-                placeholder="Uploaded 2026-2027"
+                placeholder="For example: 2026-2027"
               />
             </label>
 
             <label style={labelStyle}>
-              Degree type
+              Degree level
               <input
                 style={inputStyle}
                 value={form.degreeType}
@@ -271,17 +265,17 @@ function CatalogUploadPageInner() {
             </label>
 
             <label style={labelStyle}>
-              Degree program bucket
+              Program group
               <input
                 style={inputStyle}
                 value={form.programName}
                 onChange={(event) => setField("programName", event.target.value)}
-                placeholder="Auto-discovered undergraduate programs"
+                placeholder="For example: Undergraduate concentrations"
               />
             </label>
 
             <label style={labelStyle}>
-              Program kind
+              Requirement type
               <select
                 style={inputStyle}
                 value={form.programKind}
@@ -295,7 +289,7 @@ function CatalogUploadPageInner() {
             </label>
 
             <label style={labelStyle}>
-              Program display name
+              Major or minor name
               <input
                 style={inputStyle}
                 value={form.programDisplayName}
@@ -304,24 +298,40 @@ function CatalogUploadPageInner() {
               />
             </label>
 
-            <label style={labelStyle}>
-              Program canonical name
-              <input
-                style={inputStyle}
-                value={form.programCanonicalName}
-                onChange={(event) => setField("programCanonicalName", event.target.value)}
-                placeholder="biology"
-              />
-            </label>
+            {!form.institutionCanonicalName ? (
+              <div
+                style={{
+                  borderRadius: 16,
+                  padding: "14px 16px",
+                  background: "#fff8e7",
+                  border: "1px solid #f2d9ad",
+                  color: "#7a5817",
+                  lineHeight: 1.6,
+                }}
+              >
+                If this page was opened directly and your school was not selected first, go back to the
+                student profile page and choose the school there. That gives this upload the cleanest
+                path into the academic directory.
+              </div>
+            ) : null}
           </div>
         </SectionCard>
 
-        <SectionCard title="Upload And Extract">
+        <SectionCard
+          title="Upload the PDF"
+          subtitle="Choose the official document that lists the courses or requirements for this path."
+        >
           <div style={{ display: "grid", gap: 12 }}>
             <input
               type="file"
               accept=".pdf,application/pdf"
               onChange={(event) => setFile(event.target.files?.[0] || null)}
+              style={{
+                borderRadius: 16,
+                border: "1px solid rgba(73, 102, 149, 0.18)",
+                padding: "12px 14px",
+                background: "rgba(255,255,255,0.82)",
+              }}
             />
             <button
               onClick={uploadAndExtract}
@@ -335,27 +345,29 @@ function CatalogUploadPageInner() {
                 cursor: "pointer",
               }}
             >
-              Upload PDF And Extract
+              Upload and extract
             </button>
 
-            {status ? <p>{status}</p> : null}
-            {error ? <p style={{ color: "crimson" }}>{error}</p> : null}
+            {status ? <p style={{ margin: 0, color: "#155eef" }}>{status}</p> : null}
+            {error ? <p style={{ margin: 0, color: "crimson" }}>{error}</p> : null}
             {result ? (
-              <pre
+              <div
                 style={{
-                  whiteSpace: "pre-wrap",
-                  wordBreak: "break-word",
-                  borderRadius: 14,
-                  padding: 14,
-                  background: "#f4f7fb",
-                  border: "1px solid #d9e3f0",
-                  fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
-                  fontSize: 13,
+                  borderRadius: 18,
+                  padding: 18,
+                  background: "linear-gradient(180deg, rgba(240, 253, 250, 0.95), rgba(236, 248, 255, 0.95))",
+                  border: "1px solid rgba(15, 159, 116, 0.18)",
+                  display: "grid",
+                  gap: 10,
                   margin: 0,
                 }}
               >
-                {JSON.stringify(result, null, 2)}
-              </pre>
+                <strong style={{ fontSize: 18 }}>Program document processed</strong>
+                <p style={{ margin: 0, color: "#33546b", lineHeight: 1.6 }}>
+                  The PDF was uploaded and extraction has been requested for this academic path.
+                  You can return to onboarding or the student dashboard while the system finishes processing.
+                </p>
+              </div>
             ) : null}
           </div>
         </SectionCard>

@@ -7,9 +7,16 @@ import { FileUploadForm } from "../../../components/uploads/FileUploadForm";
 
 export default function TranscriptUploadPage() {
   return (
-    <AppShell title="Upload Transcript">
+    <AppShell
+      title="Add a transcript"
+      subtitle="Transcript data helps the platform understand course history, academic progress, and degree alignment."
+    >
       <RequireRole expectedRoles={["student", "admin"]} fallbackTitle="Student sign-in required">
-        <SectionCard title="Transcript upload">
+        <SectionCard
+          title="Transcript document"
+          subtitle="PDF is preferred. Structured text, CSV, and JSON are also supported for testing and imports."
+          tone="highlight"
+        >
           <FileUploadForm
             artifactType="transcript"
             title="Upload Transcript"

@@ -14,58 +14,77 @@ import {
 
 const roleDescriptions = {
   guest: {
-    label: "Explore the platform",
+    label: "See the full journey",
     summary:
-      "See how Campus2Career connects student choices, labor-market signals, and family visibility before you even finish onboarding.",
+      "Campus2Career helps students, parents, and coaches turn school choices into a clearer plan for internships, early career momentum, and family decision-making.",
     accent: "#f97316",
   },
   student: {
     label: "For students",
     summary:
-      "Turn your major, coursework, uploads, and deadlines into a clearer career plan with scoring, guidance, and next-step prompts.",
+      "See how your major, coursework, and activities translate into real career readiness, then focus on the next moves that matter most.",
     accent: "#155eef",
   },
   parent: {
     label: "For parents",
     summary:
-      "Track trajectory, understand market context, and get concise briefings that help you support your child without losing the signal.",
+      "Follow the student’s direction with less guesswork through concise updates, clearer priorities, and family-friendly next steps.",
     accent: "#0891b2",
   },
   coach: {
     label: "For coaches",
     summary:
-      "Use a shared picture of context, skills, and action signals to guide students with less guesswork and faster interventions.",
+      "Guide students from one connected view of academics, career targets, and action signals instead of piecing together context manually.",
     accent: "#7c3aed",
   },
   admin: {
-    label: "For admins",
+    label: "For platform testing",
     summary:
-      "Inspect cross-role workflows, verify data paths, and validate the system’s full advising and intelligence pipeline.",
+      "Move through the student, parent, and coach experiences while validating the full product flow before launch.",
     accent: "#dc2626",
   },
 } as const;
 
 const roleCards = [
   {
-    title: "Student path intelligence",
+    title: "Student direction, not just data",
     body:
-      "Translate coursework, uploads, and goals into scoring signals, scenario guidance, and career momentum.",
+      "Translate coursework, transcripts, goals, and projects into simple signals about readiness, gaps, and the best next step.",
     href: "/student",
     palette: "linear-gradient(135deg, rgba(21,94,239,0.18), rgba(75,179,253,0.28))",
   },
   {
     title: "Parent visibility without overload",
     body:
-      "Surface what is actually changing for the student so parents get useful context instead of scattered updates.",
+      "Show what is changing for the student in a calmer, more useful way so parents can help without micromanaging.",
     href: "/parent",
     palette: "linear-gradient(135deg, rgba(8,145,178,0.18), rgba(45,212,191,0.26))",
   },
   {
-    title: "Coach and operator workflows",
+    title: "Coach and platform workflow",
     body:
-      "Keep onboarding, artifacts, insights, and role-based dashboards connected through one system of record.",
+      "Keep onboarding, scoring, documents, and role-based guidance connected through one shared system of record.",
     href: "/coach",
     palette: "linear-gradient(135deg, rgba(124,58,237,0.18), rgba(236,72,153,0.24))",
+  },
+];
+
+const journeySteps = [
+  {
+    title: "1. Set the academic path",
+    body: "Choose the school, major, minor, and graduation timeline that anchor the rest of the platform.",
+  },
+  {
+    title: "2. Add evidence",
+    body: "Upload a transcript, resume, and supporting documents so the system can work from real student material.",
+  },
+  {
+    title: "3. Score against the target job",
+    body: "See readiness, market context, and the exact skill or experience gaps that still need attention.",
+  },
+  {
+    title: "4. Act on the next best move",
+    body: "Turn scoring into focused next steps for the student, the parent, and the coach.",
   },
 ];
 
@@ -109,7 +128,9 @@ function ContextSwitcher(props: {
         }}
       >
         <strong style={{ display: "block", marginBottom: 8 }}>Testing context</strong>
-        <p style={{ margin: 0, color: "#dbe7ff" }}>Checking whether this account can switch between roles.</p>
+        <p style={{ margin: 0, color: "#dbe7ff" }}>
+          Checking whether this account can preview multiple workspaces.
+        </p>
       </div>
     );
   }
@@ -135,14 +156,14 @@ function ContextSwitcher(props: {
       }}
     >
       <div style={{ display: "grid", gap: 6 }}>
-        <strong style={{ fontSize: 16 }}>Testing context switcher</strong>
+        <strong style={{ fontSize: 16 }}>Workspace preview</strong>
         <p style={{ margin: 0, color: "#dbe7ff", lineHeight: 1.5 }}>
-          This account can temporarily act as a student, parent, or coach for local testing without a second login.
+          This account can temporarily switch between student, parent, and coach views for local testing.
         </p>
         <p style={{ margin: 0, color: "#c7d8ff", fontSize: 13 }}>
-          Effective API role: <strong>{effectiveRole || "unknown"}</strong>
+          Current workspace: <strong>{effectiveRole || "unknown"}</strong>
           {" · "}
-          Selected override: <strong>{selectedRole || "account default"}</strong>
+          Preview mode: <strong>{selectedRole || "account default"}</strong>
         </p>
       </div>
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
@@ -297,9 +318,9 @@ export default function HomePage() {
                 }}
               >
                 <div style={{ display: "grid", gap: 6 }}>
-                  <strong style={{ fontSize: 16 }}>Access controls</strong>
+                  <strong style={{ fontSize: 16 }}>Open your account</strong>
                   <p style={{ margin: 0, color: "#c7d8ff", lineHeight: 1.5 }}>
-                    Sign-in state is reflected directly in the buttons below. Active actions stay lit. Inactive actions turn muted.
+                    Continue with Google to reach your saved experience. Active controls stay lit, while inactive controls fade back.
                   </p>
                 </div>
                 <AuthButtons />
@@ -320,7 +341,7 @@ export default function HomePage() {
                   boxShadow: "0 14px 30px rgba(255, 122, 24, 0.28)",
                 }}
               >
-                Open the app
+                Open my workspace
               </Link>
               <Link
                 href="/onboarding"
@@ -334,7 +355,7 @@ export default function HomePage() {
                   border: "1px solid rgba(255,255,255,0.18)",
                 }}
               >
-                Continue onboarding
+                Start setup
               </Link>
             </div>
           </div>
@@ -365,7 +386,7 @@ export default function HomePage() {
             >
               <strong style={{ fontSize: 20 }}>{card.title}</strong>
               <p style={{ margin: 0, lineHeight: 1.6 }}>{card.body}</p>
-              <span style={{ fontWeight: 700 }}>Open workspace →</span>
+              <span style={{ fontWeight: 700 }}>Explore this view →</span>
             </Link>
           ))}
         </section>
@@ -388,12 +409,12 @@ export default function HomePage() {
               gap: 16,
             }}
           >
-            <h2 style={{ margin: 0, fontSize: 28 }}>What the system does by role</h2>
+            <h2 style={{ margin: 0, fontSize: 28 }}>What each person sees</h2>
             <div style={{ display: "grid", gap: 14 }}>
               <div>
                 <strong style={{ color: "#155eef" }}>Students</strong>
                 <p style={{ margin: "6px 0 0 0", lineHeight: 1.6 }}>
-                  Build a clearer path from declared major and uploaded evidence to scoring signals, role-specific guidance, and next actions.
+                  Build a clearer path from school choices and uploaded evidence to scoring, guidance, and next actions.
                 </p>
               </div>
               <div>
@@ -422,12 +443,22 @@ export default function HomePage() {
               gap: 14,
             }}
           >
-            <h2 style={{ margin: 0, fontSize: 24 }}>Live capability lanes</h2>
-            <div style={{ display: "grid", gap: 10, lineHeight: 1.6 }}>
-              <div>Role-aware dashboards for student, parent, and coach views.</div>
-              <div>Onboarding for profile, sectors, uploads, network baseline, and deadlines.</div>
-              <div>Artifact ingestion for resumes, transcripts, and supporting PDFs.</div>
-              <div>Scenario guidance and parent brief generation based on student context.</div>
+            <h2 style={{ margin: 0, fontSize: 24 }}>What happens inside the product</h2>
+            <div style={{ display: "grid", gap: 12 }}>
+              {journeySteps.map((step) => (
+                <div
+                  key={step.title}
+                  style={{
+                    borderRadius: 18,
+                    padding: "14px 16px",
+                    background: "rgba(255,255,255,0.8)",
+                    border: "1px solid rgba(21, 94, 239, 0.1)",
+                  }}
+                >
+                  <strong>{step.title}</strong>
+                  <p style={{ margin: "6px 0 0 0", lineHeight: 1.6 }}>{step.body}</p>
+                </div>
+              ))}
             </div>
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 4 }}>
               <Link href="/student" style={{ textDecoration: "none", color: "#155eef", fontWeight: 700 }}>

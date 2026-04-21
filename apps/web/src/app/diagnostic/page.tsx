@@ -23,16 +23,45 @@ export default function DiagnosticPage() {
   }
 
   return (
-    <AppShell title="First Diagnostic">
+    <AppShell
+      title="Generate a first diagnostic"
+      subtitle="Use this once profile setup, sectors, uploads, and deadlines are in place and you want an initial diagnostic snapshot."
+    >
       <RequireRole expectedRoles={["student", "admin"]} fallbackTitle="Student sign-in required">
-        <SectionCard title="Generate first diagnostic">
-          <p>Use this after profile, sector, upload, and deadline setup.</p>
-          <button onClick={generate}>Generate diagnostic</button>
+        <SectionCard
+          title="Diagnostic run"
+          subtitle="This is a manual trigger for an early-stage diagnostic check."
+          tone="highlight"
+        >
+          <button
+            onClick={generate}
+            style={{
+              width: "fit-content",
+              border: "none",
+              borderRadius: 999,
+              padding: "13px 18px",
+              background: "linear-gradient(135deg, #155eef, #16a3ff)",
+              color: "#ffffff",
+              fontWeight: 800,
+            }}
+          >
+            Generate diagnostic
+          </button>
           {error ? <p style={{ color: "crimson" }}>{error}</p> : null}
           {result ? (
-            <pre style={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
-              {JSON.stringify(result, null, 2)}
-            </pre>
+            <details
+              style={{
+                borderRadius: 18,
+                padding: "14px 16px",
+                background: "rgba(255,255,255,0.82)",
+                border: "1px solid rgba(73, 102, 149, 0.12)",
+              }}
+            >
+              <summary style={{ fontWeight: 800 }}>Open diagnostic payload</summary>
+              <pre style={{ whiteSpace: "pre-wrap", wordBreak: "break-word", marginBottom: 0 }}>
+                {JSON.stringify(result, null, 2)}
+              </pre>
+            </details>
           ) : null}
         </SectionCard>
       </RequireRole>

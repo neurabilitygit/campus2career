@@ -23,18 +23,37 @@ function RequireRoleInner(props: {
 }) {
   const auth = useApiData("/auth/me");
 
-  if (auth.loading) return <p>Resolving role...</p>;
-  if (auth.error) return <p style={{ color: "crimson" }}>{auth.error}</p>;
+  if (auth.loading) {
+    return <p style={{ margin: 0, color: "#52657d" }}>Loading your account access...</p>;
+  }
+  if (auth.error) {
+    return <p style={{ color: "crimson", margin: 0 }}>{auth.error}</p>;
+  }
 
   const role = auth.data?.context?.authenticatedRoleType;
-  if (!role) return <p>No authenticated role found.</p>;
+  if (!role) {
+    return <p style={{ margin: 0, color: "#52657d" }}>We could not determine your account role yet.</p>;
+  }
 
   if (!props.expectedRoles.includes(role)) {
     return (
-      <div>
-        <h2>Wrong dashboard for this account</h2>
-        <p>Signed-in role: <strong>{role}</strong></p>
-        <p>Please open the dashboard that matches this role, or adjust household role configuration.</p>
+      <div
+        style={{
+          display: "grid",
+          gap: 10,
+          padding: "22px 20px",
+          borderRadius: 22,
+          background: "rgba(255,255,255,0.82)",
+          border: "1px solid rgba(223, 90, 73, 0.18)",
+        }}
+      >
+        <h2 style={{ margin: 0 }}>This page is for a different account view</h2>
+        <p style={{ margin: 0, lineHeight: 1.6 }}>
+          You are currently signed in as <strong style={{ textTransform: "capitalize" }}>{role}</strong>.
+        </p>
+        <p style={{ margin: 0, color: "#52657d", lineHeight: 1.6 }}>
+          Open the matching workspace from the main navigation, or switch your testing view if this account supports it.
+        </p>
       </div>
     );
   }

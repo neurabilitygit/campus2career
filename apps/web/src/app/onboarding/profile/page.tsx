@@ -176,6 +176,7 @@ export default function OnboardingProfilePage() {
     academicNotes: "",
   });
   const [status, setStatus] = useState<string>("");
+  const [errorMessage, setErrorMessage] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState("");
   const deferredSearchQuery = useDeferredValue(searchQuery);
   const [searchResults, setSearchResults] = useState<InstitutionSearchResult[]>([]);
@@ -580,7 +581,8 @@ export default function OnboardingProfilePage() {
   ];
 
   async function save() {
-    setStatus("Saving...");
+    setStatus("Saving your academic path...");
+    setErrorMessage("");
     try {
       const resolvedSchoolName = selectedInstitutionDisplayName || form.schoolName;
       const resolvedMajorPrimary = selectedMajor?.displayName || form.majorPrimary;
@@ -649,35 +651,28 @@ export default function OnboardingProfilePage() {
       }
 
       setStatus(
-        `Saved profile${catalogAssignmentResult ? ", structured catalog assignment, and requirement discovery attempt" : ""}.\n\n${JSON.stringify(
-          {
-            profileResult,
-            catalogAssignmentResult,
-            requirementDiscoveryResult,
-          },
-          null,
-          2
-        )}`
+        catalogAssignmentResult
+          ? "Your academic path was saved and the system has started connecting it to program requirements."
+          : "Your profile was saved. You can continue onboarding now and come back later to strengthen the academic path."
       );
     } catch (error: any) {
-      setStatus(`Error: ${error?.message || String(error)}`);
+      setStatus("");
+      setErrorMessage(error?.message || String(error));
     }
   }
 
   return (
     <AppShell
-      title="Onboarding: Student Profile"
-      subtitle="Capture the school, major path, and context that anchor the rest of the platform."
+      title="Build the student academic path"
+      subtitle="Choose the school and major first, then add the extra context that helps the platform score the student more accurately."
     >
       <RequireRole expectedRoles={["student", "admin"]} fallbackTitle="Student sign-in required">
-        <SectionCard title="School and program selection">
+        <SectionCard
+          title="School and program selection"
+          subtitle="Start with the college or university. If we already have structured curriculum data, you can choose the exact academic path here."
+          tone="highlight"
+        >
           <div style={{ display: "grid", gap: 16 }}>
-            <p style={{ margin: 0, color: "#4b5d79", lineHeight: 1.6 }}>
-              Search for your college first. If we already have structured catalog data for that
-              school, you can choose the exact catalog, degree program, and major. If not, you can
-              still complete onboarding with the manual fields below.
-            </p>
-
             <label style={labelStyle}>
               Search for your college or university
               <input
@@ -797,8 +792,8 @@ export default function OnboardingProfilePage() {
                   >
                     <strong>
                       {catalogDiscovery.uploadRecommended
-                        ? "Website discovery needs help"
-                        : "Website discovery found structured program data"}
+                        ? "We need one more source"
+                        : "We found school program data"}
                     </strong>
                     <p style={{ margin: 0, lineHeight: 1.6 }}>{catalogDiscovery.message}</p>
                     {!catalogDiscovery.uploadRecommended ? (
@@ -811,8 +806,8 @@ export default function OnboardingProfilePage() {
                     {catalogDiscovery.uploadRecommended ? (
                       <p style={{ margin: 0, lineHeight: 1.6 }}>
                         If the site does not expose a reliable curriculum page, upload a PDF from
-                        the school catalog or department site at{" "}
-                        <Link href={catalogUploadHref}>/uploads/catalog</Link>.
+                        the school catalog or department site using the{" "}
+                        <Link href={catalogUploadHref}>program PDF upload flow</Link>.
                       </p>
                     ) : null}
                   </div>
@@ -850,10 +845,10 @@ export default function OnboardingProfilePage() {
                       color: "#7a5817",
                     }}
                   >
-                    No structured academic catalog is available yet for this school. The system is
-                    attempting website discovery automatically, and if that still comes up short
-                    you can continue with manual fields below or upload a PDF at{" "}
-                    <Link href={catalogUploadHref}>/uploads/catalog</Link>.
+                    We do not have a structured academic catalog loaded for this school yet. The
+                    system is trying website discovery automatically, and if that still comes up short
+                    you can continue with the manual fields below or upload a PDF using the{" "}
+                    <Link href={catalogUploadHref}>program PDF upload flow</Link>.
                   </div>
                 )}
 
@@ -971,10 +966,8 @@ export default function OnboardingProfilePage() {
                       {programRequirementsDiscovery.message}
                     </p>
                     <p style={{ margin: 0 }}>
-                      Upload the major or minor requirement PDF at{" "}
-                      <Link href={catalogUploadHref}>
-                        {programRequirementsDiscovery.uploadUrl || "/uploads/catalog"}
-                      </Link>
+                      Upload the major or minor requirement PDF with the{" "}
+                      <Link href={catalogUploadHref}>program PDF upload flow</Link>
                       .
                     </p>
                   </div>
@@ -998,8 +991,8 @@ export default function OnboardingProfilePage() {
                     <p style={{ margin: 0, lineHeight: 1.6 }}>
                       The system used official school-page text as the source, but the coursework list was
                       structured with LLM assistance instead of a fully direct parser. You can continue, and you
-                      can strengthen this record later by uploading the official program PDF at{" "}
-                      <Link href={catalogUploadHref}>/uploads/catalog</Link>.
+                      can strengthen this record later by uploading the official program PDF through the{" "}
+                      <Link href={catalogUploadHref}>program PDF upload flow</Link>.
                     </p>
                   </div>
                 ) : null}
@@ -1008,7 +1001,14 @@ export default function OnboardingProfilePage() {
           </div>
         </SectionCard>
 
-        <SectionCard title={hasStructuredAcademicSelection ? "Profile details" : "Core profile"}>
+        <SectionCard
+          title={hasStructuredAcademicSelection ? "Profile details" : "Core profile"}
+          subtitle={
+            hasStructuredAcademicSelection
+              ? "Your school and program are set. Add the extra context that helps with guidance and planning."
+              : "If your school path is not fully available yet, you can still continue with manual profile details."
+          }
+        >
           <div style={{ display: "grid", gap: 14 }}>
             {hasStructuredAcademicSelection ? (
               <div
@@ -1098,7 +1098,7 @@ export default function OnboardingProfilePage() {
               Preferred geographies
               <input
                 style={inputStyle}
-                placeholder="Preferred geographies, comma-separated"
+                placeholder="For example: New York, Boston, remote"
                 value={form.preferredGeographies}
                 onChange={(event) => update("preferredGeographies", event.target.value)}
               />
@@ -1138,25 +1138,52 @@ export default function OnboardingProfilePage() {
                 cursor: "pointer",
               }}
             >
-              Save profile
+              Save academic path
             </button>
 
             {status ? (
-              <pre
+              <div
                 style={{
-                  margin: 0,
-                  whiteSpace: "pre-wrap",
-                  borderRadius: 14,
-                  padding: 14,
-                  background: "#f4f7fb",
-                  border: "1px solid #d9e3f0",
-                  fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
-                  fontSize: 13,
+                  display: "grid",
+                  gap: 12,
+                  borderRadius: 18,
+                  padding: 16,
+                  background: "linear-gradient(180deg, rgba(240, 253, 250, 0.95), rgba(236, 248, 255, 0.95))",
+                  border: "1px solid rgba(15, 159, 116, 0.18)",
                 }}
               >
-                {status}
-              </pre>
+                <p style={{ margin: 0, color: "#204861", lineHeight: 1.6 }}>{status}</p>
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                  <Link
+                    href="/onboarding/sectors"
+                    style={{
+                      textDecoration: "none",
+                      borderRadius: 999,
+                      padding: "11px 16px",
+                      background: "linear-gradient(135deg, #155eef, #16a3ff)",
+                      color: "#ffffff",
+                      fontWeight: 800,
+                    }}
+                  >
+                    Continue to career interests
+                  </Link>
+                  <Link
+                    href="/uploads"
+                    style={{
+                      textDecoration: "none",
+                      borderRadius: 999,
+                      padding: "11px 16px",
+                      background: "#ffffff",
+                      border: "1px solid rgba(73, 102, 149, 0.16)",
+                      fontWeight: 700,
+                    }}
+                  >
+                    Go to documents
+                  </Link>
+                </div>
+              </div>
             ) : null}
+            {errorMessage ? <p style={{ margin: 0, color: "crimson" }}>{errorMessage}</p> : null}
           </div>
         </SectionCard>
       </RequireRole>

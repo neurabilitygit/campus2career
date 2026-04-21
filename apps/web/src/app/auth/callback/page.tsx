@@ -57,9 +57,48 @@ export default function AuthCallbackPage() {
   }, []);
 
   return (
-    <main style={{ padding: 32 }}>
-      <h1>Campus2Career Auth Callback</h1>
-      <p>{message}</p>
+    <main
+      style={{
+        minHeight: "100vh",
+        display: "grid",
+        placeItems: "center",
+        padding: 24,
+      }}
+    >
+      <div
+        style={{
+          width: "min(560px, 100%)",
+          borderRadius: 30,
+          padding: "32px clamp(22px, 5vw, 36px)",
+          background:
+            "linear-gradient(155deg, rgba(12, 18, 42, 0.98), rgba(18, 49, 104, 0.94) 55%, rgba(8, 145, 178, 0.9) 100%)",
+          color: "#f8fafc",
+          boxShadow: "0 30px 70px rgba(15, 23, 42, 0.18)",
+          display: "grid",
+          gap: 14,
+          textAlign: "center",
+        }}
+      >
+        <div
+          style={{
+            display: "inline-flex",
+            justifySelf: "center",
+            alignItems: "center",
+            gap: 10,
+            padding: "8px 14px",
+            borderRadius: 999,
+            background: "rgba(255,255,255,0.1)",
+            fontSize: 12,
+            fontWeight: 800,
+            letterSpacing: 0.06,
+            textTransform: "uppercase",
+          }}
+        >
+          Campus2Career
+        </div>
+        <h1 style={{ margin: 0, fontSize: "clamp(2rem, 6vw, 3rem)" }}>Finishing sign-in</h1>
+        <p style={{ margin: 0, color: "#dbe7ff", lineHeight: 1.7 }}>{message}</p>
+      </div>
     </main>
   );
 }

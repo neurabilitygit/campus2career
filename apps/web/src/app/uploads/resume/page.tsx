@@ -7,9 +7,16 @@ import { FileUploadForm } from "../../../components/uploads/FileUploadForm";
 
 export default function ResumeUploadPage() {
   return (
-    <AppShell title="Upload Résumé">
+    <AppShell
+      title="Add a resume"
+      subtitle="Use the student’s resume to strengthen experience, leadership, project, and proof-of-work signals."
+    >
       <RequireRole expectedRoles={["student", "admin"]} fallbackTitle="Student sign-in required">
-        <SectionCard title="Résumé upload">
+        <SectionCard
+          title="Resume document"
+          subtitle="PDF is preferred, but text and common document formats are also supported."
+          tone="highlight"
+        >
           <FileUploadForm
             artifactType="resume"
             title="Upload Résumé"

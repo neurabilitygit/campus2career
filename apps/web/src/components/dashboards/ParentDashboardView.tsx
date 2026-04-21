@@ -216,7 +216,6 @@ function BulletList(props: {
 }
 
 export default function ParentDashboardView() {
-  const auth = useApiData<AuthResponse>("/auth/me");
   const scoring = useApiData<ScoringResponse>("/students/me/scoring");
   const [briefRefresh, setBriefRefresh] = useState(0);
   const [generateBusy, setGenerateBusy] = useState(false);
@@ -254,7 +253,10 @@ export default function ParentDashboardView() {
   }
 
   return (
-    <AppShell title="Parent Dashboard" subtitle="Student goal, trajectory, and the most helpful parent next steps.">
+    <AppShell
+      title="Parent dashboard"
+      subtitle="See the student’s direction, current level of risk, and the most helpful ways to support progress without overload."
+    >
       <RequireRole expectedRoles={["parent", "admin"]} fallbackTitle="Parent sign-in required">
         <ParentNarrative
           scoring={scoring.data?.scoring}
@@ -262,19 +264,10 @@ export default function ParentDashboardView() {
           monthLabel={brief.data?.monthLabel || "Current month"}
         />
 
-        <SectionCard title="Resolved Context">
-          <KeyValueList
-            items={[
-              { label: "Authenticated role", value: auth.data?.context?.authenticatedRoleType || "Unknown" },
-              { label: "Household ID", value: auth.data?.context?.householdId || "None" },
-              { label: "Student profile ID", value: auth.data?.context?.studentProfileId || "None" },
-              { label: "Target role", value: titleCase(scoring.data?.scoring?.targetRoleFamily) },
-              { label: "Target sector", value: titleCase(scoring.data?.scoring?.targetSectorCluster) },
-            ]}
-          />
-        </SectionCard>
-
-        <SectionCard title="Trajectory Breakdown">
+        <SectionCard
+          title="How the score breaks down"
+          subtitle="These categories show where the student looks strong already and where support may matter most."
+        >
           {scoring.loading ? <p>Loading live scoring...</p> : null}
           {scoring.error ? <p style={{ color: "crimson" }}>{scoring.error}</p> : null}
           {!scoring.loading && !scoring.error ? (
@@ -304,14 +297,22 @@ export default function ParentDashboardView() {
           ) : null}
         </SectionCard>
 
-        <SectionCard title="What Looks Good">
+        <SectionCard
+          title="What looks promising"
+          subtitle="These are the clearest signs of traction in the current student story."
+          tone="quiet"
+        >
           <BulletList
             items={strengths}
             empty="No clear strengths have been surfaced yet. That usually means the student has not built enough visible evidence for the chosen role."
           />
         </SectionCard>
 
-        <SectionCard title="What Needs Attention">
+        <SectionCard
+          title="What needs attention"
+          subtitle="This is where parent support can be the most helpful right now."
+          tone="warm"
+        >
           <div style={{ display: "grid", gap: 16 }}>
             <BulletList
               items={risks}
@@ -341,30 +342,43 @@ export default function ParentDashboardView() {
           </div>
         </SectionCard>
 
-        <SectionCard title="Recommended Parent Actions">
+        <SectionCard
+          title="Recommended parent actions"
+          subtitle="Start with the smallest actions that improve momentum without increasing pressure."
+        >
           <BulletList
             items={recommendedActions}
             empty="No parent actions have been generated yet. Use the refresh button below to create the monthly brief."
           />
         </SectionCard>
 
-        <SectionCard title="Recommended Questions For Your Student">
+        <SectionCard
+          title="Helpful questions to ask your student"
+          subtitle="Use these as conversation starters, not a script."
+          tone="quiet"
+        >
           <BulletList
             items={parentQuestions}
             empty="No parent prompts have been generated yet. The monthly brief will add conversation prompts here."
           />
         </SectionCard>
 
-        <SectionCard title="Recent Progress Signals">
+        <SectionCard
+          title="Recent progress signals"
+          subtitle="This section will become more useful as coursework, experiences, and uploads accumulate."
+        >
           <BulletList
             items={progressNotes}
             empty="No recent accomplishments are showing yet. Uploads, projects, coursework, or experience entries will make this section more useful."
           />
         </SectionCard>
 
-        <SectionCard title="Monthly Brief Controls">
+        <SectionCard
+          title="Refresh the monthly parent update"
+          subtitle="Save a parent-friendly summary for the current reporting month so the dashboard remains useful even when live data changes later."
+        >
           <p style={{ marginTop: 0, color: "#444", fontSize: 14, lineHeight: 1.6 }}>
-            The monthly brief is a persisted parent-facing narrative for the current reporting month. If it has not been generated yet, this dashboard still shows live scoring above. Use refresh to save this month&apos;s brief.
+            If a brief has not been generated yet, this dashboard still shows live scoring above. Refreshing creates or updates the saved parent summary for this month.
           </p>
           <button type="button" onClick={() => void generateBrief()} disabled={generateBusy}>
             {generateBusy ? "Generating…" : "Generate / refresh this month"}

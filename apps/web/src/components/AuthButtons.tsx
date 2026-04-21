@@ -69,6 +69,32 @@ export function AuthButtons() {
 
   return (
     <div style={{ display: "grid", gap: 8 }}>
+      <div
+        style={{
+          display: "inline-flex",
+          width: "fit-content",
+          alignItems: "center",
+          gap: 8,
+          padding: "6px 10px",
+          borderRadius: 999,
+          background: isAuthenticated ? "rgba(255,255,255,0.16)" : "rgba(15, 23, 42, 0.18)",
+          color: "#f8fafc",
+          fontSize: 12,
+          fontWeight: 800,
+          letterSpacing: 0.04,
+          textTransform: "uppercase",
+        }}
+      >
+        <span
+          style={{
+            width: 9,
+            height: 9,
+            borderRadius: "50%",
+            background: isAuthenticated ? "#34d399" : "#cbd5e1",
+          }}
+        />
+        {isAuthenticated ? "Signed in" : "Not signed in"}
+      </div>
       <div style={{ display: "flex", gap: 12 }}>
         <button
           onClick={signInWithGoogle}
@@ -85,7 +111,7 @@ export function AuthButtons() {
             ? "Opening Google..."
             : loading
               ? "Checking session..."
-              : "Sign in with Google"}
+              : "Continue with Google"}
         </button>
         <button
           onClick={signOut}
@@ -98,14 +124,16 @@ export function AuthButtons() {
             opacity: signOutDisabled ? 0.8 : 1,
           }}
         >
-          {actionBusy === "sign_out" ? "Signing out..." : "Sign out"}
+          {actionBusy === "sign_out" ? "Signing out..." : "Log out"}
         </button>
       </div>
-      {disabledReason ? <p style={{ margin: 0, color: "crimson" }}>{disabledReason}</p> : null}
+      {disabledReason ? (
+        <p style={{ margin: 0, color: "#fee2e2" }}>{disabledReason}</p>
+      ) : null}
       {showSlowNotice ? (
         <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-          <p style={{ margin: 0, color: "#475569" }}>
-            Session check is taking longer than expected. You can still try signing in or retry the check.
+          <p style={{ margin: 0, color: "#dbe7ff" }}>
+            Session check is taking longer than expected. You can retry now without leaving this page.
           </p>
           <button
             type="button"
@@ -119,13 +147,14 @@ export function AuthButtons() {
               padding: "8px 12px",
               fontWeight: 700,
               cursor: "pointer",
+              color: "#0f172a",
             }}
           >
             Retry auth check
           </button>
         </div>
       ) : null}
-      {error ? <p style={{ margin: 0, color: "crimson" }}>Session error: {error}</p> : null}
+      {error ? <p style={{ margin: 0, color: "#fee2e2" }}>Session error: {error}</p> : null}
     </div>
   );
 }

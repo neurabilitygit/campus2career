@@ -7,9 +7,16 @@ import { FileUploadForm } from "../../../components/uploads/FileUploadForm";
 
 export default function OtherUploadPage() {
   return (
-    <AppShell title="Upload Other Artifact">
+    <AppShell
+      title="Add supporting evidence"
+      subtitle="Use this for projects, certifications, decks, portfolios, or any file that helps explain what the student has actually done."
+    >
       <RequireRole expectedRoles={["student", "admin"]} fallbackTitle="Student sign-in required">
-        <SectionCard title="Other artifact upload">
+        <SectionCard
+          title="Supporting document"
+          subtitle="PDF works especially well, but several other common formats are accepted too."
+          tone="highlight"
+        >
           <FileUploadForm
             artifactType="other"
             title="Upload Other Artifact"
