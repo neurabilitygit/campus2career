@@ -10,6 +10,7 @@ export interface UpsertStudentProfileInput {
   majorSecondary?: string | null;
   preferredGeographies?: string[] | null;
   careerGoalSummary?: string | null;
+  academicNotes?: string | null;
 }
 
 export interface CreateDeadlineInput {
@@ -96,9 +97,10 @@ export class StudentWriteRepository {
         major_secondary,
         preferred_geographies,
         career_goal_summary,
+        academic_notes,
         created_at,
         updated_at
-      ) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,now(),now())
+      ) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,now(),now())
       on conflict (student_profile_id) do update set
         household_id = excluded.household_id,
         school_name = excluded.school_name,
@@ -107,6 +109,7 @@ export class StudentWriteRepository {
         major_secondary = excluded.major_secondary,
         preferred_geographies = excluded.preferred_geographies,
         career_goal_summary = excluded.career_goal_summary,
+        academic_notes = excluded.academic_notes,
         updated_at = now()
       `,
       [
@@ -119,6 +122,7 @@ export class StudentWriteRepository {
         input.majorSecondary ?? null,
         input.preferredGeographies ?? [],
         input.careerGoalSummary ?? null,
+        input.academicNotes ?? null,
       ]
     );
   }

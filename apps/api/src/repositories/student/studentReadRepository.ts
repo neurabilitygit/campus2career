@@ -9,6 +9,7 @@ export interface StudentProfileRow {
   major_secondary: string | null;
   preferred_geographies: string[] | null;
   career_goal_summary: string | null;
+  academic_notes: string | null;
   first_name?: string | null;
   last_name?: string | null;
 }
@@ -109,6 +110,7 @@ export class StudentReadRepository {
         sp.major_secondary,
         sp.preferred_geographies,
         sp.career_goal_summary,
+        sp.academic_notes,
         u.first_name,
         u.last_name
       from student_profiles sp

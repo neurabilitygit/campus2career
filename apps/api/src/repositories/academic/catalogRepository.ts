@@ -369,6 +369,31 @@ export class CatalogRepository {
     return result.rows;
   }
 
+  async deleteDegreeProgramsNotInList(
+    academicCatalogId: string,
+    programs: Array<{ degreeType: string; programName: string }>
+  ): Promise<void> {
+    if (programs.length === 0) {
+      await query(`delete from degree_programs where academic_catalog_id = $1`, [academicCatalogId]);
+      return;
+    }
+
+    const valuesSql = programs.map((_, index) => `($${index * 2 + 2}, $${index * 2 + 3})`).join(",");
+    const params: unknown[] = [academicCatalogId];
+    for (const program of programs) {
+      params.push(program.degreeType, program.programName);
+    }
+
+    await query(
+      `
+      delete from degree_programs
+      where academic_catalog_id = $1
+        and (degree_type, program_name) not in (${valuesSql})
+      `,
+      params
+    );
+  }
+
   async upsertMajor(input: {
     majorId: string;
     degreeProgramId: string;
@@ -433,6 +458,22 @@ export class CatalogRepository {
     return result.rows;
   }
 
+  async deleteMajorsNotInList(degreeProgramId: string, canonicalNames: string[]): Promise<void> {
+    if (!canonicalNames.length) {
+      await query(`delete from majors where degree_program_id = $1`, [degreeProgramId]);
+      return;
+    }
+
+    await query(
+      `
+      delete from majors
+      where degree_program_id = $1
+        and not (canonical_name = any($2::text[]))
+      `,
+      [degreeProgramId, canonicalNames]
+    );
+  }
+
   async getMinor(degreeProgramId: string, canonicalName: string): Promise<MinorRow | null> {
     const result = await query<MinorRow>(
       `
@@ -491,6 +532,22 @@ export class CatalogRepository {
       [degreeProgramId]
     );
     return result.rows;
+  }
+
+  async deleteMinorsNotInList(degreeProgramId: string, canonicalNames: string[]): Promise<void> {
+    if (!canonicalNames.length) {
+      await query(`delete from minors where degree_program_id = $1`, [degreeProgramId]);
+      return;
+    }
+
+    await query(
+      `
+      delete from minors
+      where degree_program_id = $1
+        and not (canonical_name = any($2::text[]))
+      `,
+      [degreeProgramId, canonicalNames]
+    );
   }
 
   async getConcentration(majorId: string, canonicalName: string): Promise<ConcentrationRow | null> {

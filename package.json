@@ -12,6 +12,8 @@
     "db:migrate": "pnpm --dir apps/api db:migrate",
     "db:seed:ci": "pnpm --dir apps/api db:seed:ci",
     "synthetic:run": "pnpm --dir apps/api synthetic:run",
+    "academic:discover:smoke": "pnpm --dir apps/api academic:discover:smoke",
+    "academic:discover:seed:ivy-suny": "pnpm --dir apps/api academic:discover:seed",
     "verify:ci": "pnpm typecheck && pnpm db:migrate && pnpm db:seed:ci && pnpm synthetic:run"
   }
 }

@@ -1,0 +1,56 @@
+{
+  "schemaVersion": "academic-discovery-smoke.v1",
+  "generatedAt": "2026-04-20",
+  "description": "Top-school smoke verification set for institution catalog discovery and major/minor directory lookup.",
+  "schools": [
+    {
+      "institutionQuery": "University at Buffalo",
+      "expectedMajorSearch": "accounting"
+    },
+    {
+      "institutionQuery": "Arizona State University",
+      "expectedMajorSearch": "computer science",
+      "expectedMinorSearch": "data science"
+    },
+    {
+      "institutionQuery": "University of Florida",
+      "expectedMajorSearch": "biology"
+    },
+    {
+      "institutionQuery": "Ohio State University",
+      "expectedMajorSearch": "economics"
+    },
+    {
+      "institutionQuery": "Georgia Institute of Technology",
+      "expectedMajorSearch": "industrial engineering"
+    },
+    {
+      "institutionQuery": "Columbia University",
+      "expectedMajorSearch": "anthropology"
+    },
+    {
+      "institutionQuery": "University of Michigan-Ann Arbor",
+      "expectedMajorSearch": "economics"
+    },
+    {
+      "institutionQuery": "University of California-Berkeley",
+      "expectedMajorSearch": "economics"
+    },
+    {
+      "institutionQuery": "The University of Texas at Austin",
+      "expectedMajorSearch": "economics"
+    },
+    {
+      "institutionQuery": "University of North Carolina at Chapel Hill",
+      "expectedMajorSearch": "biology"
+    },
+    {
+      "institutionQuery": "Purdue University-Main Campus",
+      "expectedMajorSearch": "industrial engineering"
+    },
+    {
+      "institutionQuery": "University of Illinois Urbana-Champaign",
+      "expectedMajorSearch": "computer science"
+    }
+  ]
+}

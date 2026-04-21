@@ -19,6 +19,7 @@ type StudentProfileResponse = {
     major_secondary?: string | null;
     preferred_geographies?: string[] | null;
     career_goal_summary?: string | null;
+    academic_notes?: string | null;
   } | null;
 };
 
@@ -163,6 +164,7 @@ export default function OnboardingProfilePage() {
     majorSecondary: "",
     preferredGeographies: "",
     careerGoalSummary: "",
+    academicNotes: "",
   });
   const [status, setStatus] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState("");
@@ -243,6 +245,7 @@ export default function OnboardingProfilePage() {
       majorSecondary: currentProfile.major_secondary || current.majorSecondary,
       preferredGeographies: (currentProfile.preferred_geographies || []).join(", "),
       careerGoalSummary: currentProfile.career_goal_summary || current.careerGoalSummary,
+      academicNotes: currentProfile.academic_notes || current.academicNotes,
     }));
   }, [didHydrateProfile, isAuthenticated, profile.data, profile.loading]);
 
@@ -543,6 +546,30 @@ export default function OnboardingProfilePage() {
     return query ? `/uploads/catalog?${query}` : "/uploads/catalog";
   })();
 
+  const hasStructuredAcademicSelection =
+    !!selectedInstitutionCanonicalName &&
+    !!selectedCatalogLabel &&
+    !!selectedDegreeKey &&
+    !!selectedMajorCanonicalName;
+
+  const summaryRows = [
+    { label: "Institution", value: selectedInstitutionDisplayName || form.schoolName || "Not selected" },
+    { label: "Catalog", value: selectedCatalogLabel || "Not selected" },
+    {
+      label: "Degree program",
+      value: selectedProgram ? `${selectedProgram.degreeType} · ${selectedProgram.programName}` : "Not selected",
+    },
+    { label: "Major", value: selectedMajor?.displayName || "Not selected" },
+    { label: "Minor", value: selectedMinor?.displayName || "None selected" },
+    {
+      label: "Concentration",
+      value:
+        directoryOptions?.concentrations.find(
+          (concentration) => concentration.canonicalName === selectedConcentrationCanonicalName
+        )?.displayName || "None selected",
+    },
+  ];
+
   async function save() {
     setStatus("Saving...");
     try {
@@ -562,6 +589,7 @@ export default function OnboardingProfilePage() {
             .map((value) => value.trim())
             .filter(Boolean),
           careerGoalSummary: form.careerGoalSummary,
+          academicNotes: form.academicNotes,
         }),
       });
 
@@ -947,17 +975,80 @@ export default function OnboardingProfilePage() {
           </div>
         </SectionCard>
 
-        <SectionCard title="Core profile">
+        <SectionCard title={hasStructuredAcademicSelection ? "Profile details" : "Core profile"}>
           <div style={{ display: "grid", gap: 14 }}>
-            <label style={labelStyle}>
-              School name
-              <input
-                style={inputStyle}
-                placeholder="School name"
-                value={form.schoolName}
-                onChange={(event) => update("schoolName", event.target.value)}
-              />
-            </label>
+            {hasStructuredAcademicSelection ? (
+              <div
+                style={{
+                  borderRadius: 14,
+                  border: "1px solid #d9e3f0",
+                  background: "#f7faff",
+                  padding: "16px 18px",
+                  display: "grid",
+                  gap: 12,
+                }}
+              >
+                <strong style={{ color: "#15355b" }}>Selected academic path</strong>
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+                    gap: 12,
+                  }}
+                >
+                  {summaryRows.map((row) => (
+                    <div
+                      key={row.label}
+                      style={{
+                        borderRadius: 12,
+                        background: "#ffffff",
+                        border: "1px solid #e1e8f2",
+                        padding: "12px 14px",
+                        display: "grid",
+                        gap: 4,
+                      }}
+                    >
+                      <span style={{ color: "#5b6f89", fontSize: 12, fontWeight: 700 }}>
+                        {row.label}
+                      </span>
+                      <span style={{ color: "#17365c", fontWeight: 600 }}>{row.value}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <>
+                <label style={labelStyle}>
+                  School name
+                  <input
+                    style={inputStyle}
+                    placeholder="School name"
+                    value={form.schoolName}
+                    onChange={(event) => update("schoolName", event.target.value)}
+                  />
+                </label>
+
+                <label style={labelStyle}>
+                  Primary major or academic path
+                  <input
+                    style={inputStyle}
+                    placeholder="Primary major"
+                    value={form.majorPrimary}
+                    onChange={(event) => update("majorPrimary", event.target.value)}
+                  />
+                </label>
+
+                <label style={labelStyle}>
+                  Secondary major, minor, or academic path
+                  <input
+                    style={inputStyle}
+                    placeholder="Secondary major or minor"
+                    value={form.majorSecondary}
+                    onChange={(event) => update("majorSecondary", event.target.value)}
+                  />
+                </label>
+              </>
+            )}
 
             <label style={labelStyle}>
               Expected graduation date
@@ -967,26 +1058,6 @@ export default function OnboardingProfilePage() {
                 placeholder="Expected graduation date"
                 value={form.expectedGraduationDate}
                 onChange={(event) => update("expectedGraduationDate", event.target.value)}
-              />
-            </label>
-
-            <label style={labelStyle}>
-              Primary major or academic path
-              <input
-                style={inputStyle}
-                placeholder="Primary major"
-                value={form.majorPrimary}
-                onChange={(event) => update("majorPrimary", event.target.value)}
-              />
-            </label>
-
-            <label style={labelStyle}>
-              Secondary major, minor, or notes
-              <input
-                style={inputStyle}
-                placeholder="Secondary major or minor"
-                value={form.majorSecondary}
-                onChange={(event) => update("majorSecondary", event.target.value)}
               />
             </label>
 
@@ -1008,6 +1079,17 @@ export default function OnboardingProfilePage() {
                 value={form.careerGoalSummary}
                 onChange={(event) => update("careerGoalSummary", event.target.value)}
                 rows={5}
+              />
+            </label>
+
+            <label style={labelStyle}>
+              Academic notes
+              <textarea
+                style={{ ...inputStyle, minHeight: 110, resize: "vertical" }}
+                placeholder="Add context that the structured catalog does not capture, such as unofficial plans, transfer details, pre-professional tracks, or advisor guidance."
+                value={form.academicNotes}
+                onChange={(event) => update("academicNotes", event.target.value)}
+                rows={4}
               />
             </label>
 

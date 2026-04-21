@@ -176,6 +176,7 @@ export async function studentProfileUpsertRoute(req: IncomingMessage, res: Serve
       majorSecondary?: string;
       preferredGeographies?: string[];
       careerGoalSummary?: string;
+      academicNotes?: string;
     }>(req);
 
     const studentProfileId =
@@ -193,6 +194,7 @@ export async function studentProfileUpsertRoute(req: IncomingMessage, res: Serve
         ? body.preferredGeographies.map((item) => item.trim()).filter(Boolean)
         : [],
       careerGoalSummary: normalizeOptionalText(body.careerGoalSummary),
+      academicNotes: normalizeOptionalText(body.academicNotes),
     });
 
     await ensureOnboardingState(studentProfileId);
