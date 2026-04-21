@@ -122,10 +122,19 @@ type ProgramRequirementDiscoveryResponse = {
   ok: boolean;
   status: "requirements_discovered" | "upload_required";
   uploadRecommended: boolean;
+  usedLlmAssistance?: boolean;
   uploadUrl?: string | null;
   message: string;
-  major?: unknown;
-  minor?: unknown;
+  major?: {
+    provenanceMethod?: "direct_scrape" | "llm_assisted";
+    sourcePage?: string | null;
+    sourceNote?: string | null;
+  } | null;
+  minor?: {
+    provenanceMethod?: "direct_scrape" | "llm_assisted";
+    sourcePage?: string | null;
+    sourceNote?: string | null;
+  } | null;
 };
 
 const inputStyle: React.CSSProperties = {
@@ -967,6 +976,30 @@ export default function OnboardingProfilePage() {
                         {programRequirementsDiscovery.uploadUrl || "/uploads/catalog"}
                       </Link>
                       .
+                    </p>
+                  </div>
+                ) : null}
+                {programRequirementsDiscovery && !programRequirementsDiscovery.uploadRecommended && programRequirementsDiscovery.usedLlmAssistance ? (
+                  <div
+                    style={{
+                      borderRadius: 14,
+                      border: "1px solid #f2d9ad",
+                      background: "#fff8e7",
+                      padding: "14px 16px",
+                      color: "#7a5817",
+                      display: "grid",
+                      gap: 8,
+                    }}
+                  >
+                    <strong>Coursework was populated with LLM assistance</strong>
+                    <p style={{ margin: 0, lineHeight: 1.6 }}>
+                      {programRequirementsDiscovery.message}
+                    </p>
+                    <p style={{ margin: 0, lineHeight: 1.6 }}>
+                      The system used official school-page text as the source, but the coursework list was
+                      structured with LLM assistance instead of a fully direct parser. You can continue, and you
+                      can strengthen this record later by uploading the official program PDF at{" "}
+                      <Link href={catalogUploadHref}>/uploads/catalog</Link>.
                     </p>
                   </div>
                 ) : null}

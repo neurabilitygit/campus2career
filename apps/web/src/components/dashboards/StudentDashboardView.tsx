@@ -85,6 +85,9 @@ type ScoringInputPayload = {
     programName?: string;
     majorDisplayName?: string;
     requirementSetDisplayName?: string;
+    provenanceMethod?: "direct_scrape" | "artifact_pdf" | "manual" | "llm_assisted" | "synthetic_seed" | null;
+    sourceUrl?: string | null;
+    sourceNote?: string | null;
     totalRequirementItems: number;
     satisfiedRequirementItems: number;
     totalRequirementGroups: number;
@@ -219,6 +222,7 @@ export default function StudentDashboardView() {
       requirementProgress.catalogLabel ||
       requirementProgress.majorDisplayName
     );
+  const usesLlmAssistedRequirements = requirementProgress?.provenanceMethod === "llm_assisted";
 
   return (
     <AppShell title="Student Dashboard" subtitle="Scoring, academic progress, market inputs, and role-specific guidance.">
@@ -353,6 +357,22 @@ export default function StudentDashboardView() {
                   are loaded or a catalog PDF is uploaded.
                 </div>
               ) : null}
+              {usesLlmAssistedRequirements ? (
+                <div
+                  style={{
+                    border: "1px solid #f2d9ad",
+                    borderRadius: 14,
+                    padding: "14px 16px",
+                    background: "#fff8e7",
+                    color: "#7a5817",
+                    lineHeight: 1.6,
+                  }}
+                >
+                  Coursework requirements for this program were populated with LLM assistance from official
+                  school-page text rather than a directly parsed requirement source. Continue using them, but
+                  review against the school catalog or upload a program PDF for a stronger source record.
+                </div>
+              ) : null}
               {transcript?.transcriptSummary ? (
                 <div>
                   <strong>Transcript summary</strong>
@@ -369,6 +389,24 @@ export default function StudentDashboardView() {
                   <p style={{ marginBottom: 0, color: "#64748b" }}>No missing core requirement list is currently surfaced.</p>
                 )}
               </div>
+              {requirementProgress?.sourceUrl ? (
+                <div>
+                  <strong>Requirement source</strong>
+                  <p style={{ marginBottom: 0, color: "#475569", lineHeight: 1.6 }}>
+                    <a href={requirementProgress.sourceUrl} target="_blank" rel="noreferrer">
+                      {requirementProgress.sourceUrl}
+                    </a>
+                    {requirementProgress.sourceNote ? ` — ${requirementProgress.sourceNote}` : ""}
+                  </p>
+                </div>
+              ) : requirementProgress?.sourceNote ? (
+                <div>
+                  <strong>Requirement source</strong>
+                  <p style={{ marginBottom: 0, color: "#475569", lineHeight: 1.6 }}>
+                    {requirementProgress.sourceNote}
+                  </p>
+                </div>
+              ) : null}
             </div>
           ) : null}
         </SectionCard>

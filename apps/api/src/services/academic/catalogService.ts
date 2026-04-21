@@ -432,6 +432,9 @@ export async function upsertRequirementSet(input: RequirementSetInput) {
     setType: input.setType,
     displayName: input.displayName,
     totalCreditsRequired: input.totalCreditsRequired ?? null,
+    provenanceMethod: input.provenanceMethod ?? null,
+    sourceUrl: input.sourceUrl ?? null,
+    sourceNote: input.sourceNote ?? null,
   });
 
   return requirementSetId;
@@ -625,6 +628,9 @@ export async function getRequirementSetGraphByMajor(input: {
     setType: requirementSet.set_type,
     displayName: requirementSet.display_name,
     totalCreditsRequired: requirementSet.total_credits_required,
+    provenanceMethod: requirementSet.provenance_method,
+    sourceUrl: requirementSet.source_url,
+    sourceNote: requirementSet.source_note,
     groups: groupGraph,
   };
 }

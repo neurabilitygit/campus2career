@@ -9,6 +9,7 @@ import {
   upsertRequirementSet,
 } from "./catalogService";
 import { discoverProgramsViaInstitutionAdapter } from "./catalogInstitutionAdapters";
+import { inferStructuredCourseworkFromOfficialText } from "../openai/responsesClient";
 
 const repo = new CatalogRepository();
 
@@ -61,6 +62,17 @@ interface ProgramDirectoryContext {
   score: number;
 }
 
+interface ProgramRequirementDiscoveryResult {
+  status: "requirements_discovered" | "upload_required";
+  discoveredCourseCount: number;
+  sourcePage: string | null;
+  requirementSetId: string | null;
+  message: string;
+  provenanceMethod?: "direct_scrape" | "llm_assisted";
+  sourceNote?: string | null;
+  usedLlmAssistance?: boolean;
+}
+
 function normalizeWhitespace(value: string): string {
   return value.replace(/\s+/g, " ").trim();
 }
@@ -110,6 +122,34 @@ function stripHtmlToText(html: string): string {
 function extractTitle(html: string): string {
   const match = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
   return normalizeWhitespace(decodeHtmlEntities(match?.[1] || ""));
+}
+
+function normalizeDiscoveredCourses(courses: DiscoveredCourse[]): DiscoveredCourse[] {
+  const deduped = new Map<string, DiscoveredCourse>();
+
+  for (const course of courses) {
+    const normalizedCode = normalizeWhitespace(course.courseCode).toUpperCase();
+    const normalizedTitle = normalizeWhitespace(course.courseTitle);
+    if (!normalizedCode || !normalizedTitle) {
+      continue;
+    }
+
+    const key = `${normalizedCode}::${normalizedTitle.toLowerCase()}`;
+    if (!deduped.has(key)) {
+      deduped.set(key, {
+        courseCode: normalizedCode,
+        courseTitle: normalizedTitle,
+        creditsMin: course.creditsMin,
+        creditsMax:
+          course.creditsMax != null && course.creditsMin != null && course.creditsMax < course.creditsMin
+            ? course.creditsMin
+            : course.creditsMax,
+        rawLine: course.rawLine,
+      });
+    }
+  }
+
+  return Array.from(deduped.values()).slice(0, 60);
 }
 
 function approximateRegistrableDomain(hostname: string): string {
@@ -1357,6 +1397,7 @@ export async function discoverInstitutionCatalog(input: {
 
 async function discoverSingleProgramRequirements(input: {
   institutionCanonicalName: string;
+  institutionDisplayName: string;
   catalogLabel: string;
   degreeType: string;
   programName: string;
@@ -1364,7 +1405,7 @@ async function discoverSingleProgramRequirements(input: {
   programDisplayName: string;
   kind: ProgramKind;
   websiteUrl: string;
-}) {
+}): Promise<ProgramRequirementDiscoveryResult> {
   const seedPages = (
     await Promise.all(buildCatalogSeedUrls(input.websiteUrl).map((url) => fetchHtmlPage(url)))
   ).filter((page): page is HtmlPage => !!page);
@@ -1408,9 +1449,13 @@ async function discoverSingleProgramRequirements(input: {
     await Promise.all(rankedLinks.map((link) => fetchHtmlPage(link.href)))
   ).filter((page): page is HtmlPage => !!page);
 
-  let bestPage: HtmlPage | null = null;
-  let bestCourses: DiscoveredCourse[] = [];
-  let bestScore = -1;
+  const scoredPages: Array<{
+    page: HtmlPage;
+    courses: DiscoveredCourse[];
+    suitabilityScore: number;
+    matchedTokenCount: number;
+    exactProgramMention: boolean;
+  }> = [];
   let foundProgramTokenMatch = false;
 
   for (const page of candidatePages) {
@@ -1452,14 +1497,64 @@ async function discoverSingleProgramRequirements(input: {
       suitabilityScore += 8;
     }
 
-    if (suitabilityScore > bestScore) {
-      bestScore = suitabilityScore;
-      bestCourses = courses;
-      bestPage = page;
-    }
+    scoredPages.push({
+      page,
+      courses,
+      suitabilityScore,
+      matchedTokenCount,
+      exactProgramMention,
+    });
   }
 
+  scoredPages.sort((a, b) => b.suitabilityScore - a.suitabilityScore);
+
+  let bestPage: HtmlPage | null = scoredPages[0]?.page || null;
+  let bestCourses = normalizeDiscoveredCourses(scoredPages[0]?.courses || []);
+  let sourceNote: string | null = null;
+  let provenanceMethod: "direct_scrape" | "llm_assisted" = "direct_scrape";
+
   const bestPageUrl = bestPage ? bestPage.url : null;
+
+  if (!bestPage || bestCourses.length < 3) {
+    const llmCandidatePages = scoredPages
+      .filter((entry) => entry.suitabilityScore > 0 && (entry.matchedTokenCount > 0 || entry.exactProgramMention))
+      .slice(0, 3)
+      .map((entry) => entry.page);
+
+    if (llmCandidatePages.length) {
+      try {
+        const llmResult = await inferStructuredCourseworkFromOfficialText({
+          institutionDisplayName: input.institutionDisplayName,
+          programDisplayName: input.programDisplayName,
+          kind: input.kind,
+          candidatePages: llmCandidatePages.map((page) => ({
+            url: page.url,
+            title: page.title,
+            text: page.text,
+          })),
+        });
+
+        const llmCourses = normalizeDiscoveredCourses(
+          (llmResult?.courses || []).map((course) => ({
+            courseCode: course.courseCode,
+            courseTitle: course.courseTitle,
+            creditsMin: course.creditsMin,
+            creditsMax: course.creditsMax,
+            rawLine: course.evidence,
+          }))
+        );
+
+        if (llmResult && llmCourses.length >= 3) {
+          bestPage = llmCandidatePages.find((page) => page.url === llmResult.sourceUrl) || llmCandidatePages[0] || null;
+          bestCourses = llmCourses;
+          provenanceMethod = "llm_assisted";
+          sourceNote = llmResult.summary;
+        }
+      } catch {
+        // fall through to the standard upload-required path
+      }
+    }
+  }
 
   if (!bestPage || bestCourses.length < 3) {
     return {
@@ -1468,6 +1563,9 @@ async function discoverSingleProgramRequirements(input: {
       sourcePage: bestPageUrl,
       requirementSetId: null,
       message: `The ${input.kind} requirement courses could not be extracted reliably. Upload a PDF from the school's catalog or department page.`,
+      provenanceMethod: undefined,
+      sourceNote: sourceNote,
+      usedLlmAssistance: false,
     };
   }
 
@@ -1496,6 +1594,13 @@ async function discoverSingleProgramRequirements(input: {
         : `${input.programDisplayName} minor requirements`,
     majorCanonicalName: input.kind === "major" ? input.programCanonicalName : undefined,
     minorCanonicalName: input.kind === "minor" ? input.programCanonicalName : undefined,
+    provenanceMethod,
+    sourceUrl: bestPage.url,
+    sourceNote:
+      sourceNote ||
+      (provenanceMethod === "llm_assisted"
+        ? "Structured with LLM assistance from official school-page text."
+        : "Parsed directly from official school-page text."),
   });
 
   await replaceResolvedRequirementGroups({
@@ -1522,7 +1627,13 @@ async function discoverSingleProgramRequirements(input: {
     discoveredCourseCount: bestCourses.length,
     sourcePage: bestPage.url,
     requirementSetId,
-    message: `Discovered ${bestCourses.length} courses for the ${input.kind} requirement set.`,
+    message:
+      provenanceMethod === "llm_assisted"
+        ? `Structured ${bestCourses.length} courses for the ${input.kind} requirement set with LLM assistance from official school-page text. Review is still recommended.`
+        : `Discovered ${bestCourses.length} courses for the ${input.kind} requirement set.`,
+    provenanceMethod,
+    sourceNote,
+    usedLlmAssistance: provenanceMethod === "llm_assisted",
   };
 }
 
@@ -1569,6 +1680,7 @@ export async function discoverProgramRequirements(input: {
     if (majorRow) {
       majorResult = await discoverSingleProgramRequirements({
         institutionCanonicalName: input.institutionCanonicalName,
+        institutionDisplayName: institution.display_name,
         catalogLabel: input.catalogLabel,
         degreeType: input.degreeType,
         programName: input.programName,
@@ -1596,6 +1708,7 @@ export async function discoverProgramRequirements(input: {
     if (minorRow) {
       minorResult = await discoverSingleProgramRequirements({
         institutionCanonicalName: input.institutionCanonicalName,
+        institutionDisplayName: institution.display_name,
         catalogLabel: input.catalogLabel,
         degreeType: input.degreeType,
         programName: input.programName,
@@ -1607,10 +1720,12 @@ export async function discoverProgramRequirements(input: {
     }
   }
 
+  const requestedMajor = !!input.majorCanonicalName;
+  const requestedMinor = !!input.minorCanonicalName;
   const uploadRecommended =
-    !majorResult ||
-    majorResult.status === "upload_required" ||
-    (minorResult != null && minorResult.status === "upload_required");
+    (requestedMajor && (!majorResult || majorResult.status === "upload_required")) ||
+    (requestedMinor && (!minorResult || minorResult.status === "upload_required"));
+  const usedLlmAssistance = !!majorResult?.usedLlmAssistance || !!minorResult?.usedLlmAssistance;
 
   return {
     status: uploadRecommended ? "upload_required" as const : "requirements_discovered" as const,
@@ -1618,7 +1733,10 @@ export async function discoverProgramRequirements(input: {
     uploadUrl: uploadRecommended ? "/uploads/catalog" : null,
     message: uploadRecommended
       ? "The system attempted to discover the selected program requirements from the school website, but a PDF upload is still recommended."
-      : "The system discovered structured requirement details from the school website.",
+      : usedLlmAssistance
+        ? "The system populated coursework with LLM assistance from official school-page text. Continue, but review these requirements against the catalog when possible."
+        : "The system discovered structured requirement details from the school website.",
+    usedLlmAssistance,
     major: majorResult,
     minor: minorResult,
   };

@@ -10,6 +10,7 @@
     "dev:worker": "pnpm --dir apps/worker dev",
     "dev:all": "zsh -lc 'set -m; pnpm --dir apps/api dev & API_PID=$!; pnpm --dir apps/web dev & WEB_PID=$!; pnpm --dir apps/worker dev & WORKER_PID=$!; trap \"kill $API_PID $WEB_PID $WORKER_PID 2>/dev/null\" EXIT INT TERM; wait'",
     "db:migrate": "pnpm --dir apps/api db:migrate",
+    "db:seed:institutions": "pnpm --dir apps/api db:seed:institutions",
     "db:seed:ci": "pnpm --dir apps/api db:seed:ci",
     "synthetic:run": "pnpm --dir apps/api synthetic:run",
     "academic:discover:smoke": "pnpm --dir apps/api academic:discover:smoke",

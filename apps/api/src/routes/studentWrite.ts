@@ -1,11 +1,13 @@
 import crypto from "node:crypto";
 import type { IncomingMessage, ServerResponse } from "node:http";
+import { z } from "zod";
 import { resolveRequestContext } from "../services/auth/resolveRequestContext";
 import { readJsonBody } from "../utils/body";
 import { badRequest, json, unauthorized } from "../utils/http";
 import { StudentWriteRepository } from "../repositories/student/studentWriteRepository";
 import { OnboardingRepository } from "../repositories/student/onboardingRepository";
 import { StudentReadRepository } from "../repositories/student/studentReadRepository";
+import { ArtifactRepository } from "../repositories/student/artifactRepository";
 import { createSignedUploadTarget } from "../services/storage/supabaseStorage";
 import { persistArtifactAndQueueParse } from "../services/student/artifactIntake";
 import { runScoring } from "../services/scoring";
@@ -15,9 +17,110 @@ import { buildStudentScoringInput } from "../services/student/aggregateStudentCo
 const repo = new StudentWriteRepository();
 const onboardingRepo = new OnboardingRepository();
 const studentReadRepo = new StudentReadRepository();
+const artifactRepo = new ArtifactRepository();
+const allowedArtifactTypes = [
+  "resume",
+  "transcript",
+  "other",
+  "project",
+  "portfolio",
+  "presentation",
+  "certification",
+] as const;
+const allowedSectorClusters = [
+  "Technology & Startups",
+  "Fintech",
+  "Management Consulting",
+  "Finance & Financial Services",
+  "Accounting, Audit & Risk",
+  "Data & Analytics",
+  "Healthcare",
+  "Pharmaceutical, Biotech & Clinical Research",
+  "Operations & Strategy",
+] as const;
+const isoDatePattern = /^\d{4}-\d{2}-\d{2}$/;
+const uploadTargetTtlMinutes = Math.max(
+  15,
+  Number(process.env.UPLOAD_TARGET_TTL_MINUTES || 360) || 360
+);
+
+function optionalTrimmedString(maxLength: number) {
+  return z.preprocess(
+    (value) => {
+      if (typeof value !== "string") return value;
+      const trimmed = value.trim();
+      return trimmed || undefined;
+    },
+    z.string().max(maxLength).optional()
+  );
+}
+
+function requiredTrimmedString(maxLength: number) {
+  return z.preprocess(
+    (value) => (typeof value === "string" ? value.trim() : value),
+    z.string().min(1).max(maxLength)
+  );
+}
+
+const optionalIsoDateSchema = z.preprocess(
+  (value) => {
+    if (typeof value !== "string") return value;
+    const trimmed = value.trim();
+    return trimmed || undefined;
+  },
+  z.string().regex(isoDatePattern, "Expected YYYY-MM-DD date").optional()
+);
+
+const studentProfileBodySchema = z.object({
+  schoolName: requiredTrimmedString(160),
+  expectedGraduationDate: optionalIsoDateSchema,
+  majorPrimary: requiredTrimmedString(160),
+  majorSecondary: optionalTrimmedString(160),
+  preferredGeographies: z.array(requiredTrimmedString(120)).max(10).optional().default([]),
+  careerGoalSummary: optionalTrimmedString(2000),
+  academicNotes: optionalTrimmedString(4000),
+});
+
+const sectorSelectionBodySchema = z.object({
+  sectorClusters: z.array(z.enum(allowedSectorClusters)).max(6),
+});
+
+const networkBaselineBodySchema = z.object({
+  notes: optionalTrimmedString(12000),
+});
+
+const deadlineCreateBodySchema = z.object({
+  title: requiredTrimmedString(200),
+  dueDate: z.string().trim().regex(isoDatePattern, "dueDate must be YYYY-MM-DD"),
+  deadlineType: requiredTrimmedString(80),
+  notes: optionalTrimmedString(1000),
+});
+
+const uploadPresignBodySchema = z.object({
+  artifactType: z.enum(allowedArtifactTypes),
+  fileName: requiredTrimmedString(240),
+  contentType: requiredTrimmedString(160),
+});
+
+const uploadCompleteBodySchema = z.object({
+  artifactType: z.enum(allowedArtifactTypes),
+  objectPath: requiredTrimmedString(512),
+});
+
+function formatZodErrorMessage(error: z.ZodError): string {
+  return (
+    error.issues
+      .map((issue) => `${issue.path.join(".") || "body"}: ${issue.message}`)
+      .join("; ") || "Invalid request body"
+  );
+}
 
 function stableId(namespace: string, key: string): string {
   return crypto.createHash("sha256").update(`${namespace}:${key}`).digest("hex").slice(0, 32);
+}
+
+function sha256(value: string): string {
+  return crypto.createHash("sha256").update(value).digest("hex");
 }
 
 function normalizeOptionalText(value: string | null | undefined) {
@@ -40,17 +143,9 @@ function validateArtifactUpload(input: {
   artifactType: string;
   objectPath: string;
 }) {
-  const allowedArtifactTypes = new Set([
-    "resume",
-    "transcript",
-    "other",
-    "project",
-    "portfolio",
-    "presentation",
-    "certification",
-  ]);
+  const allowedArtifactTypesSet = new Set(allowedArtifactTypes);
 
-  if (!allowedArtifactTypes.has(input.artifactType)) {
+  if (!allowedArtifactTypesSet.has(input.artifactType as (typeof allowedArtifactTypes)[number])) {
     throw new Error("INVALID_ARTIFACT_TYPE");
   }
 
@@ -169,15 +264,18 @@ export async function studentProfileUpsertRoute(req: IncomingMessage, res: Serve
       return unauthorized(res);
     }
 
-    const body = await readJsonBody<{
-      schoolName?: string;
-      expectedGraduationDate?: string;
-      majorPrimary?: string;
-      majorSecondary?: string;
-      preferredGeographies?: string[];
-      careerGoalSummary?: string;
-      academicNotes?: string;
-    }>(req);
+    let raw: unknown;
+    try {
+      raw = await readJsonBody(req);
+    } catch {
+      return badRequest(res, "Invalid JSON body");
+    }
+
+    const parsed = studentProfileBodySchema.safeParse(raw);
+    if (!parsed.success) {
+      return badRequest(res, formatZodErrorMessage(parsed.error));
+    }
+    const body = parsed.data;
 
     const studentProfileId =
       ctx.studentProfileId || stableId("student_profile", ctx.authenticatedUserId);
@@ -190,9 +288,7 @@ export async function studentProfileUpsertRoute(req: IncomingMessage, res: Serve
       expectedGraduationDate: normalizeOptionalDate(body.expectedGraduationDate),
       majorPrimary: normalizeOptionalText(body.majorPrimary),
       majorSecondary: normalizeOptionalText(body.majorSecondary),
-      preferredGeographies: Array.isArray(body.preferredGeographies)
-        ? body.preferredGeographies.map((item) => item.trim()).filter(Boolean)
-        : [],
+      preferredGeographies: body.preferredGeographies,
       careerGoalSummary: normalizeOptionalText(body.careerGoalSummary),
       academicNotes: normalizeOptionalText(body.academicNotes),
     });
@@ -249,8 +345,17 @@ export async function sectorSelectionRoute(req: IncomingMessage, res: ServerResp
       return badRequest(res, "No student profile resolved");
     }
 
-    const body = await readJsonBody<{ sectorClusters?: string[] }>(req);
-    const selections = Array.isArray(body.sectorClusters) ? body.sectorClusters.filter(Boolean) : [];
+    let raw: unknown;
+    try {
+      raw = await readJsonBody(req);
+    } catch {
+      return badRequest(res, "Invalid JSON body");
+    }
+    const parsed = sectorSelectionBodySchema.safeParse(raw);
+    if (!parsed.success) {
+      return badRequest(res, formatZodErrorMessage(parsed.error));
+    }
+    const selections = Array.from(new Set(parsed.data.sectorClusters));
 
     await ensureOnboardingState(ctx.studentProfileId);
     await onboardingRepo.replaceSectorSelections(ctx.studentProfileId, selections);
@@ -276,8 +381,18 @@ export async function networkBaselineRoute(req: IncomingMessage, res: ServerResp
       return badRequest(res, "No student profile resolved");
     }
 
-    const body = await readJsonBody<{ notes?: string }>(req);
-    const rawLines = (body.notes || "")
+    let raw: unknown;
+    try {
+      raw = await readJsonBody(req);
+    } catch {
+      return badRequest(res, "Invalid JSON body");
+    }
+    const parsed = networkBaselineBodySchema.safeParse(raw);
+    if (!parsed.success) {
+      return badRequest(res, formatZodErrorMessage(parsed.error));
+    }
+
+    const rawLines = (parsed.data.notes || "")
       .split(/\r?\n/)
       .map((s) => s.trim())
       .filter(Boolean);
@@ -336,16 +451,17 @@ export async function deadlineCreateRoute(req: IncomingMessage, res: ServerRespo
       return badRequest(res, "No student profile resolved");
     }
 
-    const body = await readJsonBody<{
-      title?: string;
-      dueDate?: string;
-      deadlineType?: string;
-      notes?: string;
-    }>(req);
-
-    if (!body.title || !body.dueDate || !body.deadlineType) {
-      return badRequest(res, "title, dueDate, and deadlineType are required");
+    let raw: unknown;
+    try {
+      raw = await readJsonBody(req);
+    } catch {
+      return badRequest(res, "Invalid JSON body");
     }
+    const parsed = deadlineCreateBodySchema.safeParse(raw);
+    if (!parsed.success) {
+      return badRequest(res, formatZodErrorMessage(parsed.error));
+    }
+    const body = parsed.data;
 
     const deadlineId = stableId("deadline", `${ctx.studentProfileId}:${body.title}:${body.dueDate}`);
 
@@ -381,15 +497,17 @@ export async function uploadPresignRoute(req: IncomingMessage, res: ServerRespon
       return badRequest(res, "No student profile resolved");
     }
 
-    const body = await readJsonBody<{
-      artifactType?: string;
-      fileName?: string;
-      contentType?: string;
-    }>(req);
-
-    if (!body.artifactType || !body.fileName || !body.contentType) {
-      return badRequest(res, "artifactType, fileName, and contentType are required");
+    let raw: unknown;
+    try {
+      raw = await readJsonBody(req);
+    } catch {
+      return badRequest(res, "Invalid JSON body");
     }
+    const parsed = uploadPresignBodySchema.safeParse(raw);
+    if (!parsed.success) {
+      return badRequest(res, formatZodErrorMessage(parsed.error));
+    }
+    const body = parsed.data;
 
     try {
       validateUploadSourceFile({
@@ -419,6 +537,16 @@ export async function uploadPresignRoute(req: IncomingMessage, res: ServerRespon
       upsert: false,
     });
 
+    await artifactRepo.upsertUploadTarget({
+      uploadTargetId: stableId("upload_target", `${ctx.studentProfileId}:${objectPath}`),
+      studentProfileId: ctx.studentProfileId,
+      artifactType: body.artifactType,
+      bucket: signedTarget.bucket,
+      objectPath: signedTarget.path,
+      tokenHash: sha256(signedTarget.token),
+      expiresAt: new Date(Date.now() + uploadTargetTtlMinutes * 60_000).toISOString(),
+    });
+
     return json(res, 200, {
       ok: true,
       bucket: signedTarget.bucket,
@@ -440,14 +568,17 @@ export async function uploadCompleteRoute(req: IncomingMessage, res: ServerRespo
       return badRequest(res, "No student profile resolved");
     }
 
-    const body = await readJsonBody<{
-      artifactType?: string;
-      objectPath?: string;
-    }>(req);
-
-    if (!body.artifactType || !body.objectPath) {
-      return badRequest(res, "artifactType and objectPath are required");
+    let raw: unknown;
+    try {
+      raw = await readJsonBody(req);
+    } catch {
+      return badRequest(res, "Invalid JSON body");
     }
+    const parsed = uploadCompleteBodySchema.safeParse(raw);
+    if (!parsed.success) {
+      return badRequest(res, formatZodErrorMessage(parsed.error));
+    }
+    const body = parsed.data;
 
     try {
       validateArtifactUpload({
@@ -465,11 +596,36 @@ export async function uploadCompleteRoute(req: IncomingMessage, res: ServerRespo
       throw error;
     }
 
+    const uploadTarget = await artifactRepo.getUploadTargetByObjectPath(
+      ctx.studentProfileId,
+      body.objectPath
+    );
+    if (!uploadTarget) {
+      return badRequest(
+        res,
+        "objectPath was not minted by the server presign endpoint for the authenticated student"
+      );
+    }
+    if (uploadTarget.artifact_type !== body.artifactType) {
+      return badRequest(res, "artifactType does not match the minted upload target");
+    }
+
+    const now = Date.now();
+    const expiresAt = Date.parse(uploadTarget.expires_at);
+    const alreadyConsumed = !!uploadTarget.consumed_at;
+    if (!alreadyConsumed && Number.isFinite(expiresAt) && expiresAt < now) {
+      return badRequest(
+        res,
+        "The upload target has expired. Request a fresh upload link and upload the file again."
+      );
+    }
+
     const result = await persistArtifactAndQueueParse({
       studentProfileId: ctx.studentProfileId,
       artifactType: body.artifactType,
       objectPath: body.objectPath,
     });
+    await artifactRepo.markUploadTargetConsumed(uploadTarget.upload_target_id);
 
     return json(res, 200, {
       ok: true,

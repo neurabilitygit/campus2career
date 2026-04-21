@@ -131,7 +131,22 @@ const catalogIngestionBodySchema = z.object({
         )
         .optional(),
     })
-  ),
+  ).superRefine((courses, ctx) => {
+    for (let index = 0; index < courses.length; index += 1) {
+      const course = courses[index];
+      if (
+        course.creditsMin != null &&
+        course.creditsMax != null &&
+        course.creditsMax < course.creditsMin
+      ) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: [index, "creditsMax"],
+          message: "creditsMax must be greater than or equal to creditsMin",
+        });
+      }
+    }
+  }),
   requirements: z.object({
     displayName: z.string().trim().min(1),
     totalCreditsRequired: z.number().nonnegative().optional(),
@@ -157,6 +172,14 @@ const catalogIngestionBodySchema = z.object({
       })
     ).min(1),
   }),
+}).superRefine((body, ctx) => {
+  if (body.catalog.endYear < body.catalog.startYear) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["catalog", "endYear"],
+      message: "endYear must be greater than or equal to startYear",
+    });
+  }
 });
 
 const catalogDiscoveryBodySchema = z.object({
@@ -170,6 +193,9 @@ const programRequirementDiscoveryBodySchema = z.object({
   programName: z.string().trim().min(1),
   majorCanonicalName: z.string().trim().min(1).optional(),
   minorCanonicalName: z.string().trim().min(1).optional(),
+}).refine((body) => !!body.majorCanonicalName || !!body.minorCanonicalName, {
+  message: "At least one of majorCanonicalName or minorCanonicalName is required",
+  path: ["majorCanonicalName"],
 });
 
 function formatZodErrorMessage(error: z.ZodError): string {
@@ -486,6 +512,9 @@ export async function catalogIngestionRoute(req: IncomingMessage, res: ServerRes
       setType: "major",
       displayName: parsed.data.requirements.displayName,
       totalCreditsRequired: parsed.data.requirements.totalCreditsRequired,
+      provenanceMethod: "manual",
+      sourceUrl: parsed.data.catalog.sourceUrl,
+      sourceNote: "Admin or coach catalog ingestion",
     });
 
     await replaceResolvedRequirementGroups({

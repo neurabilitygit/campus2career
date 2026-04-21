@@ -256,6 +256,10 @@ export async function extractCatalogRequirementsFromArtifact(input: {
     totalCreditsRequired,
     majorCanonicalName: input.programKind === "major" ? resolvedCanonicalName : undefined,
     minorCanonicalName: input.programKind === "minor" ? resolvedCanonicalName : undefined,
+    provenanceMethod: "artifact_pdf",
+    sourceNote: input.academicArtifactId
+      ? `Extracted from uploaded academic artifact ${input.academicArtifactId}`
+      : "Extracted from uploaded academic artifact",
   });
 
   await replaceResolvedRequirementGroups({

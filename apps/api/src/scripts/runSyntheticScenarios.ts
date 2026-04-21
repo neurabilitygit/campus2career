@@ -483,6 +483,8 @@ async function ensureSyntheticCatalogScaffold(scenario: SyntheticScenario) {
         0
       ),
       majorCanonicalName: scenario.catalogAssignment.majorCanonicalName,
+      provenanceMethod: "synthetic_seed",
+      sourceNote: `Synthetic scenario scaffold for ${scenario.id}`,
     });
 
     if (requirementPlan.matchedCourses.length > 0 || requirementPlan.futureCourses.length > 0) {
@@ -540,6 +542,8 @@ async function ensureSyntheticCatalogScaffold(scenario: SyntheticScenario) {
       displayName: `${scenario.publicBasis.minorDisplayName} synthetic requirements`,
       totalCreditsRequired: 18,
       minorCanonicalName: scenario.catalogAssignment.minorCanonicalName,
+      provenanceMethod: "synthetic_seed",
+      sourceNote: `Synthetic scenario scaffold for ${scenario.id}`,
     });
   }
 }

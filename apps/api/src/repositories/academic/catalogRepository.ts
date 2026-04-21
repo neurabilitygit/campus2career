@@ -115,6 +115,9 @@ export interface RequirementSetRow {
   set_type: "major" | "minor" | "concentration" | "degree_core" | "general_education";
   display_name: string;
   total_credits_required: number | null;
+  provenance_method: "direct_scrape" | "artifact_pdf" | "manual" | "llm_assisted" | "synthetic_seed" | null;
+  source_url: string | null;
+  source_note: string | null;
 }
 
 export interface RequirementGroupRow {
@@ -723,6 +726,9 @@ export class CatalogRepository {
     setType: "major" | "minor" | "concentration" | "degree_core" | "general_education";
     displayName: string;
     totalCreditsRequired?: number | null;
+    provenanceMethod?: "direct_scrape" | "artifact_pdf" | "manual" | "llm_assisted" | "synthetic_seed" | null;
+    sourceUrl?: string | null;
+    sourceNote?: string | null;
   }): Promise<void> {
     await query(
       `
@@ -733,15 +739,21 @@ export class CatalogRepository {
         concentration_id,
         set_type,
         display_name,
-        total_credits_required
-      ) values ($1,$2,$3,$4,$5,$6,$7)
+        total_credits_required,
+        provenance_method,
+        source_url,
+        source_note
+      ) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
       on conflict (requirement_set_id) do update set
         major_id = excluded.major_id,
         minor_id = excluded.minor_id,
         concentration_id = excluded.concentration_id,
         set_type = excluded.set_type,
         display_name = excluded.display_name,
-        total_credits_required = excluded.total_credits_required
+        total_credits_required = excluded.total_credits_required,
+        provenance_method = excluded.provenance_method,
+        source_url = excluded.source_url,
+        source_note = excluded.source_note
       `,
       [
         input.requirementSetId,
@@ -751,6 +763,9 @@ export class CatalogRepository {
         input.setType,
         input.displayName,
         input.totalCreditsRequired ?? null,
+        input.provenanceMethod ?? null,
+        input.sourceUrl ?? null,
+        input.sourceNote ?? null,
       ]
     );
   }

@@ -1,3 +1,10 @@
+export type RequirementSetProvenanceMethod =
+  | "direct_scrape"
+  | "artifact_pdf"
+  | "manual"
+  | "llm_assisted"
+  | "synthetic_seed";
+
 export interface InstitutionInput {
   canonicalName: string;
   displayName: string;
@@ -74,6 +81,9 @@ export interface RequirementSetInput {
   totalCreditsRequired?: number;
   majorCanonicalName?: string;
   minorCanonicalName?: string;
+  provenanceMethod?: RequirementSetProvenanceMethod;
+  sourceUrl?: string;
+  sourceNote?: string;
 }
 
 export interface RequirementGroupInput {
@@ -200,5 +210,8 @@ export interface RequirementSetGraph {
   setType: RequirementSetInput["setType"];
   displayName: string;
   totalCreditsRequired?: number | null;
+  provenanceMethod?: RequirementSetProvenanceMethod | null;
+  sourceUrl?: string | null;
+  sourceNote?: string | null;
   groups: RequirementGroupGraphNode[];
 }

@@ -28,7 +28,96 @@ export interface AcademicArtifactRow {
   extracted_summary: string | null;
 }
 
+export interface UploadTargetRow {
+  upload_target_id: string;
+  student_profile_id: string;
+  artifact_type: string;
+  bucket: string;
+  object_path: string;
+  token_hash: string | null;
+  issued_at: string;
+  expires_at: string;
+  consumed_at: string | null;
+}
+
 export class ArtifactRepository {
+  async upsertUploadTarget(input: {
+    uploadTargetId: string;
+    studentProfileId: string;
+    artifactType: string;
+    bucket: string;
+    objectPath: string;
+    tokenHash?: string | null;
+    expiresAt: string;
+  }): Promise<void> {
+    await query(
+      `
+      insert into upload_targets (
+        upload_target_id,
+        student_profile_id,
+        artifact_type,
+        bucket,
+        object_path,
+        token_hash,
+        issued_at,
+        expires_at,
+        consumed_at
+      ) values ($1,$2,$3,$4,$5,$6,now(),$7,null)
+      on conflict (object_path) do update set
+        student_profile_id = excluded.student_profile_id,
+        artifact_type = excluded.artifact_type,
+        bucket = excluded.bucket,
+        token_hash = excluded.token_hash,
+        issued_at = now(),
+        expires_at = excluded.expires_at,
+        consumed_at = null
+      `,
+      [
+        input.uploadTargetId,
+        input.studentProfileId,
+        input.artifactType,
+        input.bucket,
+        input.objectPath,
+        input.tokenHash ?? null,
+        input.expiresAt,
+      ]
+    );
+  }
+
+  async getUploadTargetByObjectPath(studentProfileId: string, objectPath: string): Promise<UploadTargetRow | null> {
+    const result = await query<UploadTargetRow>(
+      `
+      select
+        upload_target_id,
+        student_profile_id,
+        artifact_type,
+        bucket,
+        object_path,
+        token_hash,
+        issued_at,
+        expires_at,
+        consumed_at
+      from upload_targets
+      where student_profile_id = $1
+        and object_path = $2
+      limit 1
+      `,
+      [studentProfileId, objectPath]
+    );
+    return result.rows[0] || null;
+  }
+
+  async markUploadTargetConsumed(uploadTargetId: string): Promise<void> {
+    await query(
+      `
+      update upload_targets
+      set consumed_at = coalesce(consumed_at, now())
+      where upload_target_id = $1
+      `,
+      [uploadTargetId]
+    );
+  }
+
   async createAcademicArtifact(input: CreateAcademicArtifactInput): Promise<void> {
     await query(
       `

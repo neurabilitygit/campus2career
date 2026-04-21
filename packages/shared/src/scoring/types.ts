@@ -1,3 +1,5 @@
+import type { RequirementSetProvenanceMethod } from "../contracts/academic";
+
 export type TrajectoryStatus = "on_track" | "watch" | "at_risk";
 export type GapSeverity = "low" | "medium" | "high";
 export type ProficiencyBand = "none" | "basic" | "intermediate" | "advanced";
@@ -109,6 +111,9 @@ export interface RequirementProgressSummary {
   programName?: string;
   majorDisplayName?: string;
   requirementSetDisplayName?: string;
+  provenanceMethod?: RequirementSetProvenanceMethod | null;
+  sourceUrl?: string | null;
+  sourceNote?: string | null;
   totalRequirementItems: number;
   satisfiedRequirementItems: number;
   totalRequirementGroups: number;
