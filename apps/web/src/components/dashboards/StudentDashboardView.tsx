@@ -144,6 +144,24 @@ function scoreLabel(score: number | undefined): string {
   return "Weak";
 }
 
+function academicBindingLabel(
+  requirementProgress: ScoringInputPayload["requirementProgress"] | undefined
+): string {
+  if (!requirementProgress) {
+    return "Not bound";
+  }
+
+  if (requirementProgress.boundToCatalog) {
+    return "Bound";
+  }
+
+  if (requirementProgress.institutionDisplayName || requirementProgress.catalogLabel || requirementProgress.majorDisplayName) {
+    return "Assignment saved, requirements pending";
+  }
+
+  return "Not bound";
+}
+
 const roleOptions = listTargetRoleOptions();
 
 export default function StudentDashboardView() {
@@ -193,6 +211,14 @@ export default function StudentDashboardView() {
   const transcript = scoring.data?.scoringInput?.transcript;
   const requirementProgress = scoring.data?.scoringInput?.requirementProgress;
   const comparison = scoring.data?.comparison;
+  const hasAssignmentWithoutRequirements =
+    !!requirementProgress &&
+    !requirementProgress.boundToCatalog &&
+    !!(
+      requirementProgress.institutionDisplayName ||
+      requirementProgress.catalogLabel ||
+      requirementProgress.majorDisplayName
+    );
 
   return (
     <AppShell title="Student Dashboard" subtitle="Scoring, academic progress, market inputs, and role-specific guidance.">
@@ -302,7 +328,7 @@ export default function StudentDashboardView() {
               />
               <KeyValueList
                 items={[
-                  { label: "Catalog binding", value: requirementProgress?.boundToCatalog ? "Bound" : "Not bound" },
+                  { label: "Catalog binding", value: academicBindingLabel(requirementProgress) },
                   { label: "Institution", value: requirementProgress?.institutionDisplayName || "Unknown" },
                   { label: "Catalog", value: requirementProgress?.catalogLabel || "Unknown" },
                   { label: "Program", value: requirementProgress?.programName || "Unknown" },
@@ -310,6 +336,23 @@ export default function StudentDashboardView() {
                   { label: "Requirement completion", value: `${requirementProgress?.completionPercent ?? 0}%` },
                 ]}
               />
+              {hasAssignmentWithoutRequirements ? (
+                <div
+                  style={{
+                    border: "1px solid #dbe4f0",
+                    borderRadius: 14,
+                    padding: "14px 16px",
+                    background: "#f8fbff",
+                    color: "#475569",
+                    lineHeight: 1.6,
+                  }}
+                >
+                  Your academic path has been saved, but the system has not yet extracted a structured
+                  requirement graph for this program. Scoring can still use market and activity data,
+                  but curriculum-aware requirement completion will stay limited until those requirements
+                  are loaded or a catalog PDF is uploaded.
+                </div>
+              ) : null}
               {transcript?.transcriptSummary ? (
                 <div>
                   <strong>Transcript summary</strong>

@@ -27,6 +27,8 @@ export interface ScenarioChatResponse {
   providerError?: string;
 }
 
+const SCENARIO_CHAT_PROVIDER_TIMEOUT_MS = 5000;
+
 function buildStudentSystemPrompt(input: ScenarioChatInput): string {
   return [
     "You are the Campus2Career student strategist.",
@@ -138,12 +140,33 @@ function normalizeScenarioChatResponse(raw: unknown): ScenarioChatResponse {
   };
 }
 
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, errorMessage: string): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((_, reject) => {
+        timeoutId = setTimeout(() => reject(new Error(errorMessage)), timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+  }
+}
+
 export async function runScenarioChat(input: ScenarioChatInput): Promise<ScenarioChatResponse> {
   try {
-    const raw = await runScenarioChatWithWebSearch({
-      systemPrompt: buildStudentSystemPrompt(input),
-      userPrompt: buildStudentUserPrompt(input),
-    });
+    const raw = await withTimeout(
+      runScenarioChatWithWebSearch({
+        systemPrompt: buildStudentSystemPrompt(input),
+        userPrompt: buildStudentUserPrompt(input),
+      }),
+      SCENARIO_CHAT_PROVIDER_TIMEOUT_MS,
+      "SCENARIO_CHAT_TIMEOUT"
+    );
     return normalizeScenarioChatResponse(extractJsonObject(raw));
   } catch (error) {
     const providerError =

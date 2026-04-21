@@ -227,10 +227,17 @@ export async function assignStudentCatalog(input: StudentCatalogAssignmentInput)
     }
   }
 
-  const assignmentId = stableId(
-    "student_catalog_assignment",
-    `${input.studentProfileId}:${normalizeKeyPart(input.institutionCanonicalName)}:${normalizeKeyPart(input.catalogLabel)}:${input.isPrimary !== false ? "primary" : "secondary"}`
-  );
+  const existingPrimaryAssignment =
+    input.isPrimary !== false
+      ? await repo.getPrimaryStudentCatalogAssignment(input.studentProfileId)
+      : null;
+
+  const assignmentId =
+    existingPrimaryAssignment?.student_catalog_assignment_id ||
+    stableId(
+      "student_catalog_assignment",
+      `${input.studentProfileId}:${normalizeKeyPart(input.institutionCanonicalName)}:${normalizeKeyPart(input.catalogLabel)}:${input.isPrimary !== false ? "primary" : "secondary"}`
+    );
 
   await repo.upsertStudentCatalogAssignment({
     studentCatalogAssignmentId: assignmentId,

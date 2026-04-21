@@ -169,6 +169,11 @@ export async function buildAcademicScoringEvidence(studentProfileId: string): Pr
       transcript: transcriptSummary,
       requirementProgress: {
         boundToCatalog: false,
+        institutionDisplayName: assignment?.institution_display_name || undefined,
+        catalogLabel: assignment?.catalog_label || undefined,
+        degreeType: assignment?.degree_type || undefined,
+        programName: assignment?.program_name || undefined,
+        majorDisplayName: assignment?.major_display_name || undefined,
         totalRequirementItems: 0,
         satisfiedRequirementItems: 0,
         totalRequirementGroups: 0,
