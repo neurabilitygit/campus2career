@@ -20,6 +20,13 @@ interface ExtractedCatalogCourse {
   creditsMax?: number;
 }
 
+interface ExtractedRequirementRule {
+  itemLabel: string;
+  itemType: "manual_rule" | "department_elective";
+  minCoursesRequired?: number;
+  coursePrefix?: string;
+}
+
 function normalizeWhitespace(value: string): string {
   return value.replace(/\s+/g, " ").trim();
 }
@@ -111,6 +118,9 @@ function extractCatalogCoursesFromText(text: string): ExtractedCatalogCourse[] {
     /(?<code>[A-Z]{2,5}\s?-?\d{2,4}[A-Z]?)\s*[:\-]\s*(?<title>[A-Za-z0-9 ,/&()'.]{3,120}?)(?:\.\s*|\s+-\s+)?(?<credits>\d+(?:\.\d+)?)\s*(?:credits?|credit hours?|hrs?)/i,
     /(?<code>[A-Z]{2,5}\s?-?\d{2,4}[A-Z]?)\s+(?<title>[A-Za-z0-9 ,/&()'.]{3,120}?)\s+(?<credits>\d+(?:\.\d+)?)\s*(?:credits?|credit hours?|hrs?)/i,
     /(?<code>[A-Z]{2,5}\s?-?\d{2,4}[A-Z]?)\s*[:\-]\s*(?<title>[A-Za-z0-9 ,/&()'.]{3,120})/i,
+    /(?<code>[A-Z]{2,5}\s?-?\d{2,4}[A-Z]?)\s*,\s*(?<title>[A-Za-z][A-Za-z0-9 ,/&()'.-]{3,120})/i,
+    /^(?<code>[A-Z]{2,5}\s?-?\d{2,4}[A-Z]?)\s*\((?<title>[^)]+)\)$/i,
+    /^\[\s?\]\s*(?<code>[A-Z]{2,5}\s?-?\d{2,4}[A-Z]?)\s+completed\b/i,
   ];
 
   const byCode = new Map<string, ExtractedCatalogCourse>();
@@ -120,12 +130,12 @@ function extractCatalogCoursesFromText(text: string): ExtractedCatalogCourse[] {
       const match = line.match(pattern);
       const rawCode = match?.groups?.code;
       const rawTitle = match?.groups?.title;
-      if (!rawCode || !rawTitle) {
+      if (!rawCode) {
         continue;
       }
 
       const courseCode = normalizeWhitespace(rawCode).replace(/\s+/g, "");
-      const courseTitle = normalizeWhitespace(rawTitle);
+      const courseTitle = normalizeWhitespace(rawTitle || courseCode);
       if (!courseCode || !courseTitle) {
         continue;
       }
@@ -146,6 +156,166 @@ function extractCatalogCoursesFromText(text: string): ExtractedCatalogCourse[] {
   }
 
   return Array.from(byCode.values());
+}
+
+function maybeTrimToRequirementSections(text: string): string {
+  const normalized = text.replace(/\r\n/g, "\n");
+  const stopMarkers = [
+    /\n4\.\s+special courses/i,
+    /\n5\.\s+suggested way to read/i,
+    /\n6\.\s+source note/i,
+    /\n7\.\s+final caution/i,
+  ];
+
+  let endIndex = normalized.length;
+  for (const marker of stopMarkers) {
+    const match = marker.exec(normalized);
+    if (match && match.index < endIndex) {
+      endIndex = match.index;
+    }
+  }
+
+  return normalized.slice(0, endIndex);
+}
+
+function numberWordToCount(value: string): number | null {
+  const normalized = value.trim().toLowerCase();
+  const map: Record<string, number> = {
+    one: 1,
+    two: 2,
+    three: 3,
+    four: 4,
+    five: 5,
+    six: 6,
+    seven: 7,
+    eight: 8,
+    nine: 9,
+    ten: 10,
+    eleven: 11,
+    twelve: 12,
+  };
+
+  if (normalized in map) {
+    return map[normalized];
+  }
+
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+}
+
+function inferDominantDepartmentPrefix(courses: ExtractedCatalogCourse[]): string | undefined {
+  const counts = new Map<string, number>();
+  for (const course of courses) {
+    const prefix = course.courseCode.match(/^[A-Z]{2,5}/)?.[0];
+    if (!prefix) continue;
+    counts.set(prefix, (counts.get(prefix) || 0) + 1);
+  }
+
+  const ranked = Array.from(counts.entries()).sort((a, b) => b[1] - a[1]);
+  return ranked[0]?.[0];
+}
+
+function extractRequirementRulesFromText(
+  text: string,
+  explicitCourses: ExtractedCatalogCourse[]
+): ExtractedRequirementRule[] {
+  const extractionWindow = maybeTrimToRequirementSections(text);
+  const lines = extractionWindow
+    .split(/\r?\n/)
+    .map((line) => normalizeWhitespace(line))
+    .filter(Boolean);
+
+  const dominantPrefix = inferDominantDepartmentPrefix(explicitCourses);
+  const byLabel = new Map<string, ExtractedRequirementRule>();
+
+  const addRule = (rule: ExtractedRequirementRule) => {
+    const label = normalizeWhitespace(rule.itemLabel);
+    if (!label || byLabel.has(label.toLowerCase())) {
+      return;
+    }
+    byLabel.set(label.toLowerCase(), {
+      ...rule,
+      itemLabel: label,
+    });
+  };
+
+  for (const line of lines) {
+    const sectionHeadingMatch = line.match(
+      /^(?<ordinal>\d+)\.\s+(?<label>.+?)\s+\((?<count>\d+)\s+courses?\)$/i
+    );
+    if (sectionHeadingMatch?.groups?.label && sectionHeadingMatch.groups.count) {
+      const label = normalizeWhitespace(sectionHeadingMatch.groups.label);
+      const count = Number(sectionHeadingMatch.groups.count);
+      const isElectiveLike =
+        /elective|approved offerings|within the department|philosophy/i.test(label);
+      addRule({
+        itemLabel: label,
+        itemType: isElectiveLike ? "department_elective" : "manual_rule",
+        minCoursesRequired: Number.isFinite(count) && count > 0 ? count : undefined,
+        coursePrefix: isElectiveLike && dominantPrefix ? dominantPrefix : undefined,
+      });
+      continue;
+    }
+
+    const explicitCourseCode = line.match(/\b[A-Z]{2,5}\s?-?\d{2,4}[A-Z]?\b/);
+    if (explicitCourseCode && /\brequired\b/i.test(line)) {
+      continue;
+    }
+
+    const categoryMatch = line.match(
+      /^(?<count>one|two|three|four|five|six|seven|eight|nine|ten|\d+)\s+(?<rest>.+?courses?.*)$/i
+    );
+    if (categoryMatch?.groups?.count && categoryMatch.groups.rest) {
+      const count = numberWordToCount(categoryMatch.groups.count);
+      if (count && /course/i.test(categoryMatch.groups.rest)) {
+        addRule({
+          itemLabel: line.replace(/\.$/, ""),
+          itemType: "manual_rule",
+          minCoursesRequired: count,
+        });
+        continue;
+      }
+    }
+
+    const checklistMatch = line.match(
+      /^\[\s?\]\s*(?<count>\d+)\s+(?<label>.+?course.+?)\s+completed$/i
+    );
+    if (checklistMatch?.groups?.count && checklistMatch.groups.label) {
+      addRule({
+        itemLabel: normalizeWhitespace(checklistMatch.groups.label),
+        itemType: "manual_rule",
+        minCoursesRequired: Number(checklistMatch.groups.count),
+      });
+      continue;
+    }
+
+    const totalMatch = line.match(
+      /^remaining approved concentration courses selected so the total reaches (?<count>\d+)$/i
+    );
+    if (totalMatch?.groups?.count) {
+      addRule({
+        itemLabel: `Remaining approved concentration courses to reach ${totalMatch.groups.count} total`,
+        itemType: dominantPrefix ? "department_elective" : "manual_rule",
+        minCoursesRequired: Number(totalMatch.groups.count),
+        coursePrefix: dominantPrefix,
+      });
+      continue;
+    }
+
+    const remainingMatch = line.match(
+      /^complete the remaining courses needed to reach the (?<count>\d+)[-\s]?course total/i
+    );
+    if (remainingMatch?.groups?.count) {
+      addRule({
+        itemLabel: `Remaining department-approved courses to reach ${remainingMatch.groups.count} total`,
+        itemType: dominantPrefix ? "department_elective" : "manual_rule",
+        minCoursesRequired: Number(remainingMatch.groups.count),
+        coursePrefix: dominantPrefix,
+      });
+    }
+  }
+
+  return Array.from(byLabel.values());
 }
 
 export async function extractCatalogRequirementsFromArtifact(input: {
@@ -188,7 +358,10 @@ export async function extractCatalogRequirementsFromArtifact(input: {
   }
 
   const extractedCourses = extractCatalogCoursesFromText(input.artifactText);
-  if (extractedCourses.length < 3) {
+  const extractedRules = extractRequirementRulesFromText(input.artifactText, extractedCourses);
+  const recognizedRequirementSignals = extractedCourses.length + extractedRules.length;
+
+  if (recognizedRequirementSignals < 3) {
     throw new Error("CATALOG_ARTIFACT_EXTRACTION_EMPTY");
   }
 
@@ -262,24 +435,55 @@ export async function extractCatalogRequirementsFromArtifact(input: {
       : "Extracted from uploaded academic artifact",
   });
 
+  const requirementGroups: Array<{
+    groupName: string;
+    groupType: "all_of" | "choose_n" | "credits_bucket" | "one_of" | "capstone" | "gpa_rule";
+    displayOrder: number;
+    minCoursesRequired?: number;
+    items: Array<{
+      itemType: "course" | "course_pattern" | "free_elective" | "department_elective" | "manual_rule";
+      courseCode?: string;
+      itemLabel?: string;
+      coursePrefix?: string;
+      displayOrder: number;
+    }>;
+  }> = [];
+
+  if (extractedCourses.length) {
+    requirementGroups.push({
+      groupName: "Uploaded PDF explicit courses",
+      groupType: "all_of",
+      displayOrder: 0,
+      minCoursesRequired: extractedCourses.length,
+      items: extractedCourses.slice(0, 80).map((course, index) => ({
+        itemType: "course",
+        courseCode: course.courseCode,
+        itemLabel: course.courseTitle,
+        displayOrder: index,
+      })),
+    });
+  }
+
+  if (extractedRules.length) {
+    requirementGroups.push({
+      groupName: "Uploaded PDF requirement rules",
+      groupType: "all_of",
+      displayOrder: requirementGroups.length,
+      minCoursesRequired: extractedRules.length,
+      items: extractedRules.slice(0, 80).map((rule, index) => ({
+        itemType: rule.itemType,
+        itemLabel: rule.itemLabel,
+        coursePrefix: rule.coursePrefix,
+        displayOrder: index,
+      })),
+    });
+  }
+
   await replaceResolvedRequirementGroups({
     institutionCanonicalName: input.institutionCanonicalName,
     catalogLabel,
     requirementSetId,
-    groups: [
-      {
-        groupName: "Uploaded PDF requirement courses",
-        groupType: "all_of",
-        displayOrder: 0,
-        minCoursesRequired: extractedCourses.length,
-        items: extractedCourses.slice(0, 80).map((course, index) => ({
-          itemType: "course",
-          courseCode: course.courseCode,
-          itemLabel: course.courseTitle,
-          displayOrder: index,
-        })),
-      },
-    ],
+    groups: requirementGroups,
   });
 
   return {
@@ -291,6 +495,7 @@ export async function extractCatalogRequirementsFromArtifact(input: {
     programDisplayName: resolvedDisplayName,
     requirementSetId,
     extractedCourseCount: extractedCourses.length,
+    extractedRequirementRuleCount: extractedRules.length,
     totalCreditsRequired: totalCreditsRequired ?? null,
   };
 }

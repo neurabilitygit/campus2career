@@ -60,6 +60,70 @@ export const GAP_RECOMMENDATION_CATALOG: Record<string, RecommendationItem[]> = 
       whyThisMatchesStudent: "Strengthens communication signal in a visible way.",
       linkedSkillName: "stakeholder_communication",
     }
+  ],
+  information_security: [
+    {
+      recommendationType: "course",
+      title: "Complete a hands-on cybersecurity fundamentals course",
+      description: "Build comfort with core concepts like networks, identity, and incident response.",
+      effortLevel: "medium",
+      estimatedSignalStrength: "medium",
+      whyThisMatchesStudent: "Foundational security knowledge is hard to fake and easy to discuss in interviews.",
+      linkedSkillName: "information_security",
+    },
+    {
+      recommendationType: "project",
+      title: "Document a small security audit or lab",
+      description: "Analyze a sample system, controls setup, or threat scenario and write down your findings.",
+      effortLevel: "medium",
+      estimatedSignalStrength: "high",
+      whyThisMatchesStudent: "Security hiring responds well to concrete evidence of careful thinking.",
+      linkedSkillName: "information_security",
+    }
+  ],
+  statistics: [
+    {
+      recommendationType: "course",
+      title: "Complete a statistics or probability course with applied work",
+      description: "Focus on regression, inference, or experimental reasoning you can explain clearly.",
+      effortLevel: "medium",
+      estimatedSignalStrength: "high",
+      whyThisMatchesStudent: "This is a core requirement for actuarial, analytics, and many research paths.",
+      linkedSkillName: "statistics",
+    }
+  ],
+  legal_research: [
+    {
+      recommendationType: "project",
+      title: "Write a short legal or policy research memo",
+      description: "Choose a focused issue and summarize the governing rules, cases, and practical implications.",
+      effortLevel: "medium",
+      estimatedSignalStrength: "high",
+      whyThisMatchesStudent: "Clear legal writing demonstrates reasoning better than a generic interest statement.",
+      linkedSkillName: "legal_research",
+    }
+  ],
+  clinical_reasoning: [
+    {
+      recommendationType: "course",
+      title: "Strengthen advanced science and clinical decision foundations",
+      description: "Prioritize rigorous biology, chemistry, physiology, or clinical decision coursework.",
+      effortLevel: "high",
+      estimatedSignalStrength: "high",
+      whyThisMatchesStudent: "Clinical roles depend on reasoning that is built through formal preparation.",
+      linkedSkillName: "clinical_reasoning",
+    }
+  ],
+  patient_care: [
+    {
+      recommendationType: "volunteer",
+      title: "Gain direct patient-facing experience",
+      description: "Volunteer, shadow, or work in settings where you can observe or support real care workflows.",
+      effortLevel: "high",
+      estimatedSignalStrength: "high",
+      whyThisMatchesStudent: "Patient-facing evidence matters for medicine, nursing, and allied health tracks.",
+      linkedSkillName: "patient_care",
+    }
   ]
 };
 

@@ -284,17 +284,23 @@ export async function syncOnet() {
         .sort((a, b) => b.importanceScore - a.importanceScore)
         .slice(0, 20);
 
-      await replaceNormalizedSkillsForOccupation(
-        seed.canonicalName,
-        rankedSkills.map((skill) => ({
-          occupationCanonicalName: seed.canonicalName,
-          skillName: skill.skillName,
-          skillCategory: inferSkillCategory(skill.skillName),
-          importanceScore: skill.importanceScore,
-          requiredProficiencyBand: inferBandFromImportance(skill.importanceScore),
-          evidenceSource: "onet_database",
-        }))
-      );
+      if (rankedSkills.length > 0) {
+        await replaceNormalizedSkillsForOccupation(
+          seed.canonicalName,
+          rankedSkills.map((skill) => ({
+            occupationCanonicalName: seed.canonicalName,
+            skillName: skill.skillName,
+            skillCategory: inferSkillCategory(skill.skillName),
+            importanceScore: skill.importanceScore,
+            requiredProficiencyBand: inferBandFromImportance(skill.importanceScore),
+            evidenceSource: "onet_database",
+          }))
+        );
+      } else {
+        console.warn(
+          `No usable O*NET skill rows found for ${seed.canonicalName} (${matched.onetSocCode}); preserving existing seeded skill requirements`
+        );
+      }
 
       console.log(
         `Synced O*NET database occupation ${matched.onetSocCode} for ${seed.canonicalName} with ${rankedSkills.length} skills`

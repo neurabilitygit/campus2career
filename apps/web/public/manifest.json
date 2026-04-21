@@ -1,0 +1,16 @@
+{
+  "name": "Campus2Career",
+  "short_name": "Campus2Career",
+  "description": "Career intelligence platform for students, parents, and coaches.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#fffaf1",
+  "theme_color": "#123168",
+  "icons": [
+    {
+      "src": "/static/splash.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    }
+  ]
+}

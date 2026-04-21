@@ -1,3 +1,7 @@
+import { execFileSync } from "node:child_process";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import zlib from "node:zlib";
 
 function normalizeExtractedText(value: string): string {
@@ -83,6 +87,30 @@ function extractPdfText(buffer: Buffer): string {
   return normalizeExtractedText(extracted.join("\n"));
 }
 
+function tryExtractPdfTextViaPdftotext(buffer: Buffer): string | null {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "c2c-pdf-"));
+  const inputPath = path.join(tempDir, "document.pdf");
+
+  try {
+    fs.writeFileSync(inputPath, buffer);
+    const output = execFileSync("pdftotext", [inputPath, "-"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+      maxBuffer: 10 * 1024 * 1024,
+    });
+    const normalized = normalizeExtractedText(output);
+    return normalized || null;
+  } catch {
+    return null;
+  } finally {
+    try {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    } catch {
+      // Ignore temp cleanup failures.
+    }
+  }
+}
+
 function detectFileExtension(fileName: string): string {
   const match = fileName.toLowerCase().match(/\.([a-z0-9]+)$/);
   return match?.[1] || "";
@@ -119,6 +147,14 @@ export function extractDocumentText(input: {
   }
 
   if (contentType.includes("pdf") || extension === "pdf") {
+    const pdftotextResult = tryExtractPdfTextViaPdftotext(input.buffer);
+    if (pdftotextResult) {
+      return {
+        text: pdftotextResult,
+        method: "pdf_text",
+      };
+    }
+
     return {
       text: extractPdfText(input.buffer),
       method: "pdf_text",
