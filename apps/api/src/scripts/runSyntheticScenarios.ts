@@ -64,6 +64,13 @@ interface SyntheticScenario {
     majorCanonicalName?: string;
     minorCanonicalName?: string;
   };
+  requirementScaffold?: {
+    courses: Array<{
+      courseCode: string;
+      courseTitle: string;
+      credits?: number;
+    }>;
+  };
   transcript?: {
     institutionCanonicalName: string;
     transcriptSummary?: string;
@@ -218,6 +225,171 @@ function parseCatalogYears(catalogLabel: string) {
   };
 }
 
+type SyntheticCatalogCourseSeed = {
+  courseCode: string;
+  courseTitle: string;
+  credits: number | null;
+};
+
+const SYNTHETIC_REQUIREMENT_TARGET_COMPLETION: Record<
+  "freshman" | "sophomore" | "junior" | "senior" | "other",
+  number
+> = {
+  freshman: 0.25,
+  sophomore: 0.4,
+  junior: 0.5,
+  senior: 0.55,
+  other: 0.45,
+};
+
+const SYNTHETIC_MATCHED_COURSE_SHARE: Record<
+  "freshman" | "sophomore" | "junior" | "senior" | "other",
+  number
+> = {
+  freshman: 0.35,
+  sophomore: 0.4,
+  junior: 0.45,
+  senior: 0.5,
+  other: 0.4,
+};
+
+function deriveSyntheticAcademicYear(expectedGraduationDate?: string | null): "freshman" | "sophomore" | "junior" | "senior" | "other" {
+  if (!expectedGraduationDate) return "other";
+  const grad = new Date(expectedGraduationDate);
+  const now = new Date();
+  const months = (grad.getFullYear() - now.getFullYear()) * 12 + (grad.getMonth() - now.getMonth());
+  if (months > 36) return "freshman";
+  if (months > 24) return "sophomore";
+  if (months > 12) return "junior";
+  if (months >= -3) return "senior";
+  return "other";
+}
+
+function parseCourseLevelFromCode(courseCode?: string | null): number {
+  const match = courseCode?.match(/(\d{3,4})/);
+  return match ? Number(match[1]) : 0;
+}
+
+function deriveMajorKeywordTokens(scenario: SyntheticScenario) {
+  const raw = `${scenario.publicBasis.majorDisplayName} ${scenario.profile.majorPrimary}`;
+  return raw
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter((token) => token.length > 2)
+    .filter((token) => !["and", "for", "the", "with"].includes(token));
+}
+
+function chooseRequirementBackedCourses(
+  scenario: SyntheticScenario,
+  transcriptCourses: SyntheticCatalogCourseSeed[]
+) {
+  const tokens = deriveMajorKeywordTokens(scenario);
+  const year = deriveSyntheticAcademicYear(scenario.profile.expectedGraduationDate);
+  const targetCount = Math.max(
+    1,
+    Math.min(
+      transcriptCourses.length,
+      Math.round(transcriptCourses.length * SYNTHETIC_MATCHED_COURSE_SHARE[year])
+    )
+  );
+
+  return [...transcriptCourses]
+    .sort((left, right) => {
+      const score = (course: SyntheticCatalogCourseSeed) => {
+        const title = course.courseTitle.toLowerCase();
+        const tokenHits = tokens.filter((token) => title.includes(token)).length;
+        const researchBoost = /research|methods|capstone|seminar|project|analysis|statistics|probability|public health/i.test(
+          course.courseTitle
+        )
+          ? 18
+          : 0;
+        return tokenHits * 24 + researchBoost + parseCourseLevelFromCode(course.courseCode) / 50;
+      };
+      return score(right) - score(left);
+    })
+    .slice(0, targetCount);
+}
+
+function dominantCoursePrefix(courses: SyntheticCatalogCourseSeed[]) {
+  const counts = new Map<string, number>();
+  for (const course of courses) {
+    const prefix = course.courseCode.match(/^[A-Z]{2,4}/i)?.[0]?.toUpperCase();
+    if (!prefix) continue;
+    counts.set(prefix, (counts.get(prefix) || 0) + 1);
+  }
+
+  return [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || "SYN";
+}
+
+function buildFutureRequirementCourses(
+  scenario: SyntheticScenario,
+  matchedCourses: SyntheticCatalogCourseSeed[],
+  totalRequirementCount: number
+) {
+  const missingCount = Math.max(0, totalRequirementCount - matchedCourses.length);
+  if (missingCount === 0) {
+    return [];
+  }
+
+  const prefix = dominantCoursePrefix(matchedCourses);
+  const startingLevel = Math.max(
+    3000,
+    ...matchedCourses.map((course) => parseCourseLevelFromCode(course.courseCode))
+  );
+
+  return Array.from({ length: missingCount }, (_, index) => ({
+    courseCode: `${prefix}${startingLevel + (index + 1) * 10}`,
+    courseTitle: `Synthetic ${scenario.publicBasis.majorDisplayName} advanced requirement ${index + 1}`,
+    credits: 3,
+  }));
+}
+
+function buildSyntheticRequirementPlan(scenario: SyntheticScenario) {
+  if (scenario.requirementScaffold?.courses?.length) {
+    const explicitCourses = scenario.requirementScaffold.courses.map((course) => ({
+      courseCode: course.courseCode.trim(),
+      courseTitle: course.courseTitle,
+      credits: course.credits ?? 3,
+    }));
+
+    return {
+      matchedCourses: [] as SyntheticCatalogCourseSeed[],
+      futureCourses: explicitCourses,
+      allCatalogCourses: explicitCourses,
+    };
+  }
+
+  const uniqueTranscriptCourses = new Map<string, SyntheticCatalogCourseSeed>();
+  for (const term of scenario.transcript?.terms || []) {
+    for (const course of term.courses) {
+      const courseCode = course.rawCourseCode?.trim();
+      if (!courseCode || uniqueTranscriptCourses.has(courseCode)) {
+        continue;
+      }
+      uniqueTranscriptCourses.set(courseCode, {
+        courseCode,
+        courseTitle: course.rawCourseTitle,
+        credits: course.creditsEarned ?? course.creditsAttempted ?? null,
+      });
+    }
+  }
+
+  const transcriptCourses = Array.from(uniqueTranscriptCourses.values());
+  const matchedCourses = chooseRequirementBackedCourses(scenario, transcriptCourses);
+  const year = deriveSyntheticAcademicYear(scenario.profile.expectedGraduationDate);
+  const totalRequirementCount = Math.max(
+    matchedCourses.length + 1,
+    Math.ceil(matchedCourses.length / SYNTHETIC_REQUIREMENT_TARGET_COMPLETION[year])
+  );
+  const futureCourses = buildFutureRequirementCourses(scenario, matchedCourses, totalRequirementCount);
+
+  return {
+    matchedCourses,
+    futureCourses,
+    allCatalogCourses: [...matchedCourses, ...futureCourses],
+  };
+}
+
 async function ensureSyntheticCatalogScaffold(scenario: SyntheticScenario) {
   if (!scenario.catalogAssignment) {
     return;
@@ -270,30 +442,24 @@ async function ensureSyntheticCatalogScaffold(scenario: SyntheticScenario) {
     });
   }
 
-  const uniqueCourses = new Map<
-    string,
-    {
-      courseCode: string;
-      courseTitle: string;
-      credits: number | null;
-    }
-  >();
+  const requirementPlan = buildSyntheticRequirementPlan(scenario);
 
-  for (const term of scenario.transcript?.terms || []) {
-    for (const course of term.courses) {
-      const courseCode = course.rawCourseCode?.trim();
-      if (!courseCode || uniqueCourses.has(courseCode)) {
-        continue;
-      }
-      uniqueCourses.set(courseCode, {
-        courseCode,
-        courseTitle: course.rawCourseTitle,
-        credits: course.creditsEarned ?? course.creditsAttempted ?? null,
-      });
-    }
-  }
+  await query(
+    `
+    delete from catalog_courses
+    where academic_catalog_id = (
+      select ac.academic_catalog_id
+      from academic_catalogs ac
+      join institutions i on i.institution_id = ac.institution_id
+      where i.canonical_name = $1
+        and ac.catalog_label = $2
+      limit 1
+    )
+    `,
+    [scenario.publicBasis.institutionCanonicalName, scenario.catalogAssignment.catalogLabel]
+  );
 
-  for (const course of uniqueCourses.values()) {
+  for (const course of requirementPlan.allCatalogCourses) {
     await upsertCatalogCourse({
       institutionCanonicalName: scenario.publicBasis.institutionCanonicalName,
       catalogLabel: scenario.catalogAssignment.catalogLabel,
@@ -312,32 +478,53 @@ async function ensureSyntheticCatalogScaffold(scenario: SyntheticScenario) {
       programName: scenario.catalogAssignment.programName,
       setType: "major",
       displayName: `${scenario.publicBasis.majorDisplayName} synthetic requirements`,
-      totalCreditsRequired: Array.from(uniqueCourses.values()).reduce(
+      totalCreditsRequired: requirementPlan.allCatalogCourses.reduce(
         (sum, course) => sum + (course.credits || 0),
         0
       ),
       majorCanonicalName: scenario.catalogAssignment.majorCanonicalName,
     });
 
-    if (uniqueCourses.size > 0) {
+    if (requirementPlan.matchedCourses.length > 0 || requirementPlan.futureCourses.length > 0) {
       await replaceResolvedRequirementGroups({
         institutionCanonicalName: scenario.publicBasis.institutionCanonicalName,
         catalogLabel: scenario.catalogAssignment.catalogLabel,
         requirementSetId,
         groups: [
-          {
-            groupName: "Synthetic core courses",
-            groupType: "all_of",
-            minCoursesRequired: uniqueCourses.size,
-            displayOrder: 0,
-            items: Array.from(uniqueCourses.values()).map((course, index) => ({
-              itemType: "course",
-              courseCode: course.courseCode,
-              itemLabel: course.courseTitle,
-              creditsIfUsed: course.credits ?? undefined,
-              displayOrder: index,
-            })),
-          },
+          ...(requirementPlan.matchedCourses.length > 0
+            ? [
+                {
+                  groupName: "Synthetic completed major core",
+                  groupType: "all_of" as const,
+                  minCoursesRequired: requirementPlan.matchedCourses.length,
+                  displayOrder: 0,
+                  items: requirementPlan.matchedCourses.map((course, index) => ({
+                    itemType: "course" as const,
+                    courseCode: course.courseCode,
+                    itemLabel: course.courseTitle,
+                    creditsIfUsed: course.credits ?? undefined,
+                    displayOrder: index,
+                  })),
+                },
+              ]
+            : []),
+          ...(requirementPlan.futureCourses.length > 0
+            ? [
+                {
+                  groupName: "Synthetic remaining major requirements",
+                  groupType: "all_of" as const,
+                  minCoursesRequired: requirementPlan.futureCourses.length,
+                  displayOrder: 1,
+                  items: requirementPlan.futureCourses.map((course, index) => ({
+                    itemType: "course" as const,
+                    courseCode: course.courseCode,
+                    itemLabel: course.courseTitle,
+                    creditsIfUsed: course.credits ?? undefined,
+                    displayOrder: index,
+                  })),
+                },
+              ]
+            : []),
         ],
       });
     }

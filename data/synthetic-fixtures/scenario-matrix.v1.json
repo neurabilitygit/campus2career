@@ -281,6 +281,16 @@
         "programName": "Auto-discovered undergraduate programs",
         "majorCanonicalName": "biology"
       },
+      "requirementScaffold": {
+        "courses": [
+          { "courseCode": "APK2100C", "courseTitle": "Applied Human Anatomy with Laboratory", "credits": 4 },
+          { "courseCode": "APK2105C", "courseTitle": "Applied Human Physiology with Laboratory", "credits": 4 },
+          { "courseCode": "PHC3403", "courseTitle": "Critical Issues in Public Health", "credits": 3 },
+          { "courseCode": "PHC4407", "courseTitle": "Health Program Evaluation", "credits": 3 },
+          { "courseCode": "PHC6052", "courseTitle": "Public Health Data Analysis", "credits": 3 },
+          { "courseCode": "ECP3703", "courseTitle": "Managerial Economics", "credits": 4 }
+        ]
+      },
       "transcript": {
         "institutionCanonicalName": "college-scorecard-134130-university-of-florida",
         "transcriptSummary": "Senior biology transcript with stats and research methods supporting healthcare analysis.",
