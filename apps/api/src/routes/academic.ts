@@ -666,10 +666,17 @@ export async function catalogExtractFromArtifactRoute(req: IncomingMessage, res:
       academicArtifactId: artifact.academic_artifact_id,
     });
 
-    await artifactRepo.markArtifactParsed(
-      artifact.academic_artifact_id,
-      `Catalog PDF extracted via ${extractedDocument.method}. ${extracted.extractedCourseCount} courses parsed for ${extracted.programDisplayName}.`
-    );
+    await artifactRepo.markArtifactParsed({
+      artifactId: artifact.academic_artifact_id,
+      extractedSummary: `Catalog PDF extracted via ${extractedDocument.method}. ${extracted.extractedCourseCount} courses parsed for ${extracted.programDisplayName}.`,
+      parseTruthStatus: "inferred",
+      parseConfidenceLabel: extracted.extractedCourseCount >= 6 ? "high" : "medium",
+      extractionMethod: extractedDocument.method,
+      parseNotes:
+        extracted.extractedCourseCount >= 6
+          ? "Course rows were extracted from the uploaded catalog artifact and converted into structured requirements."
+          : "Only a limited number of course rows were extracted from the uploaded catalog artifact; manual review is still advisable.",
+    });
 
     return json(res, 200, {
       ok: true,

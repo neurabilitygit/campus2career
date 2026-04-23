@@ -7,6 +7,10 @@ export interface StudentTranscriptRow {
   institution_id: string | null;
   parsed_status: "pending" | "parsed" | "matched" | "review_required" | "failed";
   transcript_summary: string | null;
+  extraction_method: "plain_text" | "json_text" | "pdf_text" | null;
+  extraction_confidence_label: "low" | "medium" | "high" | null;
+  institution_resolution_truth_status: "direct" | "inferred" | "placeholder" | "fallback" | "unresolved";
+  institution_resolution_note: string | null;
 }
 
 export interface TranscriptTermRow {
@@ -56,6 +60,10 @@ export class TranscriptRepository {
     institutionId?: string | null;
     parsedStatus?: "pending" | "parsed" | "matched" | "review_required" | "failed";
     transcriptSummary?: string | null;
+    extractionMethod?: "plain_text" | "json_text" | "pdf_text" | null;
+    extractionConfidenceLabel?: "low" | "medium" | "high" | null;
+    institutionResolutionTruthStatus?: "direct" | "inferred" | "placeholder" | "fallback" | "unresolved";
+    institutionResolutionNote?: string | null;
   }): Promise<void> {
     await query(
       `
@@ -66,14 +74,22 @@ export class TranscriptRepository {
         institution_id,
         parsed_status,
         transcript_summary,
+        extraction_method,
+        extraction_confidence_label,
+        institution_resolution_truth_status,
+        institution_resolution_note,
         created_at,
         updated_at
-      ) values ($1,$2,$3,$4,$5,$6,now(),now())
+      ) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,now(),now())
       on conflict (student_transcript_id) do update set
         academic_artifact_id = excluded.academic_artifact_id,
         institution_id = excluded.institution_id,
         parsed_status = excluded.parsed_status,
         transcript_summary = excluded.transcript_summary,
+        extraction_method = excluded.extraction_method,
+        extraction_confidence_label = excluded.extraction_confidence_label,
+        institution_resolution_truth_status = excluded.institution_resolution_truth_status,
+        institution_resolution_note = excluded.institution_resolution_note,
         updated_at = now()
       `,
       [
@@ -83,6 +99,10 @@ export class TranscriptRepository {
         input.institutionId ?? null,
         input.parsedStatus ?? "pending",
         input.transcriptSummary ?? null,
+        input.extractionMethod ?? null,
+        input.extractionConfidenceLabel ?? null,
+        input.institutionResolutionTruthStatus ?? "unresolved",
+        input.institutionResolutionNote ?? null,
       ]
     );
   }
@@ -225,12 +245,20 @@ export class TranscriptRepository {
     studentTranscriptId: string;
     parsedStatus: "pending" | "parsed" | "matched" | "review_required" | "failed";
     transcriptSummary?: string | null;
+    extractionMethod?: "plain_text" | "json_text" | "pdf_text" | null;
+    extractionConfidenceLabel?: "low" | "medium" | "high" | null;
+    institutionResolutionTruthStatus?: "direct" | "inferred" | "placeholder" | "fallback" | "unresolved";
+    institutionResolutionNote?: string | null;
   }) {
     await query(
       `
       update student_transcripts
       set parsed_status = $2,
           transcript_summary = coalesce($3, transcript_summary),
+          extraction_method = coalesce($4, extraction_method),
+          extraction_confidence_label = coalesce($5, extraction_confidence_label),
+          institution_resolution_truth_status = coalesce($6, institution_resolution_truth_status),
+          institution_resolution_note = coalesce($7, institution_resolution_note),
           updated_at = now()
       where student_transcript_id = $1
       `,
@@ -238,6 +266,10 @@ export class TranscriptRepository {
         input.studentTranscriptId,
         input.parsedStatus,
         input.transcriptSummary ?? null,
+        input.extractionMethod ?? null,
+        input.extractionConfidenceLabel ?? null,
+        input.institutionResolutionTruthStatus ?? null,
+        input.institutionResolutionNote ?? null,
       ]
     );
   }

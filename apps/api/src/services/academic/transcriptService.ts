@@ -41,6 +41,10 @@ export async function persistStudentTranscriptGraph(input: StudentTranscriptInpu
     institutionId,
     parsedStatus: input.parsedStatus ?? "pending",
     transcriptSummary: input.transcriptSummary ?? null,
+    extractionMethod: input.extractionMethod ?? null,
+    extractionConfidenceLabel: input.extractionConfidenceLabel ?? null,
+    institutionResolutionTruthStatus: input.institutionResolutionTruthStatus ?? "unresolved",
+    institutionResolutionNote: input.institutionResolutionNote ?? null,
   });
 
   const termRecords = input.terms.map((term, index) => ({
@@ -111,6 +115,10 @@ export async function updateStudentTranscriptStatus(input: {
   studentTranscriptId: string;
   parsedStatus: "pending" | "parsed" | "matched" | "review_required" | "failed";
   transcriptSummary?: string | null;
+  extractionMethod?: "plain_text" | "json_text" | "pdf_text" | null;
+  extractionConfidenceLabel?: "low" | "medium" | "high" | null;
+  institutionResolutionTruthStatus?: "direct" | "inferred" | "placeholder" | "fallback" | "unresolved";
+  institutionResolutionNote?: string | null;
 }) {
   await transcriptRepo.updateTranscriptStatus(input);
 }
@@ -228,6 +236,10 @@ export async function getStudentTranscriptGraph(studentTranscriptId: string): Pr
     institutionId: transcript.institution_id,
     parsedStatus: transcript.parsed_status,
     transcriptSummary: transcript.transcript_summary,
+    extractionMethod: transcript.extraction_method,
+    extractionConfidenceLabel: transcript.extraction_confidence_label,
+    institutionResolutionTruthStatus: transcript.institution_resolution_truth_status,
+    institutionResolutionNote: transcript.institution_resolution_note,
     terms: termGraph,
   };
 }

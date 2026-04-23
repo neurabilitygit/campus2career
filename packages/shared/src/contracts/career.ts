@@ -1,3 +1,5 @@
+import type { ConfidenceLabel, TruthStatus } from "./truth";
+
 export type JobTargetSourceType = "manual" | "job_posting" | "partner_feed";
 
 export interface JobTargetNormalizationResult {
@@ -5,10 +7,11 @@ export interface JobTargetNormalizationResult {
   normalizedSectorCluster?: string | null;
   onetCode?: string | null;
   normalizationConfidence?: number | null;
-  confidenceLabel?: "low" | "medium" | "high";
+  confidenceLabel?: ConfidenceLabel;
   normalizationReasoning?: string | null;
   topRequiredSkills?: string[];
   source: "deterministic" | "llm";
+  truthStatus: TruthStatus;
 }
 
 export interface StudentJobTargetInput {
@@ -35,6 +38,10 @@ export interface StudentJobTargetRecord {
   normalizedSectorCluster?: string | null;
   onetCode?: string | null;
   normalizationConfidence?: number | null;
+  normalizationConfidenceLabel?: ConfidenceLabel | null;
+  normalizationReasoning?: string | null;
+  normalizationSource?: "deterministic" | "llm" | null;
+  normalizationTruthStatus?: TruthStatus | null;
   isPrimary: boolean;
   createdAt: string;
   updatedAt: string;

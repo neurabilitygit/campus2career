@@ -1,4 +1,4 @@
-import type { ScoringOutput } from "../../../../../packages/shared/src/scoring/types";
+import type { ScoringOutput, StudentScoringInput } from "../../../../../packages/shared/src/scoring/types";
 import { aggregateStudentContext } from "../student/aggregateStudentContext";
 import { runScenarioChat } from "./scenarioChat";
 import crypto from "node:crypto";
@@ -18,6 +18,7 @@ export async function runScenarioChatWithContext(input: {
   scenarioQuestion: string;
   communicationStyle?: string;
   scoring: ScoringOutput;
+  scoringInput?: StudentScoringInput;
 }) {
   const ctx = await aggregateStudentContext(input.studentProfileId);
 
@@ -30,6 +31,12 @@ export async function runScenarioChatWithContext(input: {
     communicationStyle: input.communicationStyle,
     parentVisibleInsights: ctx.parentVisibleInsights,
     scoring: input.scoring,
+    truthNotes: [
+      ...(input.scoringInput?.dataQualityNotes || []),
+      ctx.targetGoalTruthStatus !== "direct"
+        ? `The current student goal text is ${ctx.targetGoalTruthStatus} and was derived from ${ctx.targetGoalSource.replace(/_/g, " ")}.`
+        : "",
+    ].filter(Boolean),
   });
 
   const aiDocumentId = newDocumentId();
@@ -41,7 +48,15 @@ export async function runScenarioChatWithContext(input: {
     documentType: "scenario_guidance",
     title: result.response.headline,
     bodyMarkdown: renderScenarioMarkdown(result.response),
-    structuredPayload: result.response,
+    structuredPayload: {
+      ...result.response,
+      truthNotes: [
+        ...(input.scoringInput?.dataQualityNotes || []),
+        ctx.targetGoalTruthStatus !== "direct"
+          ? `The current student goal text is ${ctx.targetGoalTruthStatus} and was derived from ${ctx.targetGoalSource.replace(/_/g, " ")}.`
+          : "",
+      ].filter(Boolean),
+    },
     visibleTo: "student",
   });
 

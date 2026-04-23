@@ -33,57 +33,15 @@ function truncateSummary(value: string, maxLength: number = 280): string {
   return `${normalized.slice(0, maxLength - 1).trimEnd()}...`;
 }
 
-async function enrichResume(job: any, summary: string) {
-  await studentWriteRepo.createExperience({
-    experienceId: stableId("experience", `${job.student_profile_id}:${job.academic_artifact_id}:resume`),
-    studentProfileId: job.student_profile_id,
-    title: "Résumé-derived experience placeholder",
-    organization: "Imported from résumé",
-    description: "Created by the résumé parse stub.",
-    deliverablesSummary: summary,
-    toolsUsed: ["excel", "presentation"],
-    relevanceRating: 3,
-  });
-
+async function enrichResume(job: any) {
   await studentWriteRepo.createInsight({
     insightId: stableId("insight", `${job.student_profile_id}:${job.academic_artifact_id}:resume`),
     studentProfileId: job.student_profile_id,
     insightCategory: "strength",
-    insightStatement: "Student has at least one résumé-based experience signal recorded.",
-    parentSafeSummary: "Student has initial experience evidence captured from the résumé upload.",
-  });
-}
-
-async function enrichTranscript(job: any, summary: string) {
-  const academicTermId = stableId("academic_term", `${job.student_profile_id}:imported-term`);
-  const courseId = stableId("course", `${job.student_profile_id}:${job.academic_artifact_id}:course`);
-  await studentWriteRepo.ensureAcademicTerm({
-    academicTermId,
-    studentProfileId: job.student_profile_id,
-    termName: "Imported Transcript Term",
-  });
-  await studentWriteRepo.createCourse({
-    courseId,
-    academicTermId,
-    courseTitle: "Imported Quantitative Course",
-    courseCode: "IMPT-101",
-    finalGrade: "A",
-    notes: summary,
-  });
-  await studentWriteRepo.createCourseSkillCoverage({
-    courseSkillCoverageId: stableId("course_skill", `${courseId}:analysis`),
-    courseId,
-    skillName: "finance_analysis",
-    coverageStrength: "medium",
-    confidenceScore: 0.7,
-    derivedFrom: "manual_tagging",
-  });
-  await studentWriteRepo.createInsight({
-    insightId: stableId("insight", `${job.student_profile_id}:${job.academic_artifact_id}:transcript`),
-    studentProfileId: job.student_profile_id,
-    insightCategory: "strength",
-    insightStatement: "Transcript parsing added at least one course-level signal.",
-    parentSafeSummary: "Transcript parsing added an initial course and skill signal.",
+    insightStatement:
+      "Résumé text was extracted and summarized, but no structured experience rows were auto-created because parse confidence is not yet high enough for domain truth writes.",
+    parentSafeSummary:
+      "Résumé uploaded and summarized. Structured experience records still require a stronger parser or review before they should count as direct evidence.",
   });
 }
 
@@ -137,6 +95,7 @@ async function enrichOtherArtifact(job: any, summary: string) {
     summary: extractedTextSummary
       ? `Supporting artifact parsed from ${extractionMethod}: ${extractedTextSummary}`
       : summary,
+    extractionMethod,
   };
 }
 
@@ -188,6 +147,14 @@ async function persistTranscriptGraph(job: any, summary: string) {
     institutionCanonicalName: matchedInstitution?.canonical_name,
     transcriptSummary: extractedTranscriptInput.transcriptSummary,
     parsedStatus: "parsed",
+    extractionMethod: extracted.method,
+    extractionConfidenceLabel: extractedTranscriptInput.terms.length ? "medium" : "low",
+    institutionResolutionTruthStatus: matchedInstitution ? "inferred" : "unresolved",
+    institutionResolutionNote: matchedInstitution
+      ? `Matched student profile school name "${profile?.school_name}" to institution directory entry "${matchedInstitution.display_name}".`
+      : profile?.school_name
+        ? `Could not confidently match student profile school name "${profile.school_name}" to a known institution entry.`
+        : "No school name was present on the student profile, so institution matching could not be attempted.",
     terms: extractedTranscriptInput.terms,
   });
 
@@ -199,23 +166,34 @@ async function persistTranscriptGraph(job: any, summary: string) {
     studentTranscriptId,
     parsedStatus: matchingResult.matchingCatalogBound ? "matched" : "parsed",
     transcriptSummary: `${extractedTranscriptInput.transcriptSummary} Auto-match summary: ${matchingResult.matchedCount} matched, ${matchingResult.unmatchedCount} unmatched.`,
+    extractionMethod: extracted.method,
+    extractionConfidenceLabel: matchingResult.matchedCount > 0 ? "high" : "medium",
+    institutionResolutionTruthStatus: matchedInstitution ? "inferred" : "unresolved",
+    institutionResolutionNote: matchedInstitution
+      ? `Matched against the institution directory using the student's saved school name.`
+      : "Institution matching remained unresolved; transcript parsing proceeded without a bound institution.",
   });
 
   return {
     studentTranscriptId,
     matchingResult,
     extractionMethod,
+    parseTruthStatus: "inferred" as const,
+    parseConfidenceLabel: matchingResult.matchedCount > 0 ? "high" as const : "medium" as const,
+    parseNotes: matchingResult.matchingCatalogBound
+      ? `Transcript extracted via ${extracted.method}; ${matchingResult.matchedCount} course matches and ${matchingResult.unmatchedCount} unmatched courses.`
+      : `Transcript extracted via ${extracted.method}; no primary catalog binding was available for automatic course matching.`,
   };
 }
 
 function summarizeParser(artifactType: string): string {
   if (artifactType === "resume") {
-    return "Stub parse complete: extracted candidate experience, tools, and project signals.";
+    return "Resume text was summarized, but no structured experience rows were auto-created.";
   }
   if (artifactType === "transcript") {
-    return "Stub parse complete: extracted candidate course and grade signals.";
+    return "Transcript text was parsed into the transcript graph and queued for catalog matching.";
   }
-  return "Stub parse complete: extracted generic artifact summary.";
+  return "Supporting artifact text was summarized for later review.";
 }
 
 export async function processParseJobs() {
@@ -225,22 +203,54 @@ export async function processParseJobs() {
   for (const job of jobs) {
     try {
       let summary = summarizeParser(job.artifact_type);
+      let parseTruthStatus: "direct" | "inferred" | "placeholder" | "fallback" | "unresolved" = "unresolved";
+      let parseConfidenceLabel: "low" | "medium" | "high" | null = "low";
+      let extractionMethod: string | null = null;
+      let parseNotes: string | null = null;
 
       if (job.artifact_type === "resume") {
-        await enrichResume(job, summary);
+        await enrichResume(job);
+        parseTruthStatus = "inferred";
+        parseConfidenceLabel = "low";
+        parseNotes =
+          "Resume parsing currently produces summary-level evidence only. Structured experience records are intentionally withheld until parse quality improves.";
       } else if (job.artifact_type === "transcript") {
-        await enrichTranscript(job, summary);
         const transcriptResult = await persistTranscriptGraph(job, summary);
+        parseTruthStatus = transcriptResult.parseTruthStatus;
+        parseConfidenceLabel = transcriptResult.parseConfidenceLabel;
+        extractionMethod = transcriptResult.extractionMethod;
+        parseNotes = transcriptResult.parseNotes;
+        summary = transcriptResult.parseNotes;
         console.log(
           `Persisted transcript graph ${transcriptResult.studentTranscriptId} for artifact ${job.academic_artifact_id}${transcriptResult.extractionMethod ? ` using ${transcriptResult.extractionMethod}` : ""}`
         );
       } else if (job.artifact_type === "other") {
         const otherResult = await enrichOtherArtifact(job, summary);
         summary = otherResult.summary;
+        extractionMethod = otherResult.extractionMethod;
+        parseTruthStatus = otherResult.summary === summarizeParser("other") ? "unresolved" : "inferred";
+        parseConfidenceLabel = otherResult.summary === summarizeParser("other") ? "low" : "medium";
+        parseNotes =
+          otherResult.summary === summarizeParser("other")
+            ? "No extractable text was found, so the artifact remains available for manual review only."
+            : "Supporting artifact text was extracted into a summary, but no structured domain records were created automatically.";
       }
 
-      await artifactRepo.markArtifactParsed(job.academic_artifact_id, summary);
-      await artifactRepo.markParseJobCompleted(job.artifact_parse_job_id, summary);
+      await artifactRepo.markArtifactParsed({
+        artifactId: job.academic_artifact_id,
+        extractedSummary: summary,
+        parseTruthStatus,
+        parseConfidenceLabel,
+        extractionMethod,
+        parseNotes,
+      });
+      await artifactRepo.markParseJobCompleted({
+        jobId: job.artifact_parse_job_id,
+        resultSummary: summary,
+        resultTruthStatus: parseTruthStatus,
+        resultConfidenceLabel: parseConfidenceLabel,
+        resultNotes: parseNotes,
+      });
       console.log(`Completed parse job ${job.artifact_parse_job_id}`);
     } catch (error: any) {
       await artifactRepo.markArtifactFailed(

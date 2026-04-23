@@ -17,6 +17,10 @@ type JobTargetRow = {
   normalized_sector_cluster: string | null;
   onet_code: string | null;
   normalization_confidence: string | number | null;
+  normalization_confidence_label: "low" | "medium" | "high" | null;
+  normalization_reasoning: string | null;
+  normalization_source: "deterministic" | "llm" | null;
+  normalization_truth_status: "direct" | "inferred" | "placeholder" | "fallback" | "unresolved";
   is_primary: boolean;
   created_at: Date | string;
   updated_at: Date | string;
@@ -41,6 +45,10 @@ function mapRow(row: JobTargetRow): StudentJobTargetRecord {
     onetCode: row.onet_code,
     normalizationConfidence:
       row.normalization_confidence == null ? null : Number(row.normalization_confidence),
+    normalizationConfidenceLabel: row.normalization_confidence_label,
+    normalizationReasoning: row.normalization_reasoning,
+    normalizationSource: row.normalization_source,
+    normalizationTruthStatus: row.normalization_truth_status,
     isPrimary: !!row.is_primary,
     createdAt: toIsoString(row.created_at),
     updatedAt: toIsoString(row.updated_at),
@@ -64,6 +72,10 @@ export class JobTargetRepository {
         normalized_sector_cluster,
         onet_code,
         normalization_confidence,
+        normalization_confidence_label,
+        normalization_reasoning,
+        normalization_source,
+        normalization_truth_status,
         is_primary,
         created_at,
         updated_at
@@ -93,6 +105,10 @@ export class JobTargetRepository {
         normalized_sector_cluster,
         onet_code,
         normalization_confidence,
+        normalization_confidence_label,
+        normalization_reasoning,
+        normalization_source,
+        normalization_truth_status,
         is_primary,
         created_at,
         updated_at
@@ -125,6 +141,10 @@ export class JobTargetRepository {
         normalized_sector_cluster,
         onet_code,
         normalization_confidence,
+        normalization_confidence_label,
+        normalization_reasoning,
+        normalization_source,
+        normalization_truth_status,
         is_primary,
         created_at,
         updated_at
@@ -153,6 +173,10 @@ export class JobTargetRepository {
     normalizedSectorCluster?: string | null;
     onetCode?: string | null;
     normalizationConfidence?: number | null;
+    normalizationConfidenceLabel?: "low" | "medium" | "high" | null;
+    normalizationReasoning?: string | null;
+    normalizationSource?: "deterministic" | "llm" | null;
+    normalizationTruthStatus?: "direct" | "inferred" | "placeholder" | "fallback" | "unresolved";
     isPrimary: boolean;
   }): Promise<void> {
     const pool = getDbPool();
@@ -189,10 +213,14 @@ export class JobTargetRepository {
           normalized_sector_cluster,
           onet_code,
           normalization_confidence,
+          normalization_confidence_label,
+          normalization_reasoning,
+          normalization_source,
+          normalization_truth_status,
           is_primary,
           created_at,
           updated_at
-        ) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,now(),now())
+        ) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,now(),now())
         `,
         [
           input.jobTargetId,
@@ -207,6 +235,10 @@ export class JobTargetRepository {
           input.normalizedSectorCluster ?? null,
           input.onetCode ?? null,
           input.normalizationConfidence ?? null,
+          input.normalizationConfidenceLabel ?? null,
+          input.normalizationReasoning ?? null,
+          input.normalizationSource ?? null,
+          input.normalizationTruthStatus ?? "unresolved",
           input.isPrimary,
         ]
       );

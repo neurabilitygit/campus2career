@@ -40,7 +40,11 @@ async function runJob(jobName: WorkerJobName) {
 async function runParseLoop(intervalMs: number) {
   console.log(`Starting parse queue loop (interval ${intervalMs}ms)`);
   while (true) {
-    await processParseJobs();
+    try {
+      await processParseJobs();
+    } catch (error) {
+      console.error("Parse queue iteration failed", error);
+    }
     await new Promise((resolve) => setTimeout(resolve, intervalMs));
   }
 }

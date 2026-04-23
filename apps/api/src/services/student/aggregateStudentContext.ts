@@ -12,6 +12,12 @@ export interface AggregatedStudentContext {
   studentProfileId: string;
   studentName: string;
   targetGoal: string;
+  targetGoalSource:
+    | "career_goal_summary"
+    | "primary_job_target_title"
+    | "major_fallback"
+    | "unresolved";
+  targetGoalTruthStatus: "direct" | "fallback" | "unresolved";
   accomplishments: string[];
   upcomingDeadlines: string[];
   parentVisibleInsights: string[];
@@ -39,28 +45,78 @@ function normalizeSectorCluster(value: string | undefined | null): string | null
 function resolveTargetRole(input: {
   selectedSector?: string | null;
   primaryJobTarget?: {
+    jobTargetId?: string | null;
     normalizedRoleFamily?: string | null;
     normalizedSectorCluster?: string | null;
+    normalizationConfidenceLabel?: "low" | "medium" | "high" | null;
+    normalizationSource?: "deterministic" | "llm" | null;
+    normalizationTruthStatus?: "direct" | "inferred" | "placeholder" | "fallback" | "unresolved" | null;
+    normalizationReasoning?: string | null;
   } | null;
   overrideTargetRoleFamily?: string;
   overrideTargetSectorCluster?: string;
-}) {
+}): {
+  targetRoleFamily: string;
+  targetSectorCluster: string;
+  targetResolution: NonNullable<StudentScoringInput["targetResolution"]>;
+} | null {
   if (input.overrideTargetRoleFamily) {
     const seed = getTargetRoleSeedByCanonicalName(input.overrideTargetRoleFamily);
+    const usedExplicitSector = !!input.overrideTargetSectorCluster;
+    const usedSeedSector = !usedExplicitSector && !!seed?.sectorCluster;
+    const usedDefaultSector = !usedExplicitSector && !usedSeedSector;
     return {
       targetRoleFamily: seed?.canonicalName || input.overrideTargetRoleFamily,
       targetSectorCluster: input.overrideTargetSectorCluster || seed?.sectorCluster || "finance_financial_services",
+      targetResolution: {
+        truthStatus: usedDefaultSector ? "fallback" : "direct",
+        confidenceLabel: usedDefaultSector ? "low" : "high",
+        resolutionKind: usedDefaultSector ? "defaulted_sector_from_role_seed" : "user_override",
+        sourceLabel: "explicit scoring preview override",
+        note: usedExplicitSector
+          ? "Both role and sector were supplied explicitly for this scoring run."
+          : usedSeedSector
+            ? "Role was supplied explicitly; sector was backfilled from the seeded role definition."
+            : "Role was supplied explicitly; sector fell back to the conservative default cluster.",
+      },
     };
   }
 
   if (input.primaryJobTarget?.normalizedRoleFamily) {
     const seed = getTargetRoleSeedByCanonicalName(input.primaryJobTarget.normalizedRoleFamily);
+    const sectorCluster =
+      input.primaryJobTarget.normalizedSectorCluster ||
+      seed?.sectorCluster ||
+      "finance_financial_services";
+    const usedNormalizedSector = !!input.primaryJobTarget.normalizedSectorCluster;
+    const usedSeedSector = !usedNormalizedSector && !!seed?.sectorCluster;
+    const resolutionKind =
+      usedNormalizedSector
+        ? "normalized_job_target"
+        : "defaulted_sector_from_role_seed";
     return {
       targetRoleFamily: seed?.canonicalName || input.primaryJobTarget.normalizedRoleFamily,
-      targetSectorCluster:
-        input.primaryJobTarget.normalizedSectorCluster ||
-        seed?.sectorCluster ||
-        "finance_financial_services",
+      targetSectorCluster: sectorCluster,
+      targetResolution: {
+        truthStatus:
+          !usedNormalizedSector && !usedSeedSector
+            ? "fallback"
+            : input.primaryJobTarget.normalizationTruthStatus || "inferred",
+        confidenceLabel:
+          !usedNormalizedSector && !usedSeedSector
+            ? "low"
+            : input.primaryJobTarget.normalizationConfidenceLabel || "medium",
+        resolutionKind,
+        sourceLabel: input.primaryJobTarget.normalizationSource
+          ? `normalized primary job target (${input.primaryJobTarget.normalizationSource})`
+          : "normalized primary job target",
+        sourceJobTargetId: input.primaryJobTarget.jobTargetId || null,
+        note:
+          input.primaryJobTarget.normalizationReasoning ||
+          (resolutionKind === "defaulted_sector_from_role_seed"
+            ? "The saved job target resolved the role, but the sector cluster had to be backfilled from the canonical role seed."
+            : "The saved job target provided the resolved target role."),
+      },
     };
   }
 
@@ -73,6 +129,13 @@ function resolveTargetRole(input: {
   return {
     targetRoleFamily: mapped.role,
     targetSectorCluster: mapped.sector,
+    targetResolution: {
+      truthStatus: "fallback",
+      confidenceLabel: "low",
+      resolutionKind: "selected_sector_mapping",
+      sourceLabel: "selected sector to seed-role mapping",
+      note: "No exact target job was saved, so the system mapped the first selected sector to a seeded canonical role family.",
+    },
   };
 }
 
@@ -88,6 +151,76 @@ function deriveAcademicYear(expectedGraduationDate?: string | null): "freshman" 
   return "other";
 }
 
+function summarizeRequirementTruthStatus(
+  requirementProgress: StudentScoringInput["requirementProgress"]
+): "direct" | "inferred" | "placeholder" | "fallback" | "unresolved" {
+  if (!requirementProgress?.boundToCatalog) {
+    return "unresolved";
+  }
+  if (requirementProgress.provenanceMethod === "llm_assisted") {
+    return "inferred";
+  }
+  if (requirementProgress.provenanceMethod === "synthetic_seed") {
+    return "fallback";
+  }
+  return "direct";
+}
+
+function buildScoringInputQualityNotes(input: {
+  targetResolution: NonNullable<StudentScoringInput["targetResolution"]>;
+  occupationSkillTruth: NonNullable<StudentScoringInput["occupationSkillTruth"]>;
+  marketSignalTruth: NonNullable<StudentScoringInput["marketSignalTruth"]>;
+  transcript?: StudentScoringInput["transcript"];
+  requirementProgress?: StudentScoringInput["requirementProgress"];
+  artifacts: StudentScoringInput["artifacts"];
+}): string[] {
+  const notes: string[] = [];
+
+  if (input.targetResolution.truthStatus !== "direct") {
+    notes.push(
+      input.targetResolution.note ||
+        `Target role resolution is currently ${input.targetResolution.truthStatus} via ${input.targetResolution.sourceLabel}.`
+    );
+  }
+
+  if (input.occupationSkillTruth.truthStatus !== "direct") {
+    notes.push(input.occupationSkillTruth.note || "Role skill requirements were filled from a fallback source.");
+  }
+
+  if (input.marketSignalTruth.truthStatus !== "direct") {
+    notes.push(input.marketSignalTruth.note || "Market signal inputs are currently using a fallback baseline.");
+  }
+
+  if (input.transcript) {
+    if (input.transcript.institutionResolutionTruthStatus === "unresolved") {
+      notes.push(
+        input.transcript.institutionResolutionNote ||
+          "A transcript is loaded, but the institution could not be matched cleanly enough for higher-confidence binding."
+      );
+    }
+  } else {
+    notes.push("No parsed transcript is loaded yet, so academic progress is still conservative.");
+  }
+
+  if (input.requirementProgress) {
+    if (!input.requirementProgress.boundToCatalog) {
+      notes.push("The student is not yet bound to a structured catalog requirement set.");
+    }
+    notes.push(...(input.requirementProgress.coverageNotes || []));
+  }
+
+  const unresolvedArtifacts = input.artifacts.filter(
+    (artifact) => artifact.parseTruthStatus === "unresolved" || artifact.parseTruthStatus === "placeholder"
+  );
+  if (unresolvedArtifacts.length) {
+    notes.push(
+      `${unresolvedArtifacts.length} uploaded artifact${unresolvedArtifacts.length === 1 ? "" : "s"} still require manual review before being treated as strong evidence.`
+    );
+  }
+
+  return Array.from(new Set(notes));
+}
+
 export async function aggregateStudentContext(studentProfileId: string): Promise<AggregatedStudentContext> {
   const [profile, insights, deadlines, accomplishments, primaryJobTarget] = await Promise.all([
     repo.getStudentProfile(studentProfileId),
@@ -101,16 +234,33 @@ export async function aggregateStudentContext(studentProfileId: string): Promise
     throw new Error(`Student profile not found for ${studentProfileId}`);
   }
 
+  const targetGoalParts = [profile.major_primary, profile.major_secondary].filter(Boolean).join(" / ");
   const targetGoal =
     profile.career_goal_summary ||
     primaryJobTarget?.title ||
-    [profile.major_primary, profile.major_secondary].filter(Boolean).join(" / ") ||
+    targetGoalParts ||
     "Career target not yet defined";
+  const targetGoalSource =
+    profile.career_goal_summary
+      ? "career_goal_summary"
+      : primaryJobTarget?.title
+        ? "primary_job_target_title"
+        : targetGoalParts
+          ? "major_fallback"
+          : "unresolved";
+  const targetGoalTruthStatus =
+    targetGoalSource === "career_goal_summary" || targetGoalSource === "primary_job_target_title"
+      ? "direct"
+      : targetGoalSource === "major_fallback"
+        ? "fallback"
+        : "unresolved";
 
   return {
     studentProfileId,
     studentName: [profile.first_name, profile.last_name].filter(Boolean).join(" ") || "Student",
     targetGoal,
+    targetGoalSource,
+    targetGoalTruthStatus,
     accomplishments: accomplishments.map((a) =>
       [a.title, a.organization, a.deliverables_summary].filter(Boolean).join(" - ")
     ),
@@ -155,7 +305,7 @@ export async function buildStudentScoringInput(
       },
     });
   }
-  const { targetRoleFamily, targetSectorCluster } = resolvedTarget;
+  const { targetRoleFamily, targetSectorCluster, targetResolution } = resolvedTarget;
 
   const [
     occupationMetadata,
@@ -183,11 +333,88 @@ export async function buildStudentScoringInput(
 
   const completedDeadlines = deadlines.filter((d) => d.completed).length;
   const overdueOpenDeadlines = deadlines.filter((d) => !d.completed && new Date(d.due_date) < new Date()).length;
+  const onlySeededMarketSignals =
+    marketSignals.length > 0 && marketSignals.every((signal) => /^ci_seed/i.test(signal.source_name));
+  const occupationSkills = occupationSkillRows.length
+    ? occupationSkillRows.map((r) => ({
+        skillName: r.skill_name,
+        skillCategory: r.skill_category,
+        importanceScore: Number(r.importance_score),
+        requiredProficiencyBand: r.required_proficiency_band,
+      }))
+    : [
+        { skillName: "stakeholder_communication", skillCategory: "communication" as const, importanceScore: 70, requiredProficiencyBand: "intermediate" as const },
+        { skillName: "ai_fluency", skillCategory: "ai_fluency" as const, importanceScore: 50, requiredProficiencyBand: "basic" as const },
+      ];
+  const occupationSkillTruth: NonNullable<StudentScoringInput["occupationSkillTruth"]> = occupationSkillRows.length
+    ? {
+        truthStatus: "direct" as const,
+        confidenceLabel: "high" as const,
+        sourceLabel: "occupation_skill_requirements",
+      }
+    : {
+        truthStatus: "fallback" as const,
+        confidenceLabel: "low" as const,
+        sourceLabel: "hardcoded role-skill fallback",
+        note: "No persisted occupation skill requirements were found for the resolved role, so the system fell back to a minimal seeded skill set.",
+      };
+  const marketSignalTruth: NonNullable<StudentScoringInput["marketSignalTruth"]> = marketSignals.length
+    ? {
+        truthStatus: onlySeededMarketSignals ? "fallback" : "direct",
+        confidenceLabel: (
+          onlySeededMarketSignals
+            ? "low"
+            : marketSignals.some((signal) => signal.confidence_level === "high")
+              ? "high"
+              : "medium"
+        ),
+        sourceLabel: onlySeededMarketSignals ? "ci seeded market_signals" : "market_signals",
+        note: onlySeededMarketSignals
+          ? "The available market signals are synthetic seed rows, so market demand should be treated as fallback context rather than live labor-market truth."
+          : undefined,
+      }
+    : {
+        truthStatus: "fallback" as const,
+        confidenceLabel: "low" as const,
+        sourceLabel: "market baseline fallback",
+        note: "No persisted role-specific or macro market signals were found, so market demand will use the conservative default baseline.",
+      };
+  const artifactsForScoring = artifacts.map((a) => ({
+    artifactId: a.academic_artifact_id,
+    artifactType: a.artifact_type,
+    extractedSummary: a.extracted_summary || undefined,
+    tags: [a.parsed_status],
+    sourceLabel: a.source_label || undefined,
+    parseTruthStatus: a.parse_truth_status,
+    parseConfidenceLabel: a.parse_confidence_label,
+    extractionMethod: a.extraction_method,
+    parseNotes: a.parse_notes,
+  }));
+  const dataQualityNotes = buildScoringInputQualityNotes({
+    targetResolution,
+    occupationSkillTruth,
+    marketSignalTruth,
+    transcript: academicEvidence.transcript,
+    requirementProgress: academicEvidence.requirementProgress
+      ? {
+          ...academicEvidence.requirementProgress,
+          truthStatus: summarizeRequirementTruthStatus(academicEvidence.requirementProgress),
+        }
+      : undefined,
+    artifacts: artifactsForScoring,
+  });
+  const requirementProgress = academicEvidence.requirementProgress
+    ? {
+        ...academicEvidence.requirementProgress,
+        truthStatus: summarizeRequirementTruthStatus(academicEvidence.requirementProgress),
+      }
+    : undefined;
 
   return {
     studentId: studentProfileId,
     targetRoleFamily,
     targetSectorCluster,
+    targetResolution,
     preferredGeographies: profile.preferred_geographies || [],
     occupationMetadata: occupationMetadata
       ? {
@@ -197,16 +424,11 @@ export async function buildStudentScoringInput(
         }
       : undefined,
     transcript: academicEvidence.transcript,
-    requirementProgress: academicEvidence.requirementProgress,
-    occupationSkills: occupationSkillRows.length ? occupationSkillRows.map((r) => ({
-      skillName: r.skill_name,
-      skillCategory: r.skill_category,
-      importanceScore: Number(r.importance_score),
-      requiredProficiencyBand: r.required_proficiency_band,
-    })) : [
-      { skillName: "stakeholder_communication", skillCategory: "communication", importanceScore: 70, requiredProficiencyBand: "intermediate" },
-      { skillName: "ai_fluency", skillCategory: "ai_fluency", importanceScore: 50, requiredProficiencyBand: "basic" },
-    ],
+    requirementProgress,
+    occupationSkillTruth,
+    marketSignalTruth,
+    dataQualityNotes,
+    occupationSkills,
     marketSignals: marketSignals.map((signal) => ({
       signalType: signal.signal_type,
       signalValue: signal.signal_value == null ? undefined : Number(signal.signal_value),
@@ -229,12 +451,7 @@ export async function buildStudentScoringInput(
       deliverablesSummary: e.deliverables_summary || undefined,
       relevanceRating: e.relevance_rating || undefined,
     })),
-    artifacts: artifacts.map((a) => ({
-      artifactId: a.academic_artifact_id,
-      artifactType: a.artifact_type,
-      extractedSummary: a.extracted_summary || undefined,
-      tags: [a.parsed_status],
-    })),
+    artifacts: artifactsForScoring,
     contacts: contacts.map((c) => ({
       contactId: c.contact_id,
       warmthLevel: c.warmth_level || undefined,

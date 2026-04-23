@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 import { ParentBriefRepository } from "../../repositories/briefs/parentBriefRepository";
 import { aggregateStudentContext } from "../student/aggregateStudentContext";
 import { generateParentBrief } from "./generator";
-import type { ScoringOutput } from "../../../../../packages/shared/src/scoring/types";
+import type { ScoringOutput, StudentScoringInput } from "../../../../../packages/shared/src/scoring/types";
 
 const repo = new ParentBriefRepository();
 
@@ -15,6 +15,7 @@ export async function generateAndPersistParentBrief(input: {
   studentProfileId: string;
   monthLabel: string;
   scoring: ScoringOutput;
+  scoringInput?: StudentScoringInput;
 }) {
   const ctx = await aggregateStudentContext(input.studentProfileId);
 
@@ -28,6 +29,12 @@ export async function generateAndPersistParentBrief(input: {
     scoring: input.scoring,
     upcomingDeadlines: ctx.upcomingDeadlines,
     parentVisibleInsights: ctx.parentVisibleInsights,
+    truthNotes: [
+      ...(input.scoringInput?.dataQualityNotes || []),
+      ctx.targetGoalTruthStatus !== "direct"
+        ? `The current student goal text is ${ctx.targetGoalTruthStatus} and was derived from ${ctx.targetGoalSource.replace(/_/g, " ")}.`
+        : "",
+    ].filter(Boolean),
   });
 
   await repo.insertBrief({

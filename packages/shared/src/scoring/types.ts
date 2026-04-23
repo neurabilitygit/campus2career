@@ -1,4 +1,9 @@
 import type { RequirementSetProvenanceMethod } from "../contracts/academic";
+import type {
+  ConfidenceLabel,
+  EvidenceTruthSummary,
+  TruthStatus,
+} from "../contracts/truth";
 
 export type TrajectoryStatus = "on_track" | "watch" | "at_risk";
 export type GapSeverity = "low" | "medium" | "high";
@@ -39,6 +44,11 @@ export interface ArtifactEvidence {
   artifactType: string;
   extractedSummary?: string;
   tags?: string[];
+  sourceLabel?: string;
+  parseTruthStatus?: TruthStatus | null;
+  parseConfidenceLabel?: ConfidenceLabel | null;
+  extractionMethod?: string | null;
+  parseNotes?: string | null;
 }
 
 export interface ContactEvidence {
@@ -101,6 +111,11 @@ export interface TranscriptEvidenceSummary {
   matchedCatalogCourseCount: number;
   unmatchedCourseCount: number;
   creditsEarned: number;
+  truthStatus: TruthStatus;
+  extractionMethod?: "plain_text" | "json_text" | "pdf_text" | null;
+  extractionConfidenceLabel?: ConfidenceLabel | null;
+  institutionResolutionTruthStatus?: TruthStatus | null;
+  institutionResolutionNote?: string | null;
 }
 
 export interface RequirementProgressSummary {
@@ -123,14 +138,37 @@ export interface RequirementProgressSummary {
   completionPercent: number;
   missingRequiredCourses: string[];
   inferredConfidence: "low" | "medium" | "high";
+  truthStatus: TruthStatus;
+  manualRequirementItemCount: number;
+  nonCourseRequirementItemCount: number;
+  excludedRequirementGroupCount: number;
+  coverageNotes?: string[];
+}
+
+export interface TargetResolutionSummary {
+  truthStatus: TruthStatus;
+  confidenceLabel: ConfidenceLabel;
+  resolutionKind:
+    | "user_override"
+    | "normalized_job_target"
+    | "selected_sector_mapping"
+    | "defaulted_sector_from_role_seed"
+    | "unresolved";
+  sourceLabel: string;
+  note?: string | null;
+  sourceJobTargetId?: string | null;
 }
 
 export interface StudentScoringInput {
   studentId: string;
   targetRoleFamily: string;
   targetSectorCluster: string;
+  targetResolution?: TargetResolutionSummary;
   preferredGeographies?: string[];
   occupationMetadata?: OccupationMetadata;
+  occupationSkillTruth?: EvidenceTruthSummary;
+  marketSignalTruth?: EvidenceTruthSummary;
+  dataQualityNotes?: string[];
   occupationSkills: OccupationSkillRequirement[];
   marketSignals?: MarketSignalEvidence[];
   transcript?: TranscriptEvidenceSummary;

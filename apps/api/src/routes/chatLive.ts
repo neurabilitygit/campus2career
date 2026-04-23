@@ -53,6 +53,7 @@ export async function scenarioChatLiveRoute(req: IncomingMessage, res: ServerRes
       scenarioQuestion,
       communicationStyle: style,
       scoring,
+      scoringInput,
     });
 
     return json(res, 200, {

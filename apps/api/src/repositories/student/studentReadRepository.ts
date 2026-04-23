@@ -55,6 +55,11 @@ export interface ArtifactRow {
   artifact_type: string;
   extracted_summary: string | null;
   parsed_status: string;
+  source_label: string | null;
+  parse_truth_status: "direct" | "inferred" | "placeholder" | "fallback" | "unresolved";
+  parse_confidence_label: "low" | "medium" | "high" | null;
+  extraction_method: string | null;
+  parse_notes: string | null;
 }
 
 export interface ContactRow {
@@ -211,7 +216,12 @@ export class StudentReadRepository {
         academic_artifact_id,
         artifact_type,
         extracted_summary,
-        parsed_status
+        parsed_status,
+        source_label,
+        parse_truth_status,
+        parse_confidence_label,
+        extraction_method,
+        parse_notes
       from academic_artifacts
       where student_profile_id = $1
       order by uploaded_at desc

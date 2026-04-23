@@ -8,6 +8,10 @@ export interface CreateAcademicArtifactInput {
   sourceLabel?: string | null;
   parsedStatus?: "pending" | "parsed" | "failed";
   extractedSummary?: string | null;
+  parseTruthStatus?: "direct" | "inferred" | "placeholder" | "fallback" | "unresolved";
+  parseConfidenceLabel?: "low" | "medium" | "high" | null;
+  extractionMethod?: string | null;
+  parseNotes?: string | null;
 }
 
 export interface CreateArtifactParseJobInput {
@@ -26,6 +30,10 @@ export interface AcademicArtifactRow {
   source_label: string | null;
   parsed_status: "pending" | "parsed" | "failed";
   extracted_summary: string | null;
+  parse_truth_status: "direct" | "inferred" | "placeholder" | "fallback" | "unresolved";
+  parse_confidence_label: "low" | "medium" | "high" | null;
+  extraction_method: string | null;
+  parse_notes: string | null;
 }
 
 export interface UploadTargetRow {
@@ -48,6 +56,9 @@ export interface QueuedParseJobRow {
   status: "queued" | "processing" | "completed" | "failed";
   parser_type: string;
   queued_at: string;
+  result_truth_status: "direct" | "inferred" | "placeholder" | "fallback" | "unresolved";
+  result_confidence_label: "low" | "medium" | "high" | null;
+  result_notes: string | null;
 }
 
 export class ArtifactRepository {
@@ -139,14 +150,22 @@ export class ArtifactRepository {
         source_label,
         uploaded_at,
         parsed_status,
-        extracted_summary
-      ) values ($1,$2,$3,$4,$5,now(),$6,$7)
+        extracted_summary,
+        parse_truth_status,
+        parse_confidence_label,
+        extraction_method,
+        parse_notes
+      ) values ($1,$2,$3,$4,$5,now(),$6,$7,$8,$9,$10,$11)
       on conflict (academic_artifact_id) do update set
         artifact_type = excluded.artifact_type,
         file_uri = excluded.file_uri,
         source_label = excluded.source_label,
         parsed_status = excluded.parsed_status,
-        extracted_summary = excluded.extracted_summary
+        extracted_summary = excluded.extracted_summary,
+        parse_truth_status = excluded.parse_truth_status,
+        parse_confidence_label = excluded.parse_confidence_label,
+        extraction_method = excluded.extraction_method,
+        parse_notes = excluded.parse_notes
       `,
       [
         input.academicArtifactId,
@@ -156,6 +175,10 @@ export class ArtifactRepository {
         input.sourceLabel ?? null,
         input.parsedStatus ?? "pending",
         input.extractedSummary ?? null,
+        input.parseTruthStatus ?? "unresolved",
+        input.parseConfidenceLabel ?? null,
+        input.extractionMethod ?? null,
+        input.parseNotes ?? null,
       ]
     );
   }
@@ -214,7 +237,10 @@ export class ArtifactRepository {
         jobs.artifact_type,
         jobs.status,
         jobs.parser_type,
-        jobs.queued_at
+        jobs.queued_at,
+        jobs.result_truth_status,
+        jobs.result_confidence_label,
+        jobs.result_notes
       `
       ,
       [limit]
@@ -232,7 +258,11 @@ export class ArtifactRepository {
         file_uri,
         source_label,
         parsed_status,
-        extracted_summary
+        extracted_summary,
+        parse_truth_status,
+        parse_confidence_label,
+        extraction_method,
+        parse_notes
       from academic_artifacts
       where academic_artifact_id = $1
       limit 1
@@ -242,16 +272,31 @@ export class ArtifactRepository {
     return result.rows[0] || null;
   }
 
-  async markParseJobCompleted(jobId: string, resultSummary: string) {
+  async markParseJobCompleted(input: {
+    jobId: string;
+    resultSummary: string;
+    resultTruthStatus?: "direct" | "inferred" | "placeholder" | "fallback" | "unresolved";
+    resultConfidenceLabel?: "low" | "medium" | "high" | null;
+    resultNotes?: string | null;
+  }) {
     await query(
       `
       update artifact_parse_jobs
       set status = 'completed',
           result_summary = $2,
+          result_truth_status = $3,
+          result_confidence_label = $4,
+          result_notes = $5,
           completed_at = now()
       where artifact_parse_job_id = $1
       `,
-      [jobId, resultSummary]
+      [
+        input.jobId,
+        input.resultSummary,
+        input.resultTruthStatus ?? "unresolved",
+        input.resultConfidenceLabel ?? null,
+        input.resultNotes ?? null,
+      ]
     );
   }
 
@@ -261,6 +306,9 @@ export class ArtifactRepository {
       update artifact_parse_jobs
       set status = 'failed',
           error_message = $2,
+          result_truth_status = 'unresolved',
+          result_confidence_label = 'low',
+          result_notes = $2,
           completed_at = now()
       where artifact_parse_job_id = $1
       `,
@@ -268,15 +316,33 @@ export class ArtifactRepository {
     );
   }
 
-  async markArtifactParsed(artifactId: string, extractedSummary: string) {
+  async markArtifactParsed(input: {
+    artifactId: string;
+    extractedSummary: string;
+    parseTruthStatus?: "direct" | "inferred" | "placeholder" | "fallback" | "unresolved";
+    parseConfidenceLabel?: "low" | "medium" | "high" | null;
+    extractionMethod?: string | null;
+    parseNotes?: string | null;
+  }) {
     await query(
       `
       update academic_artifacts
       set parsed_status = 'parsed',
-          extracted_summary = $2
+          extracted_summary = $2,
+          parse_truth_status = $3,
+          parse_confidence_label = $4,
+          extraction_method = coalesce($5, extraction_method),
+          parse_notes = $6
       where academic_artifact_id = $1
       `,
-      [artifactId, extractedSummary]
+      [
+        input.artifactId,
+        input.extractedSummary,
+        input.parseTruthStatus ?? "unresolved",
+        input.parseConfidenceLabel ?? null,
+        input.extractionMethod ?? null,
+        input.parseNotes ?? null,
+      ]
     );
   }
 
@@ -285,7 +351,10 @@ export class ArtifactRepository {
       `
       update academic_artifacts
       set parsed_status = 'failed',
-          extracted_summary = $2
+          extracted_summary = $2,
+          parse_truth_status = 'unresolved',
+          parse_confidence_label = 'low',
+          parse_notes = $2
       where academic_artifact_id = $1
       `,
       [artifactId, extractedSummary]

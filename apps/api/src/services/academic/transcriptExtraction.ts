@@ -35,7 +35,7 @@ function classifyCompletionStatus(grade: string | undefined): TranscriptCourseIn
 }
 
 function parseCourseLine(line: string): TranscriptCourseInput | null {
-  const trimmed = normalizeWhitespace(line);
+  const trimmed = line.trim();
   for (const pattern of COURSE_LINE_PATTERNS) {
     const match = trimmed.match(pattern);
     if (!match?.groups) continue;

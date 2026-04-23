@@ -1,3 +1,5 @@
+import type { ConfidenceLabel, TruthStatus } from "./truth";
+
 export type RequirementSetProvenanceMethod =
   | "direct_scrape"
   | "artifact_pdf"
@@ -115,6 +117,8 @@ export interface StudentCatalogAssignmentInput {
   minorCanonicalName?: string;
   concentrationCanonicalName?: string;
   assignmentSource: "student_selected" | "transcript_inferred" | "advisor_confirmed" | "system_inferred";
+  assignmentConfidenceLabel?: ConfidenceLabel;
+  assignmentNote?: string;
   isPrimary?: boolean;
 }
 
@@ -142,6 +146,10 @@ export interface StudentTranscriptInput {
   institutionCanonicalName?: string;
   transcriptSummary?: string;
   parsedStatus?: "pending" | "parsed" | "matched" | "review_required" | "failed";
+  extractionMethod?: "plain_text" | "json_text" | "pdf_text";
+  extractionConfidenceLabel?: ConfidenceLabel;
+  institutionResolutionTruthStatus?: TruthStatus;
+  institutionResolutionNote?: string;
   terms: TranscriptTermInput[];
 }
 
@@ -179,6 +187,10 @@ export interface StudentTranscriptGraph {
   institutionId?: string | null;
   parsedStatus: "pending" | "parsed" | "matched" | "review_required" | "failed";
   transcriptSummary?: string | null;
+  extractionMethod?: "plain_text" | "json_text" | "pdf_text" | null;
+  extractionConfidenceLabel?: ConfidenceLabel | null;
+  institutionResolutionTruthStatus?: TruthStatus | null;
+  institutionResolutionNote?: string | null;
   terms: TranscriptTermGraphNode[];
 }
 

@@ -5,6 +5,7 @@
   "packageManager": "pnpm@10.0.0",
   "scripts": {
     "typecheck": "pnpm -r typecheck",
+    "test:api": "pnpm --dir apps/api test",
     "dev:web": "pnpm --dir apps/web dev",
     "dev:api": "pnpm --dir apps/api dev",
     "dev:worker": "pnpm --dir apps/worker dev",

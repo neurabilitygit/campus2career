@@ -12,6 +12,7 @@ export interface ScenarioChatInput {
   communicationStyle?: string;
   parentVisibleInsights?: string[];
   scoring: ScoringOutput;
+  truthNotes?: string[];
 }
 
 export interface ScenarioChatResponse {
@@ -37,7 +38,10 @@ export interface ScenarioChatResult {
   degradedReason?: string;
 }
 
-const SCENARIO_CHAT_PROVIDER_TIMEOUT_MS = 5000;
+const SCENARIO_CHAT_PROVIDER_TIMEOUT_MS = Math.max(
+  5000,
+  Number(process.env.SCENARIO_CHAT_PROVIDER_TIMEOUT_MS || "30000") || 30000
+);
 
 function buildStudentSystemPrompt(input: ScenarioChatInput): string {
   return [
@@ -46,6 +50,7 @@ function buildStudentSystemPrompt(input: ScenarioChatInput): string {
     "Tone: blunt, challenging, encouraging, action-oriented.",
     "Do not soften real risks.",
     "Use the student's current scoring, skill gaps, and inferred style.",
+    "When truth or confidence notes indicate fallback or unresolved data, acknowledge those limits instead of treating them as confirmed facts.",
     `Preferred communication style: ${input.communicationStyle || "direct"}`,
     "Keep recommendedActions to 3 items maximum.",
     "Ground the response in the supplied scoring and evidence, not generic advice.",
@@ -64,6 +69,7 @@ function buildStudentUserPrompt(input: ScenarioChatInput): string {
     `Top risks: ${input.scoring.topRisks.join("; ") || "None currently"}`,
     `Skill gaps: ${input.scoring.skillGaps.map((g) => `${g.skillName} [${g.gapSeverity}]`).join("; ") || "None"}`,
     `Relevant insights: ${(input.parentVisibleInsights || []).join("; ") || "None provided"}`,
+    `Truth and confidence notes: ${(input.truthNotes || []).join("; ") || "None"}`,
     `Scenario question: ${input.scenarioQuestion}`,
     "Answer the question directly and strategically.",
   ].join("\n");
@@ -100,6 +106,7 @@ function buildFallbackScenarioResponse(input: ScenarioChatInput, providerError?:
     basedOn: [
       `Target role: ${input.targetRoleFamily}`,
       `Trajectory: ${input.scoring.trajectoryStatus}`,
+      ...(input.truthNotes || []).slice(0, 2),
       ...input.scoring.skillGaps.slice(0, 3).map((gap) => `Skill gap: ${gap.skillName} (${gap.gapSeverity})`),
     ],
     providerError,
@@ -141,6 +148,7 @@ function buildScenarioTelemetry(input: ScenarioChatInput): LlmTelemetryContext {
       overallScore: input.scoring.overallScore,
       topRisks: input.scoring.topRisks,
       topStrengths: input.scoring.topStrengths,
+      truthNotes: input.truthNotes || [],
       skillGaps: input.scoring.skillGaps.map((gap) => ({
         skillName: gap.skillName,
         gapSeverity: gap.gapSeverity,

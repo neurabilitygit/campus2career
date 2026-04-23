@@ -68,6 +68,7 @@ function isTimeoutLikeError(error: unknown): boolean {
   if (!(error instanceof Error)) return false;
   return (
     error.message === "OPENAI_RESPONSE_TIMEOUT" ||
+    error.message === "Request was aborted." ||
     error.name === "AbortError" ||
     error.name === "APIUserAbortError" ||
     error.name === "OpenAiTimeoutError"

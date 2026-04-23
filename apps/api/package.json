@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "node --watch --env-file=.env.local --import tsx/esm src/index.ts",
     "typecheck": "tsc --noEmit",
+    "test": "node --import tsx/esm --test 'src/**/*.test.ts'",
     "db:migrate": "node --env-file=.env.local --import tsx/esm src/scripts/applyDbMigrations.ts",
     "db:seed:institutions": "node --env-file=.env.local --import tsx/esm src/scripts/seedInstitutionDirectoryBootstrap.ts",
     "db:seed:ci": "node --env-file=.env.local --import tsx/esm src/scripts/seedCiBaseline.ts",

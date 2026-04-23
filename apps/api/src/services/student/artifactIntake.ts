@@ -37,6 +37,8 @@ export async function persistArtifactAndQueueParse(input: {
     fileUri: input.objectPath,
     sourceLabel: "supabase_storage",
     parsedStatus: "pending",
+    parseTruthStatus: "unresolved",
+    parseNotes: "Artifact uploaded successfully. Structured extraction has not been reviewed yet.",
   });
 
   await artifactRepo.createArtifactParseJob({

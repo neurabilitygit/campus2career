@@ -314,7 +314,7 @@ export default function StudentDashboardView() {
   );
 
   const scenario = useApiJsonPost<ScenarioResponse>("/v1/chat/scenario/live", scenarioBody, requestedScenario, {
-    timeoutMs: 20000,
+    timeoutMs: 30000,
   });
   const marketSignals = scoring.data?.scoringInput?.marketSignals || [];
   const topOccupationSkills = scoring.data?.scoringInput?.occupationSkills?.slice(0, 8) || [];

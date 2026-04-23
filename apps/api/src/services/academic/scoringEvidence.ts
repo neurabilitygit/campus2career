@@ -73,6 +73,8 @@ function evaluateRequirementGroup(input: {
   if (!inferableItems.length) {
     return {
       inferableItemCount: 0,
+      nonCourseItemCount: input.group.items.length,
+      manualRequirementItemCount: input.group.items.filter((item) => item.itemType === "manual_rule").length,
       satisfiedItemCount: 0,
       creditsApplied: 0,
       groupSatisfied: false,
@@ -118,6 +120,8 @@ function evaluateRequirementGroup(input: {
 
   return {
     inferableItemCount: inferableItems.length,
+    nonCourseItemCount: input.group.items.length - inferableItems.length,
+    manualRequirementItemCount: input.group.items.filter((item) => item.itemType === "manual_rule").length,
     satisfiedItemCount,
     creditsApplied,
     groupSatisfied,
@@ -161,10 +165,22 @@ export async function buildAcademicScoringEvidence(studentProfileId: string): Pr
         creditsEarned: Number(
           completedTranscriptCourses.reduce((sum, course) => sum + Number(course.creditsEarned || 0), 0).toFixed(1)
         ),
+        truthStatus: transcriptGraph.parsedStatus === "failed" ? "unresolved" : "inferred",
+        extractionMethod: transcriptGraph.extractionMethod || null,
+        extractionConfidenceLabel: transcriptGraph.extractionConfidenceLabel || null,
+        institutionResolutionTruthStatus: transcriptGraph.institutionResolutionTruthStatus || "unresolved",
+        institutionResolutionNote: transcriptGraph.institutionResolutionNote || null,
       }
     : undefined;
 
   if (!assignment || !requirementGraph) {
+    const coverageNotes: string[] = [];
+    if (!assignment) {
+      coverageNotes.push("No primary catalog assignment is set for this student yet.");
+    }
+    if (!requirementGraph) {
+      coverageNotes.push("No structured requirement set is loaded for the current academic path.");
+    }
     return {
       transcript: transcriptSummary,
       requirementProgress: {
@@ -186,6 +202,11 @@ export async function buildAcademicScoringEvidence(studentProfileId: string): Pr
         completionPercent: 0,
         missingRequiredCourses: [],
         inferredConfidence: transcriptSummary ? "low" : "low",
+        truthStatus: "unresolved",
+        manualRequirementItemCount: 0,
+        nonCourseRequirementItemCount: 0,
+        excludedRequirementGroupCount: 0,
+        coverageNotes,
       },
     };
   }
@@ -208,8 +229,11 @@ export async function buildAcademicScoringEvidence(studentProfileId: string): Pr
   );
 
   const totalRequirementItems = evaluations.reduce((sum, evaluation) => sum + evaluation.inferableItemCount, 0);
+  const nonCourseRequirementItemCount = evaluations.reduce((sum, evaluation) => sum + evaluation.nonCourseItemCount, 0);
+  const manualRequirementItemCount = evaluations.reduce((sum, evaluation) => sum + evaluation.manualRequirementItemCount, 0);
   const satisfiedRequirementItems = evaluations.reduce((sum, evaluation) => sum + evaluation.satisfiedItemCount, 0);
   const inferableGroups = evaluations.filter((evaluation) => evaluation.inferableItemCount > 0);
+  const excludedRequirementGroupCount = Math.max(requirementGraph.groups.length - inferableGroups.length, 0);
   const satisfiedRequirementGroups = inferableGroups.filter((evaluation) => evaluation.groupSatisfied).length;
   const creditsApplied = Number(
     evaluations.reduce((sum, evaluation) => sum + Number(evaluation.creditsApplied || 0), 0).toFixed(1)
@@ -220,6 +244,23 @@ export async function buildAcademicScoringEvidence(studentProfileId: string): Pr
     .flatMap((evaluation) => evaluation.missingLabels)
     .filter(Boolean)
     .slice(0, 8);
+  const coverageNotes: string[] = [];
+  if (excludedRequirementGroupCount > 0) {
+    coverageNotes.push(
+      `${excludedRequirementGroupCount} requirement group${excludedRequirementGroupCount === 1 ? "" : "s"} include only manual or non-course rules and are excluded from automatic completion math.`
+    );
+  }
+  if (transcriptSummary?.unmatchedCourseCount) {
+    coverageNotes.push(
+      `${transcriptSummary.unmatchedCourseCount} completed transcript course${transcriptSummary.unmatchedCourseCount === 1 ? "" : "s"} are still unmatched to the current catalog.`
+    );
+  }
+  if (requirementGraph.provenanceMethod === "synthetic_seed") {
+    coverageNotes.push("The requirement graph is currently seeded rather than confirmed from the institution's official source.");
+  }
+  if (requirementGraph.provenanceMethod === "llm_assisted") {
+    coverageNotes.push("The requirement graph includes LLM-assisted extraction and should be reviewed against the source catalog.");
+  }
 
   return {
     transcript: transcriptSummary,
@@ -245,9 +286,19 @@ export async function buildAcademicScoringEvidence(studentProfileId: string): Pr
       inferredConfidence:
         transcriptSummary && transcriptSummary.matchedCatalogCourseCount > 0
           ? transcriptSummary.unmatchedCourseCount === 0
-            ? "high"
-            : "medium"
-          : "low",
+          ? "high"
+          : "medium"
+        : "low",
+      truthStatus:
+        requirementGraph.provenanceMethod === "synthetic_seed"
+          ? "fallback"
+          : requirementGraph.provenanceMethod === "llm_assisted"
+            ? "inferred"
+            : "direct",
+      manualRequirementItemCount,
+      nonCourseRequirementItemCount,
+      excludedRequirementGroupCount,
+      coverageNotes,
     },
   };
 }

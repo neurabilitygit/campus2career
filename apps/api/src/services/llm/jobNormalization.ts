@@ -56,6 +56,7 @@ function deterministicNormalization(input: {
       confidenceLabel: "low",
       normalizationReasoning: "No strong deterministic role match was found from the job title and description.",
       source: "deterministic",
+      truthStatus: "unresolved",
       topRequiredSkills: [],
     };
   }
@@ -72,6 +73,7 @@ function deterministicNormalization(input: {
     confidenceLabel: confidence >= 0.85 ? "high" : confidence >= 0.6 ? "medium" : "low",
     normalizationReasoning: `Deterministic normalization matched the job against "${match.seed.canonicalName}" using title and role-term overlap.`,
     source: "deterministic",
+    truthStatus: "inferred",
     topRequiredSkills: [],
   };
 }
@@ -133,6 +135,7 @@ export async function normalizeJobTarget(input: {
       confidenceLabel: llm.confidenceLabel,
       normalizationReasoning: llm.reasoning || deterministic.normalizationReasoning || null,
       source: "llm",
+      truthStatus: "inferred",
       topRequiredSkills: llm.topRequiredSkills || [],
     };
   } catch {

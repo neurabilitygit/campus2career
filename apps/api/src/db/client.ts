@@ -40,6 +40,10 @@ export function getDbPool(): pg.Pool {
       idleTimeoutMillis: 30000,
       ssl: resolveSslConfig(connectionString),
     });
+
+    pool.on("error", (error) => {
+      console.error("Postgres pool error", error);
+    });
   }
 
   return pool;

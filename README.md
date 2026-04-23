@@ -2,6 +2,52 @@
 
 Parent-first career intelligence MVP for students, parents, and coaches.
 
+## Prerequisites
+- Node.js 22.x
+- pnpm 10.x
+- A reachable Postgres database
+- A Supabase project for auth and storage
+- An OpenAI API key for server-side LLM flows
+
+## Setup From Source
+1. Install dependencies:
+   `pnpm install`
+2. Create local env files from the tracked examples:
+   `cp .env.example .env`
+   `cp apps/api/.env.example apps/api/.env.local`
+   `cp apps/web/.env.example apps/web/.env.local`
+   `cp apps/worker/.env.example apps/worker/.env.local`
+3. Fill in the copied env files with real local values.
+   Root `.env.example` is the full reference list.
+   App-specific `.env.example` files list the subset each app expects at startup.
+4. Apply database migrations:
+   `pnpm db:migrate`
+5. Optional deterministic seed and regression pass:
+   `pnpm db:seed:ci`
+   `pnpm synthetic:run`
+
+## Run Locally
+- Start everything:
+  `pnpm dev:all`
+- Or start individual processes:
+  `pnpm dev:api`
+  `pnpm dev:web`
+  `pnpm dev:worker`
+
+Default local ports:
+- Web: `http://localhost:3000`
+- API: `http://localhost:8080`
+
+## Deterministic Verification
+- Typecheck:
+  `pnpm typecheck`
+- API unit tests:
+  `pnpm test:api`
+- Synthetic scoring regression:
+  `pnpm synthetic:run`
+- Combined CI-style local verification:
+  `pnpm verify:ci`
+
 ## Stack
 - Frontend: Vercel-ready Next.js app in `apps/web`
 - Backend API: Railway-ready Node/TypeScript app in `apps/api`
@@ -66,6 +112,7 @@ Required frontend env:
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `NEXT_PUBLIC_API_BASE_URL`
+- optional `NEXT_PUBLIC_APP_URL` (defaults to `APP_BASE_URL` or `http://localhost:3000`)
 
 
 ## Frontend product shell
@@ -142,3 +189,8 @@ GitHub Actions runs the same sequence against a fresh local Postgres service in
 - Transcript parse failures no longer create placeholder transcript graphs. Failed extraction leaves the artifact and parse job in a failed state.
 - Scoring no longer fabricates a default `"financial analyst"` target when the student has neither an exact target job nor a sector-to-role mapping. In that case the API returns `target_role_unresolved`.
 - Program requirement discovery now returns diagnostic notes when website lookup or LLM-assisted extraction cannot produce a trustworthy course list.
+
+## App-Specific Notes
+- [apps/api/README.md](/Users/ericbass/Projects/campus2career-v16-final/apps/api/README.md)
+- [apps/web/README.md](/Users/ericbass/Projects/campus2career-v16-final/apps/web/README.md)
+- [apps/worker/README.md](/Users/ericbass/Projects/campus2career-v16-final/apps/worker/README.md)

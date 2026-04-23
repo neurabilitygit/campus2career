@@ -103,6 +103,10 @@ export async function studentJobTargetCreateRoute(req: IncomingMessage, res: Ser
       normalizedSectorCluster: normalized.normalizedSectorCluster ?? null,
       onetCode: normalized.onetCode ?? null,
       normalizationConfidence: normalized.normalizationConfidence ?? null,
+      normalizationConfidenceLabel: normalized.confidenceLabel ?? null,
+      normalizationReasoning: normalized.normalizationReasoning ?? null,
+      normalizationSource: normalized.source,
+      normalizationTruthStatus: normalized.truthStatus,
       isPrimary,
     });
 

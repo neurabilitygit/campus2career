@@ -11,6 +11,7 @@ export interface ParentBriefInput {
   scoring: ScoringOutput;
   upcomingDeadlines: string[];
   parentVisibleInsights: string[];
+  truthNotes?: string[];
 }
 
 const PARENT_BRIEF_PROVIDER_TIMEOUT_MS = 12000;
@@ -48,6 +49,7 @@ function buildUserPrompt(input: ParentBriefInput): string {
     `Accomplishments this month: ${input.accomplishments.join("; ") || "None recorded"}`,
     `Upcoming deadlines: ${input.upcomingDeadlines.join("; ") || "None recorded"}`,
     `Parent-visible insights: ${input.parentVisibleInsights.join("; ") || "None recorded"}`,
+    `Truth and confidence notes: ${input.truthNotes?.join("; ") || "None"}`,
     "Write the monthly brief."
   ].join("\n");
 }
@@ -73,6 +75,7 @@ export async function generateParentBrief(input: ParentBriefInput): Promise<stri
               topRisks: input.scoring.topRisks,
               topStrengths: input.scoring.topStrengths,
               recommendationTitles: input.scoring.recommendations.map((item) => item.title),
+              truthNotes: input.truthNotes || [],
             },
           }
         : undefined,

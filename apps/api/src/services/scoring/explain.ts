@@ -129,13 +129,28 @@ function buildDrivers(input: StudentScoringInput, scoring: ScoringOutput): Score
 }
 
 function buildDataQualityAlerts(input: StudentScoringInput): string[] {
-  const alerts: string[] = [];
+  const alerts: string[] = [...(input.dataQualityNotes || [])];
+
+  if (input.targetResolution?.truthStatus && input.targetResolution.truthStatus !== "direct") {
+    alerts.push(
+      input.targetResolution.note ||
+        `Target role resolution is currently ${input.targetResolution.truthStatus} via ${input.targetResolution.sourceLabel}.`
+    );
+  }
 
   if (!input.transcript?.courseCount) {
     alerts.push("No parsed transcript is loaded yet, so coursework progress is still estimated conservatively.");
+  } else if (input.transcript.truthStatus !== "direct") {
+    alerts.push(
+      `Transcript-derived coursework is currently ${input.transcript.truthStatus} evidence${
+        input.transcript.extractionMethod ? ` from ${input.transcript.extractionMethod}` : ""
+      }.`
+    );
   }
   if (!input.requirementProgress?.boundToCatalog) {
     alerts.push("The student is not fully bound to a structured degree requirement set yet.");
+  } else {
+    alerts.push(...(input.requirementProgress.coverageNotes || []));
   }
   if (!input.experiences.length) {
     alerts.push("No experience records are stored yet.");
@@ -147,7 +162,7 @@ function buildDataQualityAlerts(input: StudentScoringInput): string[] {
     alerts.push("No networking history is stored yet.");
   }
 
-  return alerts;
+  return Array.from(new Set(alerts));
 }
 
 function buildImmediateActions(scoring: ScoringOutput, input: StudentScoringInput): string[] {

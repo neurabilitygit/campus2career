@@ -56,13 +56,15 @@ export async function parentBriefGenerateRoute(req: IncomingMessage, res: Server
     }
 
     const monthLabel = resolveBriefMonthLabel(new Date());
-    const scoring = runScoring(await buildStudentScoringInput(ctx.studentProfileId));
+    const scoringInput = await buildStudentScoringInput(ctx.studentProfileId);
+    const scoring = runScoring(scoringInput);
 
     const result = await generateAndPersistParentBrief({
       studentProfileId: ctx.studentProfileId,
       householdId: ctx.householdId,
       monthLabel,
       scoring,
+      scoringInput,
     });
 
     return json(res, 200, { ...result, monthLabel });
