@@ -1,4 +1,4 @@
-# Campus2Career Starter Repository
+# Rising Senior Starter Repository
 
 Parent-first career intelligence MVP for students, parents, and coaches.
 

@@ -94,7 +94,7 @@ export default function AuthCallbackPage() {
             textTransform: "uppercase",
           }}
         >
-          Campus2Career
+          Rising Senior
         </div>
         <h1 style={{ margin: 0, fontSize: "clamp(2rem, 6vw, 3rem)" }}>Finishing sign-in</h1>
         <p style={{ margin: 0, color: "#dbe7ff", lineHeight: 1.7 }}>{message}</p>

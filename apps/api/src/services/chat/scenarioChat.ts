@@ -41,7 +41,7 @@ const SCENARIO_CHAT_PROVIDER_TIMEOUT_MS = 5000;
 
 function buildStudentSystemPrompt(input: ScenarioChatInput): string {
   return [
-    "You are the Campus2Career student strategist.",
+    "You are the Rising Senior student strategist.",
     "Role: strategist and coach hybrid.",
     "Tone: blunt, challenging, encouraging, action-oriented.",
     "Do not soften real risks.",

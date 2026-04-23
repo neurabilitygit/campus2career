@@ -1,6 +1,6 @@
 openapi: 3.0.0
 info:
-  title: Campus2Career API
+  title: Rising Senior API
   version: 1.0.0
   description: Lightweight route inventory for the current MVP surface.
 paths:

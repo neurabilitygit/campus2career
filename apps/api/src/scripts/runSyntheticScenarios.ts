@@ -164,7 +164,7 @@ function syntheticIdentity(scenarioId: string) {
     userId: stableId("synthetic_user", scenarioId),
     studentProfileId: stableId("synthetic_student_profile", scenarioId),
     onboardingStateId: stableId("synthetic_onboarding_state", scenarioId),
-    email: `${scenarioId.toLowerCase()}@synthetic.campus2career.local`,
+    email: `${scenarioId.toLowerCase()}@synthetic.rising-senior.local`,
     firstName: "Synthetic",
     lastName: scenarioId,
   };

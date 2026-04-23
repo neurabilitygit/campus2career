@@ -1,4 +1,4 @@
-const DEFAULT_STORAGE_BUCKET = process.env.SUPABASE_STORAGE_BUCKET || "campus2career";
+const DEFAULT_STORAGE_BUCKET = process.env.SUPABASE_STORAGE_BUCKET || "rising-senior";
 
 function getStorageDownloadUrl(bucket: string, objectPath: string): string {
   const supabaseUrl = process.env.SUPABASE_URL || "";

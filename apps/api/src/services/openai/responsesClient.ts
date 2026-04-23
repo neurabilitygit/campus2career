@@ -430,7 +430,7 @@ export async function inferNormalizedJobTarget(input: {
             {
               type: "input_text",
               text:
-                "You normalize a student-selected job target into the closest allowed Campus2Career role family. Choose only from the allowed role families provided. If the evidence is weak, return null for normalizedRoleFamily and explain why.",
+                "You normalize a student-selected job target into the closest allowed Rising Senior role family. Choose only from the allowed role families provided. If the evidence is weak, return null for normalizedRoleFamily and explain why.",
             },
           ],
         },

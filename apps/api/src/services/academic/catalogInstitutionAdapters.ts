@@ -256,7 +256,7 @@ const PRINCETON_CURATED_MINORS = [
 ].map((value) => normalizeWhitespace(value));
 
 const DISCOVERY_USER_AGENT =
-  "Campus2CareerBot/0.1 (+https://campus2career.local; academic catalog discovery)";
+  "RisingSeniorBot/0.1 (+https://rising-senior.local; academic catalog discovery)";
 const DISCOVERY_FALLBACK_USER_AGENT =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
 const DEFAULT_DEGREE_TYPE = "Undergraduate";

@@ -242,7 +242,7 @@ export function AppShell(props: {
                 boxShadow: "0 0 0 6px rgba(255, 255, 255, 0.08)",
               }}
             />
-            <span>Campus2Career</span>
+            <span>Rising Senior</span>
           </Link>
           <div className="app-sidebar__context" style={sidebarPanelStyle}>
             <span className="app-sidebar__eyebrow" style={{ color: "#91a6c8", fontSize: 11, fontWeight: 900, letterSpacing: "0.08em", textTransform: "uppercase" }}>Current workspace</span>

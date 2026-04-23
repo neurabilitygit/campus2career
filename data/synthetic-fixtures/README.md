@@ -8,7 +8,7 @@ Design goals:
 - Use fictional students only
 - Anchor institutions, majors, and target jobs in publicly available sources
 - Stay small enough for manual review and golden-scenario regression testing
-- Match the current Campus2Career data model closely enough to seed later
+- Match the current Rising Senior data model closely enough to seed later
 
 ## File layout
 

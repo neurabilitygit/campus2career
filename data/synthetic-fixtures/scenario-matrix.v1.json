@@ -1,7 +1,7 @@
 {
   "schemaVersion": "synthetic-scenarios.v1",
   "generatedAt": "2026-04-20",
-  "description": "Twelve lightweight synthetic scenarios for early-stage Campus2Career testing using fictional students anchored to public institution and labor-market information.",
+  "description": "Twelve lightweight synthetic scenarios for early-stage Rising Senior testing using fictional students anchored to public institution and labor-market information.",
   "scenarios": [
     {
       "id": "S01",

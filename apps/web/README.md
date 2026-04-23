@@ -1,4 +1,4 @@
-# Campus2Career Web App
+# Rising Senior Web App
 
 Required environment variables:
 - NEXT_PUBLIC_SUPABASE_URL

@@ -536,7 +536,7 @@ export async function uploadPresignRoute(req: IncomingMessage, res: ServerRespon
       throw error;
     }
 
-    const bucket = process.env.SUPABASE_STORAGE_BUCKET || "campus2career";
+    const bucket = process.env.SUPABASE_STORAGE_BUCKET || "rising-senior";
     const objectPath = `${ctx.studentProfileId}/${body.artifactType}/${Date.now()}-${body.fileName}`;
 
     const signedTarget = await createSignedUploadTarget({

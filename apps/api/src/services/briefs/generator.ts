@@ -17,7 +17,7 @@ const PARENT_BRIEF_PROVIDER_TIMEOUT_MS = 12000;
 
 function buildSystemPrompt(): string {
   return [
-    "You are the Campus2Career parent brief writer.",
+    "You are the Rising Senior parent brief writer.",
     "Audience: a parent paying for a parent-first career intelligence platform.",
     "Tone: direct, measured, delicately worded but not ambiguous.",
     "Do not be evasive.",

@@ -16,7 +16,7 @@ const roleDescriptions = {
   guest: {
     label: "See the full journey",
     summary:
-      "Campus2Career helps students, parents, and coaches turn school choices into a clearer plan for internships, early career momentum, and family decision-making.",
+      "Rising Senior helps students, parents, and coaches turn school choices into a clearer plan for internships, early career momentum, and family decision-making.",
     accent: "#f97316",
   },
   student: {
@@ -295,7 +295,7 @@ export default function HomePage() {
                     letterSpacing: "-0.05em",
                   }}
                 >
-                  Campus2Career
+                  Rising Senior
                 </h1>
                 <p style={{ margin: 0, fontSize: "clamp(1rem, 1.8vw, 1.2rem)", lineHeight: 1.6, color: "#dbe7ff" }}>
                   {roleContent.summary}

@@ -24,16 +24,16 @@ const server = http.createServer(async (req, res) => {
 server.on("error", (error: NodeJS.ErrnoException) => {
   if (error.code === "EADDRINUSE") {
     console.error(
-      `Campus2Career API could not start because port ${port} is already in use. Stop the existing process or set PORT to a different value before restarting.`
+      `Rising Senior API could not start because port ${port} is already in use. Stop the existing process or set PORT to a different value before restarting.`
     );
     process.exit(1);
     return;
   }
 
-  console.error("Campus2Career API failed to start", error);
+  console.error("Rising Senior API failed to start", error);
   process.exit(1);
 });
 
 server.listen(port, () => {
-  console.log(`Campus2Career API listening on :${port}`);
+  console.log(`Rising Senior API listening on :${port}`);
 });

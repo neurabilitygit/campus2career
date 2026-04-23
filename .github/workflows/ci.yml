@@ -17,11 +17,11 @@ jobs:
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: campus2career_ci
+          POSTGRES_DB: rising_senior_ci
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U postgres -d campus2career_ci"
+          --health-cmd "pg_isready -U postgres -d rising_senior_ci"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
@@ -47,7 +47,7 @@ jobs:
       - name: Configure API CI env
         run: |
           cat > apps/api/.env.local <<'EOF'
-          DATABASE_URL=postgresql://postgres:postgres@localhost:5432/campus2career_ci
+          DATABASE_URL=postgresql://postgres:postgres@localhost:5432/rising_senior_ci
           EOF
 
       - name: Typecheck

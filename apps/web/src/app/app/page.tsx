@@ -48,7 +48,7 @@ export default function AppLandingPage() {
   return (
     <AppShell
       title="Welcome back"
-      subtitle="Campus2Career will open the dashboard that matches your account so you can pick up where you left off."
+      subtitle="Rising Senior will open the dashboard that matches your account so you can pick up where you left off."
     >
       <SessionGate fallbackTitle="Sign in required">
         <Redirector />

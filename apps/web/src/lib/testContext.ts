@@ -2,8 +2,8 @@
 
 export type TestContextRole = "student" | "parent" | "coach";
 
-const STORAGE_KEY = "campus2career:test-context-role";
-const CHANGE_EVENT = "campus2career:test-context-role-change";
+const STORAGE_KEY = "rising-senior:test-context-role";
+const CHANGE_EVENT = "rising-senior:test-context-role-change";
 
 function isTestContextRole(value: string | null): value is TestContextRole {
   return value === "student" || value === "parent" || value === "coach";

@@ -46,7 +46,7 @@ async function runParseLoop(intervalMs: number) {
 }
 
 async function main() {
-  console.log("Campus2Career worker started");
+  console.log("Rising Senior worker started");
   const requestedJob = (process.env.WORKER_JOB || process.argv[2] || "process-parse-jobs") as WorkerJobName | "list";
   const pollIntervalMs = Number(process.env.WORKER_POLL_INTERVAL_MS || "0");
 
