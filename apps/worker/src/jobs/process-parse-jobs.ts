@@ -11,6 +11,7 @@ import {
   updateStudentTranscriptStatus,
 } from "../../../api/src/services/academic/transcriptService";
 import { downloadArtifactFromStorage } from "../../../api/src/services/storage/artifactDownload";
+import type { WorkerJobResult } from "./jobStatus";
 
 const artifactRepo = new ArtifactRepository();
 const studentWriteRepo = new StudentWriteRepository();
@@ -196,9 +197,17 @@ function summarizeParser(artifactType: string): string {
   return "Supporting artifact text was summarized for later review.";
 }
 
-export async function processParseJobs() {
+export async function processParseJobs(): Promise<WorkerJobResult> {
   console.log("Processing queued artifact parse jobs...");
   const jobs = await artifactRepo.claimQueuedParseJobs();
+  let completedCount = 0;
+  let failedCount = 0;
+  const modeCounts = {
+    real: 0,
+    partial: 0,
+    fallback: 0,
+    unresolved: 0,
+  };
 
   for (const job of jobs) {
     try {
@@ -207,11 +216,13 @@ export async function processParseJobs() {
       let parseConfidenceLabel: "low" | "medium" | "high" | null = "low";
       let extractionMethod: string | null = null;
       let parseNotes: string | null = null;
+      let executionMode: "real" | "partial" | "fallback" | "unresolved" = "unresolved";
 
       if (job.artifact_type === "resume") {
         await enrichResume(job);
         parseTruthStatus = "inferred";
         parseConfidenceLabel = "low";
+        executionMode = "partial";
         parseNotes =
           "Resume parsing currently produces summary-level evidence only. Structured experience records are intentionally withheld until parse quality improves.";
       } else if (job.artifact_type === "transcript") {
@@ -221,6 +232,7 @@ export async function processParseJobs() {
         extractionMethod = transcriptResult.extractionMethod;
         parseNotes = transcriptResult.parseNotes;
         summary = transcriptResult.parseNotes;
+        executionMode = transcriptResult.matchingResult.matchingCatalogBound ? "real" : "partial";
         console.log(
           `Persisted transcript graph ${transcriptResult.studentTranscriptId} for artifact ${job.academic_artifact_id}${transcriptResult.extractionMethod ? ` using ${transcriptResult.extractionMethod}` : ""}`
         );
@@ -230,6 +242,7 @@ export async function processParseJobs() {
         extractionMethod = otherResult.extractionMethod;
         parseTruthStatus = otherResult.summary === summarizeParser("other") ? "unresolved" : "inferred";
         parseConfidenceLabel = otherResult.summary === summarizeParser("other") ? "low" : "medium";
+        executionMode = otherResult.summary === summarizeParser("other") ? "unresolved" : "partial";
         parseNotes =
           otherResult.summary === summarizeParser("other")
             ? "No extractable text was found, so the artifact remains available for manual review only."
@@ -251,6 +264,14 @@ export async function processParseJobs() {
         resultConfidenceLabel: parseConfidenceLabel,
         resultNotes: parseNotes,
       });
+      completedCount += 1;
+      if (executionMode === "real") {
+        modeCounts.real += 1;
+      } else if (executionMode === "partial") {
+        modeCounts.partial += 1;
+      } else {
+        modeCounts.unresolved += 1;
+      }
       console.log(`Completed parse job ${job.artifact_parse_job_id}`);
     } catch (error: any) {
       await artifactRepo.markArtifactFailed(
@@ -261,6 +282,27 @@ export async function processParseJobs() {
         job.artifact_parse_job_id,
         error?.message || String(error)
       );
+      failedCount += 1;
     }
   }
+
+  return {
+    jobName: "process-parse-jobs",
+    mode:
+      failedCount > 0
+        ? "fallback"
+        : completedCount > 0 && (modeCounts.partial > 0 || modeCounts.unresolved > 0)
+          ? "partial"
+          : "real",
+    summary:
+      jobs.length === 0
+        ? "No queued parse jobs were available."
+        : `Processed ${jobs.length} parse job(s): ${completedCount} completed, ${failedCount} failed.`,
+    details: {
+      claimedJobs: jobs.length,
+      completedCount,
+      failedCount,
+      truthStatusBreakdown: modeCounts,
+    },
+  };
 }

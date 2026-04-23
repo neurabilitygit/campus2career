@@ -41,6 +41,11 @@ type ScoringResponse = {
       gapSeverity: string;
       evidenceSummary?: string;
     }>;
+    evidenceQuality?: {
+      missingEvidence?: string[];
+      weakEvidence?: string[];
+      assessmentMode?: "measured" | "provisional";
+    };
   };
 };
 
@@ -157,7 +162,7 @@ function ParentNarrative(props: {
             Student goal: {targetRole}
           </h2>
           <p style={{ margin: 0, color: "#334155", lineHeight: 1.6 }}>
-            The system is currently evaluating this student against the <strong>{targetRole}</strong> path in{" "}
+            Right now the student is being tracked toward the <strong>{targetRole}</strong> path in{" "}
             <strong>{targetSector}</strong>. {statusCard.description}
           </p>
         </div>
@@ -189,7 +194,7 @@ function ParentNarrative(props: {
         </div>
 
         <p style={{ margin: 0, color: "#475569", lineHeight: 1.6 }}>
-          Reporting month: <strong>{props.monthLabel}</strong>. This view combines live scoring with any saved monthly parent brief so the dashboard remains useful even before a narrative brief has been generated.
+          Reporting month: <strong>{props.monthLabel}</strong>. This view keeps the current live picture and the saved monthly parent summary in one place.
         </p>
       </div>
     </SectionCard>
@@ -238,6 +243,7 @@ export default function ParentDashboardView() {
     scoring.data?.scoring?.skillGaps
       ?.filter((gap) => gap.gapSeverity === "high" || gap.gapSeverity === "medium")
       .slice(0, 3) || [];
+  const missingEvidence = scoring.data?.scoring?.evidenceQuality?.missingEvidence || [];
 
   async function generateBrief() {
     setGenerateError(null);
@@ -263,50 +269,6 @@ export default function ParentDashboardView() {
           brief={brief.data?.brief}
           monthLabel={brief.data?.monthLabel || "Current month"}
         />
-
-        <SectionCard
-          title="How the score breaks down"
-          subtitle="These categories show where the student looks strong already and where support may matter most."
-        >
-          {scoring.loading ? <p>Loading live scoring...</p> : null}
-          {scoring.error ? <p style={{ color: "crimson" }}>{scoring.error}</p> : null}
-          {!scoring.loading && !scoring.error ? (
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-                gap: 12,
-              }}
-            >
-              {Object.entries(scoringBreakdown).map(([key, value]) => (
-                <div
-                  key={key}
-                  style={{
-                    border: "1px solid #dbe4f0",
-                    borderRadius: 16,
-                    padding: 16,
-                    background: "#f8fbff",
-                  }}
-                >
-                  <div style={{ fontWeight: 800, color: "#0f172a", marginBottom: 8 }}>{titleCase(key)}</div>
-                  <div style={{ fontSize: 28, fontWeight: 800 }}>{value}</div>
-                  <div style={{ color: "#475569" }}>{scoreLabel(value)}</div>
-                </div>
-              ))}
-            </div>
-          ) : null}
-        </SectionCard>
-
-        <SectionCard
-          title="What looks promising"
-          subtitle="These are the clearest signs of traction in the current student story."
-          tone="quiet"
-        >
-          <BulletList
-            items={strengths}
-            empty="No clear strengths have been surfaced yet. That usually means the student has not built enough visible evidence for the chosen role."
-          />
-        </SectionCard>
 
         <SectionCard
           title="What needs attention"
@@ -343,13 +305,68 @@ export default function ParentDashboardView() {
         </SectionCard>
 
         <SectionCard
-          title="Recommended parent actions"
+          title="Best parent actions"
           subtitle="Start with the smallest actions that improve momentum without increasing pressure."
         >
           <BulletList
             items={recommendedActions}
             empty="No parent actions have been generated yet. Use the refresh button below to create the monthly brief."
           />
+        </SectionCard>
+
+        <SectionCard
+          title="What would make this clearer"
+          subtitle="These missing pieces would make the student picture more specific and easier to trust."
+          tone="quiet"
+        >
+          <BulletList
+            items={missingEvidence}
+            empty="No major missing-evidence warning is showing right now."
+          />
+        </SectionCard>
+
+        <SectionCard
+          title="What looks promising"
+          subtitle="These are the clearest signs of traction in the current student story."
+          tone="quiet"
+        >
+          <BulletList
+            items={strengths}
+            empty="No clear strengths have been surfaced yet. That usually means the student has not built enough visible evidence for the chosen role."
+          />
+        </SectionCard>
+
+        <SectionCard
+          title="How the score breaks down"
+          subtitle="Use this only when you want more detail on where the student already looks strong and where support may matter most."
+        >
+          {scoring.loading ? <p>Loading live scoring...</p> : null}
+          {scoring.error ? <p style={{ color: "crimson" }}>{scoring.error}</p> : null}
+          {!scoring.loading && !scoring.error ? (
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+                gap: 12,
+              }}
+            >
+              {Object.entries(scoringBreakdown).map(([key, value]) => (
+                <div
+                  key={key}
+                  style={{
+                    border: "1px solid #dbe4f0",
+                    borderRadius: 16,
+                    padding: 16,
+                    background: "#f8fbff",
+                  }}
+                >
+                  <div style={{ fontWeight: 800, color: "#0f172a", marginBottom: 8 }}>{titleCase(key)}</div>
+                  <div style={{ fontSize: 28, fontWeight: 800 }}>{value}</div>
+                  <div style={{ color: "#475569" }}>{scoreLabel(value)}</div>
+                </div>
+              ))}
+            </div>
+          ) : null}
         </SectionCard>
 
         <SectionCard
@@ -378,7 +395,7 @@ export default function ParentDashboardView() {
           subtitle="Save a parent-friendly summary for the current reporting month so the dashboard remains useful even when live data changes later."
         >
           <p style={{ marginTop: 0, color: "#444", fontSize: 14, lineHeight: 1.6 }}>
-            If a brief has not been generated yet, this dashboard still shows live scoring above. Refreshing creates or updates the saved parent summary for this month.
+            If a brief has not been generated yet, this dashboard still shows the current live student picture above. Refreshing creates or updates the saved parent summary for this month.
           </p>
           <button type="button" onClick={() => void generateBrief()} disabled={generateBusy}>
             {generateBusy ? "Generating…" : "Generate / refresh this month"}
@@ -388,7 +405,7 @@ export default function ParentDashboardView() {
           {brief.error ? <p style={{ color: "crimson" }}>{brief.error}</p> : null}
           {!brief.loading && !brief.error && !brief.data?.brief ? (
             <p style={{ color: "#475569", marginBottom: 0 }}>
-              No saved brief exists yet for {brief.data?.monthLabel || "this month"}. The dashboard is using live scoring and recommendations as a fallback.
+              No saved brief exists yet for {brief.data?.monthLabel || "this month"}. The dashboard is using the current live scoring and recommendations for now.
             </p>
           ) : null}
           {!brief.loading && !brief.error && brief.data?.brief ? (

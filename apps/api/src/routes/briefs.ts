@@ -22,10 +22,24 @@ export async function parentBriefDemoRoute(_req: IncomingMessage, res: ServerRes
     parentVisibleInsights: [
       "Student engages better with a short list of concrete next steps",
       "Student currently lacks a first-degree professional network"
-    ]
+    ],
+    truthNotes: demoFinanceAnalystScoringInput.dataQualityNotes,
   });
 
   res.statusCode = 200;
   res.setHeader("content-type", "application/json");
-  res.end(JSON.stringify({ brief }, null, 2));
+  res.end(
+    JSON.stringify(
+      {
+        ok: true,
+        mode: "demo",
+        warning: "This endpoint returns demo-only content and does not read any real student record.",
+        brief: brief.brief,
+        deliveryMode: brief.deliveryMode,
+        degradedReason: brief.degradedReason || null,
+      },
+      null,
+      2
+    )
+  );
 }

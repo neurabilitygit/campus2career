@@ -15,6 +15,30 @@ function inferParserType(artifactType: string): string {
   return "generic_artifact_parser";
 }
 
+function describeParseExpectation(artifactType: string) {
+  if (artifactType === "transcript") {
+    return {
+      pipelineMode: "structured_transcript_parse",
+      evidenceWritePolicy: "persists transcript graph only after extraction; does not fabricate courses beyond parsed rows",
+      status: "partial" as const,
+    };
+  }
+
+  if (artifactType === "resume") {
+    return {
+      pipelineMode: "summary_only_resume_parse",
+      evidenceWritePolicy: "stores summary/insight metadata only; does not auto-create structured experience rows",
+      status: "partial" as const,
+    };
+  }
+
+  return {
+    pipelineMode: "summary_only_artifact_parse",
+    evidenceWritePolicy: "stores summary/insight metadata only; does not auto-create structured domain evidence",
+    status: "partial" as const,
+  };
+}
+
 export async function persistArtifactAndQueueParse(input: {
   studentProfileId: string;
   artifactType: string;
@@ -53,9 +77,11 @@ export async function persistArtifactAndQueueParse(input: {
   await onboardingRepo.updateFlags(input.studentProfileId, {
     uploads_completed: true,
   });
+  const parseExpectation = describeParseExpectation(input.artifactType);
 
   return {
     academicArtifactId,
     artifactParseJobId,
+    parseExpectation,
   };
 }

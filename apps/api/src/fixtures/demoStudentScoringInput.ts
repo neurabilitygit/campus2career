@@ -10,7 +10,29 @@ export const demoFinanceAnalystScoringInput: StudentScoringInput = {
   studentId: "demo-student",
   targetRoleFamily: "financial analyst",
   targetSectorCluster: "finance_financial_services",
+  targetResolution: {
+    truthStatus: "fallback",
+    confidenceLabel: "low",
+    resolutionKind: "selected_sector_mapping",
+    sourceLabel: "demo fixture",
+    note: "This is a demo-only target resolution bundled with the repository.",
+  },
   preferredGeographies: ["New York", "Boston"],
+  occupationSkillTruth: {
+    truthStatus: "fallback",
+    confidenceLabel: "low",
+    sourceLabel: "demo fixture",
+    note: "Occupation skills in this payload are static demo records.",
+  },
+  marketSignalTruth: {
+    truthStatus: "fallback",
+    confidenceLabel: "low",
+    sourceLabel: "demo fixture",
+    note: "Market signals in this payload are static demo records.",
+  },
+  dataQualityNotes: [
+    "This scoring input is a demo fixture and does not represent a real student record.",
+  ],
   occupationMetadata: { onetCode: "13-2031.00", jobZone: 4, description: "Budget and financial analysis surrogate" },
   occupationSkills: [
     { skillName: "excel_modeling", skillCategory: "technical", importanceScore: 90, requiredProficiencyBand: "intermediate" },
@@ -53,7 +75,29 @@ export const demoDataAnalystScoringInput: StudentScoringInput = {
   studentId: "demo-student",
   targetRoleFamily: "data analyst",
   targetSectorCluster: "data_analytics",
+  targetResolution: {
+    truthStatus: "fallback",
+    confidenceLabel: "low",
+    resolutionKind: "selected_sector_mapping",
+    sourceLabel: "demo fixture",
+    note: "This is a demo-only target resolution bundled with the repository.",
+  },
   preferredGeographies: ["New York", "Boston"],
+  occupationSkillTruth: {
+    truthStatus: "fallback",
+    confidenceLabel: "low",
+    sourceLabel: "demo fixture",
+    note: "Occupation skills in this payload are static demo records.",
+  },
+  marketSignalTruth: {
+    truthStatus: "fallback",
+    confidenceLabel: "low",
+    sourceLabel: "demo fixture",
+    note: "Market signals in this payload are static demo records.",
+  },
+  dataQualityNotes: [
+    "This scoring input is a demo fixture and does not represent a real student record.",
+  ],
   occupationMetadata: { onetCode: "15-2041.00", jobZone: 4, description: "Statistics-aligned data analyst surrogate" },
   occupationSkills: [
     { skillName: "sql", skillCategory: "technical", importanceScore: 85, requiredProficiencyBand: "intermediate" },

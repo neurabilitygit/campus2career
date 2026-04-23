@@ -21,9 +21,9 @@ export default function OnboardingNetworkPage() {
         method: "POST",
         body: JSON.stringify({ notes }),
       });
-      setStatus("Saved. Taking you to important dates...");
+      setStatus("Saved. Returning to the dashboard...");
       startTransition(() => {
-        router.push("/onboarding/deadlines");
+        router.push("/student?section=guidance");
       });
     } catch (err: any) {
       setStatus("");
@@ -33,13 +33,13 @@ export default function OnboardingNetworkPage() {
 
   return (
     <AppShell
-      title="Capture the current network"
-      subtitle="This helps the platform spot warm-introduction opportunities and understand where the student already has support."
+      title="Capture helpful connections"
+      subtitle="This is useful early, but it can stay lightweight. Even a few names help the platform suggest warmer next steps."
     >
       <RequireRole expectedRoles={["student", "admin"]} fallbackTitle="Student sign-in required">
         <SectionCard
           title="Relationship notes"
-          subtitle="Use one line per person. A simple format works well: name, role, organization, and why they matter."
+          subtitle="Use one line per person. A simple format works well: name, role, organization, and why they matter. You can add more later."
           tone="highlight"
         >
           <div style={{ display: "grid", gap: 14 }}>

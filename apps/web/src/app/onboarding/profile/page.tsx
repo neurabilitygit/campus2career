@@ -655,8 +655,8 @@ export default function OnboardingProfilePage() {
 
       setStatus(
         catalogAssignmentResult
-          ? "Your academic path was saved and the system has started connecting it to program requirements."
-          : "Your profile was saved. You can continue onboarding now and come back later to strengthen the academic path."
+          ? "Your academic path was saved. The platform is now connecting it to program requirements so the dashboard can use that context."
+          : "Your profile was saved. You can open the dashboard now and come back later to strengthen the academic path."
       );
     } catch (error: any) {
       setStatus("");
@@ -667,12 +667,12 @@ export default function OnboardingProfilePage() {
   return (
     <AppShell
       title="Build the student academic path"
-      subtitle="Choose the school and major first, then add the extra context that helps the platform score the student more accurately."
+      subtitle="Choose the school and major first so the dashboard can explain fit, gaps, and next steps in the right context."
     >
       <RequireRole expectedRoles={["student", "admin"]} fallbackTitle="Student sign-in required">
         <SectionCard
           title="School and program selection"
-          subtitle="Start with the college or university. If we already have structured curriculum data, you can choose the exact academic path here."
+          subtitle="Start with the college or university. If structured curriculum data is available, the platform can use it right away to make the dashboard more specific."
           tone="highlight"
         >
           <div style={{ display: "grid", gap: 16 }}>
@@ -1025,8 +1025,8 @@ export default function OnboardingProfilePage() {
           title={hasStructuredAcademicSelection ? "Profile details" : "Core profile"}
           subtitle={
             hasStructuredAcademicSelection
-              ? "Your school and program are set. Add the extra context that helps with guidance and planning."
-              : "If your school path is not fully available yet, you can still continue with manual profile details."
+              ? "Your school and program are set. Add only the extra context that will help the dashboard guide the next decisions."
+              : "If your school path is not fully available yet, you can still continue here and strengthen the record later."
           }
         >
           <div style={{ display: "grid", gap: 14 }}>
@@ -1175,7 +1175,7 @@ export default function OnboardingProfilePage() {
                 <p style={{ margin: 0, color: "#204861", lineHeight: 1.6 }}>{status}</p>
                 <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                   <Link
-                    href="/onboarding/sectors"
+                    href="/student?section=strategy"
                     style={{
                       textDecoration: "none",
                       borderRadius: 999,
@@ -1185,7 +1185,7 @@ export default function OnboardingProfilePage() {
                       fontWeight: 800,
                     }}
                   >
-                    Continue to career interests
+                    Open student dashboard
                   </Link>
                   <Link
                     href="/uploads"
@@ -1199,6 +1199,19 @@ export default function OnboardingProfilePage() {
                     }}
                   >
                     Go to documents
+                  </Link>
+                  <Link
+                    href="/onboarding/sectors"
+                    style={{
+                      textDecoration: "none",
+                      borderRadius: 999,
+                      padding: "11px 16px",
+                      background: "#ffffff",
+                      border: "1px solid rgba(73, 102, 149, 0.16)",
+                      fontWeight: 700,
+                    }}
+                  >
+                    Choose career interests
                   </Link>
                 </div>
               </div>

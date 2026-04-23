@@ -14,6 +14,12 @@ export interface ParentBriefInput {
   truthNotes?: string[];
 }
 
+export interface ParentBriefGenerationResult {
+  brief: string;
+  deliveryMode: "llm" | "fallback";
+  degradedReason?: string;
+}
+
 const PARENT_BRIEF_PROVIDER_TIMEOUT_MS = 12000;
 
 function buildSystemPrompt(): string {
@@ -54,9 +60,9 @@ function buildUserPrompt(input: ParentBriefInput): string {
   ].join("\n");
 }
 
-export async function generateParentBrief(input: ParentBriefInput): Promise<string> {
+export async function generateParentBrief(input: ParentBriefInput): Promise<ParentBriefGenerationResult> {
   try {
-    return await generateStructuredParentBrief({
+    const brief = await generateStructuredParentBrief({
       systemPrompt: buildSystemPrompt(),
       userPrompt: buildUserPrompt(input),
       timeoutMs: PARENT_BRIEF_PROVIDER_TIMEOUT_MS,
@@ -80,17 +86,25 @@ export async function generateParentBrief(input: ParentBriefInput): Promise<stri
           }
         : undefined,
     });
+    return {
+      brief,
+      deliveryMode: "llm",
+    };
   } catch (error) {
     const providerMessage = error instanceof Error ? error.message : String(error);
-    return [
-      `Purpose of report: summarize the student's current path toward ${input.targetGoal}.`,
-      `Student goal: ${input.targetGoal}. Trajectory status is ${input.scoring.trajectoryStatus} with overall score ${input.scoring.overallScore}.`,
-      `Accomplishments: ${input.accomplishments.join("; ") || "No accomplishments recorded this month."}`,
-      `Strengths: ${input.scoring.topStrengths.join("; ") || "No strengths have been surfaced clearly yet."}`,
-      `Gaps and risks: ${input.scoring.topRisks.join("; ") || "No major risks listed."}`,
-      `Recommended parent actions: ${input.scoring.recommendations.slice(0, 3).map((item) => item.title).join("; ") || "Review the current dashboard and clarify the student's top priority for the month."}`,
-      `Upcoming deadlines and decision points: ${input.upcomingDeadlines.join("; ") || "No deadlines were recorded."}`,
-      `Fallback note: AI-generated narrative was unavailable, so this brief was assembled from live scoring and stored student data. Provider detail: ${providerMessage}`,
-    ].join("\n\n");
+    return {
+      brief: [
+        `Purpose of report: summarize the student's current path toward ${input.targetGoal}.`,
+        `Student goal: ${input.targetGoal}. Trajectory status is ${input.scoring.trajectoryStatus} with overall score ${input.scoring.overallScore}.`,
+        `Accomplishments: ${input.accomplishments.join("; ") || "No accomplishments recorded this month."}`,
+        `Strengths: ${input.scoring.topStrengths.join("; ") || "No strengths have been surfaced clearly yet."}`,
+        `Gaps and risks: ${input.scoring.topRisks.join("; ") || "No major risks listed."}`,
+        `Recommended parent actions: ${input.scoring.recommendations.slice(0, 3).map((item) => item.title).join("; ") || "Review the current dashboard and clarify the student's top priority for the month."}`,
+        `Upcoming deadlines and decision points: ${input.upcomingDeadlines.join("; ") || "No deadlines were recorded."}`,
+        `Fallback note: AI-generated narrative was unavailable, so this brief was assembled from live scoring and stored student data. Provider detail: ${providerMessage}`,
+      ].join("\n\n"),
+      deliveryMode: "fallback",
+      degradedReason: providerMessage,
+    };
   }
 }

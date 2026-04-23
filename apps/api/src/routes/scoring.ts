@@ -43,7 +43,19 @@ export async function scoringRoute(_req: IncomingMessage, res: ServerResponse) {
 
   res.statusCode = 200;
   res.setHeader("content-type", "application/json");
-  res.end(JSON.stringify(demo, null, 2));
+  res.end(
+    JSON.stringify(
+      {
+        ok: true,
+        mode: "demo",
+        warning: "This endpoint returns demo-only scoring content and does not read any real student record.",
+        scoring: demo,
+        scoringInput: demoFinanceAnalystScoringInput,
+      },
+      null,
+      2
+    )
+  );
 }
 
 export async function scoringLiveRoute(req: IncomingMessage, res: ServerResponse) {

@@ -48,6 +48,14 @@ type ScoringPayload = {
     gapSeverity: string;
     evidenceSummary?: string;
   }>;
+  evidenceQuality?: {
+    assessmentMode?: "measured" | "provisional";
+    confidenceLabel?: string;
+    knownEvidence?: string[];
+    weakEvidence?: string[];
+    missingEvidence?: string[];
+    provisionalReasons?: string[];
+  };
 };
 
 type ScoringInputPayload = {
@@ -167,6 +175,12 @@ type ScoreExplanationResponse = {
       detail: string;
     }>;
     dataQualityAlerts: string[];
+    evidenceSummary: {
+      known: string[];
+      weak: string[];
+      missing: string[];
+      assessmentMode: "measured" | "provisional";
+    };
     immediateActions: string[];
     counterfactual?: {
       compareToRoleFamily: string;
@@ -234,20 +248,20 @@ const studentSectionItems = [
   {
     key: "strategy",
     href: "/student?section=strategy",
-    label: "Strategy",
-    description: "Target role, score, and explanation",
+    label: "Big picture",
+    description: "Status, target, and what matters most",
   },
   {
     key: "evidence",
     href: "/student?section=evidence",
     label: "Evidence",
-    description: "Academics and market inputs",
+    description: "What the system can verify so far",
   },
   {
     key: "guidance",
     href: "/student?section=guidance",
-    label: "Guidance",
-    description: "Subscores, risks, and next steps",
+    label: "Next steps",
+    description: "Risks, actions, and practical guidance",
   },
 ] as const;
 
@@ -335,6 +349,14 @@ export default function StudentDashboardView() {
   const targetRoleLabel = titleCase(scoring.data?.scoring?.targetRoleFamily);
   const targetSectorLabel = titleCase(scoring.data?.scoring?.targetSectorCluster);
   const trajectoryLabel = titleCase(scoring.data?.scoring?.trajectoryStatus);
+  const evidenceSummary = explanation.data?.explanation?.evidenceSummary;
+  const evidenceStillMissing = evidenceSummary?.missing?.length
+    ? evidenceSummary.missing
+    : explanation.data?.explanation?.dataQualityAlerts || [];
+  const evidenceKnown =
+    evidenceSummary?.known || scoring.data?.scoring?.evidenceQuality?.knownEvidence || [];
+  const assessmentMode =
+    evidenceSummary?.assessmentMode || scoring.data?.scoring?.evidenceQuality?.assessmentMode;
   const savedJobTargets = jobTargets.data?.jobTargets || [];
   const primaryJobTarget = savedJobTargets.find((jobTarget) => jobTarget.isPrimary) || null;
   const requestedSection = searchParams.get("section");
@@ -445,8 +467,8 @@ export default function StudentDashboardView() {
         {activeSection === "strategy" ? (
           <>
             <SectionCard
-              title="Your path at a glance"
-              subtitle="This is the fastest read on what the system believes you are aiming for and what needs attention next."
+              title="Current picture"
+              subtitle="Start here for the current status, the main risk, the best next move, and what still needs to be filled in."
               tone="highlight"
             >
               {scoring.loading ? <p style={{ margin: 0 }}>Building your current snapshot...</p> : null}
@@ -461,25 +483,16 @@ export default function StudentDashboardView() {
                 >
                   <div style={{ borderRadius: 18, padding: 18, background: "#ffffff", border: "1px solid rgba(73, 102, 149, 0.12)" }}>
                     <div style={{ color: "#5f728a", fontSize: 12, fontWeight: 800, textTransform: "uppercase", letterSpacing: 0.05 }}>
-                      Current target
+                      Current status
                     </div>
-                    <div style={{ fontSize: 28, fontWeight: 800, marginTop: 8 }}>{targetRoleLabel}</div>
-                    <div style={{ marginTop: 6, color: "#52657d" }}>{targetSectorLabel}</div>
-                  </div>
-                  <div style={{ borderRadius: 18, padding: 18, background: "#ffffff", border: "1px solid rgba(73, 102, 149, 0.12)" }}>
-                    <div style={{ color: "#5f728a", fontSize: 12, fontWeight: 800, textTransform: "uppercase", letterSpacing: 0.05 }}>
-                      Overall readiness
-                    </div>
-                    <div style={{ fontSize: 34, fontWeight: 800, marginTop: 8 }}>
-                      {scoring.data?.scoring?.overallScore ?? "?"}
-                    </div>
-                    <div style={{ marginTop: 6, color: "#52657d" }}>
-                      {trajectoryLabel} · {scoreLabel(scoring.data?.scoring?.overallScore)}
+                    <div style={{ fontSize: 28, fontWeight: 800, marginTop: 8 }}>{trajectoryLabel}</div>
+                    <div style={{ marginTop: 6, color: "#52657d", lineHeight: 1.55 }}>
+                      {scoring.data?.scoring?.overallScore ?? "?"}/100 for {targetRoleLabel} in {targetSectorLabel}
                     </div>
                   </div>
                   <div style={{ borderRadius: 18, padding: 18, background: "#ffffff", border: "1px solid rgba(73, 102, 149, 0.12)" }}>
                     <div style={{ color: "#5f728a", fontSize: 12, fontWeight: 800, textTransform: "uppercase", letterSpacing: 0.05 }}>
-                      Biggest concern
+                      Main risk
                     </div>
                     <div style={{ marginTop: 8, lineHeight: 1.55 }}>{primaryRisk || "No specific concern is showing yet."}</div>
                   </div>
@@ -491,12 +504,213 @@ export default function StudentDashboardView() {
                       {topRecommendation?.title || "Add more student information to unlock a clearer next step."}
                     </div>
                   </div>
+                  <div style={{ borderRadius: 18, padding: 18, background: "#ffffff", border: "1px solid rgba(73, 102, 149, 0.12)" }}>
+                    <div style={{ color: "#5f728a", fontSize: 12, fontWeight: 800, textTransform: "uppercase", letterSpacing: 0.05 }}>
+                      Evidence still missing
+                    </div>
+                    <div style={{ marginTop: 8, lineHeight: 1.55 }}>
+                      {evidenceStillMissing.length
+                        ? evidenceStillMissing.slice(0, 2).join(" ")
+                        : "No major missing-evidence warning is showing right now."}
+                    </div>
+                  </div>
                 </div>
               ) : null}
             </SectionCard>
 
             <SectionCard
-              title="Set the exact job you want to pursue"
+              title="What is helping and what is still missing"
+              subtitle="This explains why the score looks the way it does before you make any changes to the target role."
+            >
+              {explanation.loading ? <p>Building score explanation...</p> : null}
+              {explanation.error ? <p style={{ color: "crimson" }}>{explanation.error}</p> : null}
+              {!explanation.loading && !explanation.error && explanation.data?.explanation ? (
+                <div style={{ display: "grid", gap: 16 }}>
+                  <div
+                    style={{
+                      borderRadius: 18,
+                      padding: 18,
+                      background: "linear-gradient(135deg, rgba(21,94,239,0.08), rgba(34,197,94,0.08))",
+                      border: "1px solid rgba(148,163,184,0.28)",
+                      display: "grid",
+                      gap: 10,
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: 10,
+                        justifyContent: "space-between",
+                        flexWrap: "wrap",
+                        alignItems: "center",
+                      }}
+                    >
+                      <div style={{ fontWeight: 800, fontSize: 20 }}>
+                        {explanation.data.explanation.summaryHeadline}
+                      </div>
+                      <div
+                        style={{
+                          borderRadius: 999,
+                          padding: "8px 12px",
+                          background: assessmentMode === "provisional" ? "#fff8e7" : "#eef6ff",
+                          color: assessmentMode === "provisional" ? "#7a5817" : "#22456f",
+                          fontWeight: 800,
+                          fontSize: 13,
+                        }}
+                      >
+                        {assessmentMode === "provisional" ? "Provisional read" : "Measured read"}
+                      </div>
+                    </div>
+                    <p style={{ marginBottom: 0, color: "#334155", lineHeight: 1.7 }}>
+                      {explanation.data.explanation.summaryText}
+                    </p>
+                  </div>
+
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+                      gap: 14,
+                    }}
+                  >
+                    <div style={{ display: "grid", gap: 10 }}>
+                      <strong>What is helping most</strong>
+                      {explanation.data.explanation.strongestDrivers.map((driver) => (
+                        <div
+                          key={driver.key}
+                          style={{
+                            border: "1px solid #dbe4f0",
+                            borderRadius: 14,
+                            padding: 14,
+                            background: "#fbfdff",
+                          }}
+                        >
+                          <div style={{ fontWeight: 800 }}>{driver.label}</div>
+                          <div style={{ color: "#155e75", marginTop: 4 }}>{driver.score}</div>
+                          <div style={{ color: "#475569", marginTop: 6 }}>{driver.detail}</div>
+                        </div>
+                      ))}
+                    </div>
+                    <div style={{ display: "grid", gap: 10 }}>
+                      <strong>What needs work next</strong>
+                      {explanation.data.explanation.biggestGaps.map((driver) => (
+                        <div
+                          key={driver.key}
+                          style={{
+                            border: "1px solid #f1d5db",
+                            borderRadius: 14,
+                            padding: 14,
+                            background: "#fff7f8",
+                          }}
+                        >
+                          <div style={{ fontWeight: 800 }}>{driver.label}</div>
+                          <div style={{ color: "#b42318", marginTop: 4 }}>{driver.score}</div>
+                          <div style={{ color: "#475569", marginTop: 6 }}>{driver.detail}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {evidenceStillMissing.length ? (
+                    <div>
+                      <strong>Evidence still missing</strong>
+                      <ul style={{ marginBottom: 0 }}>
+                        {evidenceStillMissing.map((alert) => <li key={alert}>{alert}</li>)}
+                      </ul>
+                    </div>
+                  ) : null}
+
+                  {explanation.data.explanation.immediateActions.length ? (
+                    <div>
+                      <strong>Best next actions</strong>
+                      <ul style={{ marginBottom: 0 }}>
+                        {explanation.data.explanation.immediateActions.map((action) => <li key={action}>{action}</li>)}
+                      </ul>
+                    </div>
+                  ) : null}
+
+                  {explanation.data.explanation.counterfactual ? (
+                    <div
+                      style={{
+                        border: "1px solid #dbe4f0",
+                        borderRadius: 16,
+                        padding: 16,
+                        background: "#f8fbff",
+                        display: "grid",
+                        gap: 10,
+                      }}
+                    >
+                      <strong>Comparison explanation: {titleCase(explanation.data.explanation.counterfactual.compareToRoleFamily)}</strong>
+                      <div style={{ color: "#475569" }}>{explanation.data.explanation.counterfactual.summaryText}</div>
+                      {explanation.data.explanation.counterfactual.biggestChanges.length ? (
+                        <KeyValueList
+                          items={explanation.data.explanation.counterfactual.biggestChanges.map((change) => ({
+                            label: `${change.label} (${formatDelta(change.delta)})`,
+                            value: change.detail,
+                          }))}
+                        />
+                      ) : null}
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+            </SectionCard>
+
+            <SectionCard
+              title="Score details"
+              subtitle="Use this to confirm the target, the overall score, and whether the current read is measured or still provisional."
+            >
+              {scoring.loading ? <p>Loading scoring...</p> : null}
+              {scoring.error ? <p style={{ color: "crimson" }}>{scoring.error}</p> : null}
+              {!scoring.loading && !scoring.error ? (
+                <div style={{ display: "grid", gap: 16 }}>
+                  <KeyValueList
+                    items={[
+                      { label: "Saved exact target", value: primaryJobTarget?.title || "None saved" },
+                      { label: "Target role", value: titleCase(scoring.data?.scoring?.targetRoleFamily) },
+                      { label: "Target sector", value: titleCase(scoring.data?.scoring?.targetSectorCluster) },
+                      { label: "Current status", value: titleCase(scoring.data?.scoring?.trajectoryStatus) },
+                      { label: "Overall score", value: scoring.data?.scoring?.overallScore ?? "Unknown" },
+                      { label: "Read type", value: assessmentMode === "provisional" ? "Provisional" : "Measured" },
+                    ]}
+                  />
+                  {evidenceKnown.length ? (
+                    <div>
+                      <strong>Evidence already on file</strong>
+                      <ul style={{ marginBottom: 0 }}>
+                        {evidenceKnown.slice(0, 5).map((item) => <li key={item}>{item}</li>)}
+                      </ul>
+                    </div>
+                  ) : null}
+                  {comparison?.scoring ? (
+                    <div
+                      style={{
+                        border: "1px solid #dbe4f0",
+                        borderRadius: 16,
+                        padding: 16,
+                        background: "#f8fbff",
+                        display: "grid",
+                        gap: 10,
+                      }}
+                    >
+                      <strong>Comparison: {titleCase(comparison.scoring.targetRoleFamily)}</strong>
+                      <div style={{ color: "#475569" }}>
+                        Overall score delta relative to the selected role: {formatDelta(comparison.deltaOverallScore)}
+                      </div>
+                      <KeyValueList
+                        items={Object.entries(comparison.deltaSubScores || {}).map(([key, value]) => ({
+                          label: titleCase(key),
+                          value: formatDelta(value),
+                        }))}
+                      />
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+            </SectionCard>
+
+            <SectionCard
+              title="Save the exact job you want"
               subtitle="Save a real target job here. When no temporary override is selected below, scoring will use this saved target by default."
             >
               <div style={{ display: "grid", gap: 16 }}>
@@ -677,8 +891,8 @@ export default function StudentDashboardView() {
             </SectionCard>
 
             <SectionCard
-              title="Preview different role families"
-              subtitle="Use this when you want to test a different path. Leave the first field empty to score against the saved exact target above."
+              title="Try another role path"
+              subtitle="Use this to see how the score changes under a different path. Leave the first field empty to score against the saved exact target above."
             >
               <div style={{ display: "grid", gap: 16 }}>
                 <div
@@ -722,164 +936,14 @@ export default function StudentDashboardView() {
                 </div>
               </div>
             </SectionCard>
-
-            <SectionCard
-              title="Current score snapshot"
-              subtitle="This is the headline view before you drill into academics, market signals, and recommendations."
-            >
-              {scoring.loading ? <p>Loading scoring...</p> : null}
-              {scoring.error ? <p style={{ color: "crimson" }}>{scoring.error}</p> : null}
-              {!scoring.loading && !scoring.error ? (
-                <div style={{ display: "grid", gap: 16 }}>
-                  <KeyValueList
-                    items={[
-                      { label: "Saved exact target", value: primaryJobTarget?.title || "None saved" },
-                      { label: "Target role", value: titleCase(scoring.data?.scoring?.targetRoleFamily) },
-                      { label: "Target sector", value: titleCase(scoring.data?.scoring?.targetSectorCluster) },
-                      { label: "Trajectory status", value: titleCase(scoring.data?.scoring?.trajectoryStatus) },
-                      { label: "Overall score", value: scoring.data?.scoring?.overallScore ?? "Unknown" },
-                    ]}
-                  />
-                  {comparison?.scoring ? (
-                    <div
-                      style={{
-                        border: "1px solid #dbe4f0",
-                        borderRadius: 16,
-                        padding: 16,
-                        background: "#f8fbff",
-                        display: "grid",
-                        gap: 10,
-                      }}
-                    >
-                      <strong>Comparison: {titleCase(comparison.scoring.targetRoleFamily)}</strong>
-                      <div style={{ color: "#475569" }}>
-                        Overall score delta relative to the selected role: {formatDelta(comparison.deltaOverallScore)}
-                      </div>
-                      <KeyValueList
-                        items={Object.entries(comparison.deltaSubScores || {}).map(([key, value]) => ({
-                          label: titleCase(key),
-                          value: formatDelta(value),
-                        }))}
-                      />
-                    </div>
-                  ) : null}
-                </div>
-              ) : null}
-            </SectionCard>
-
-            <SectionCard
-              title="Why the score landed here"
-              subtitle="This translates the scoring math into a simple explanation so you can see what is helping, what is holding you back, and what would change under another role."
-            >
-              {explanation.loading ? <p>Building score explanation...</p> : null}
-              {explanation.error ? <p style={{ color: "crimson" }}>{explanation.error}</p> : null}
-              {!explanation.loading && !explanation.error && explanation.data?.explanation ? (
-                <div style={{ display: "grid", gap: 16 }}>
-                  <div
-                    style={{
-                      borderRadius: 18,
-                      padding: 18,
-                      background: "linear-gradient(135deg, rgba(21,94,239,0.08), rgba(34,197,94,0.08))",
-                      border: "1px solid rgba(148,163,184,0.28)",
-                    }}
-                  >
-                    <div style={{ fontWeight: 800, fontSize: 20 }}>{explanation.data.explanation.summaryHeadline}</div>
-                    <p style={{ marginBottom: 0, color: "#334155", lineHeight: 1.7 }}>
-                      {explanation.data.explanation.summaryText}
-                    </p>
-                  </div>
-
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 14 }}>
-                    <div style={{ display: "grid", gap: 10 }}>
-                      <strong>What is helping most</strong>
-                      {explanation.data.explanation.strongestDrivers.map((driver) => (
-                        <div
-                          key={driver.key}
-                          style={{
-                            border: "1px solid #dbe4f0",
-                            borderRadius: 14,
-                            padding: 14,
-                            background: "#fbfdff",
-                          }}
-                        >
-                          <div style={{ fontWeight: 800 }}>{driver.label}</div>
-                          <div style={{ color: "#155e75", marginTop: 4 }}>{driver.score}</div>
-                          <div style={{ color: "#475569", marginTop: 6 }}>{driver.detail}</div>
-                        </div>
-                      ))}
-                    </div>
-                    <div style={{ display: "grid", gap: 10 }}>
-                      <strong>What needs work next</strong>
-                      {explanation.data.explanation.biggestGaps.map((driver) => (
-                        <div
-                          key={driver.key}
-                          style={{
-                            border: "1px solid #f1d5db",
-                            borderRadius: 14,
-                            padding: 14,
-                            background: "#fff7f8",
-                          }}
-                        >
-                          <div style={{ fontWeight: 800 }}>{driver.label}</div>
-                          <div style={{ color: "#b42318", marginTop: 4 }}>{driver.score}</div>
-                          <div style={{ color: "#475569", marginTop: 6 }}>{driver.detail}</div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {explanation.data.explanation.dataQualityAlerts.length ? (
-                    <div>
-                      <strong>Missing information still limiting the score</strong>
-                      <ul style={{ marginBottom: 0 }}>
-                        {explanation.data.explanation.dataQualityAlerts.map((alert) => <li key={alert}>{alert}</li>)}
-                      </ul>
-                    </div>
-                  ) : null}
-
-                  {explanation.data.explanation.immediateActions.length ? (
-                    <div>
-                      <strong>Best next actions</strong>
-                      <ul style={{ marginBottom: 0 }}>
-                        {explanation.data.explanation.immediateActions.map((action) => <li key={action}>{action}</li>)}
-                      </ul>
-                    </div>
-                  ) : null}
-
-                  {explanation.data.explanation.counterfactual ? (
-                    <div
-                      style={{
-                        border: "1px solid #dbe4f0",
-                        borderRadius: 16,
-                        padding: 16,
-                        background: "#f8fbff",
-                        display: "grid",
-                        gap: 10,
-                      }}
-                    >
-                      <strong>Comparison explanation: {titleCase(explanation.data.explanation.counterfactual.compareToRoleFamily)}</strong>
-                      <div style={{ color: "#475569" }}>{explanation.data.explanation.counterfactual.summaryText}</div>
-                      {explanation.data.explanation.counterfactual.biggestChanges.length ? (
-                        <KeyValueList
-                          items={explanation.data.explanation.counterfactual.biggestChanges.map((change) => ({
-                            label: `${change.label} (${formatDelta(change.delta)})`,
-                            value: change.detail,
-                          }))}
-                        />
-                      ) : null}
-                    </div>
-                  ) : null}
-                </div>
-              ) : null}
-            </SectionCard>
           </>
         ) : null}
 
         {activeSection === "evidence" ? (
           <>
             <SectionCard
-              title="What your academic record is contributing"
-              subtitle="This section explains how much the system currently understands about your transcript and degree path."
+              title="Academic evidence on file"
+              subtitle="This shows how much the system currently understands about the transcript and degree path behind the score."
             >
               {scoring.loading ? <p>Loading academic progress...</p> : null}
               {scoring.error ? <p style={{ color: "crimson" }}>Academic scoring context is unavailable because the scoring request failed.</p> : null}
@@ -977,8 +1041,8 @@ export default function StudentDashboardView() {
             </SectionCard>
 
             <SectionCard
-              title="Market outlook behind this score"
-              subtitle="These signals help explain whether the target role looks favorable and which skills matter most in that market."
+              title="Career market context"
+              subtitle="These signals help explain the role environment and the skills the market is asking for."
               tone="quiet"
             >
               {scoring.loading ? <p>Loading market inputs...</p> : null}
@@ -1041,13 +1105,33 @@ export default function StudentDashboardView() {
         {activeSection === "guidance" ? (
           <>
             <SectionCard
-              title="Where the score is coming from"
-              subtitle="Use these subscores to see whether the biggest weakness is academics, experience, proof of work, networking, or execution."
+              title="What needs attention next"
+              subtitle="Start with the next move, then use the breakdown below if you want to understand the detail."
             >
               {scoring.loading ? <p>Loading subscores...</p> : null}
               {scoring.error ? <p style={{ color: "crimson" }}>{scoring.error}</p> : null}
               {!scoring.loading && !scoring.error ? (
                 <div style={{ display: "grid", gap: 16 }}>
+              <div>
+                <strong>Recommended next actions</strong>
+                <ul style={{ marginBottom: 0 }}>
+                  {(scoring.data?.scoring?.recommendations || []).slice(0, 5).map((item) => <li key={item.title}>{item.title}</li>)}
+                </ul>
+              </div>
+              <div>
+                <strong>Main risks</strong>
+                <ul style={{ marginBottom: 0 }}>
+                  {(scoring.data?.scoring?.topRisks || []).map((risk) => <li key={risk}>{risk}</li>)}
+                </ul>
+              </div>
+              {evidenceStillMissing.length ? (
+                <div>
+                  <strong>Evidence still missing</strong>
+                  <ul style={{ marginBottom: 0 }}>
+                    {evidenceStillMissing.map((item) => <li key={item}>{item}</li>)}
+                  </ul>
+                </div>
+              ) : null}
               <div
                 style={{
                   display: "grid",
@@ -1071,25 +1155,13 @@ export default function StudentDashboardView() {
                   </div>
                 ))}
               </div>
-              <div>
-                <strong>Top risks</strong>
-                <ul style={{ marginBottom: 0 }}>
-                  {(scoring.data?.scoring?.topRisks || []).map((risk) => <li key={risk}>{risk}</li>)}
-                </ul>
-              </div>
-              <div>
-                <strong>Recommended next actions</strong>
-                <ul style={{ marginBottom: 0 }}>
-                  {(scoring.data?.scoring?.recommendations || []).slice(0, 5).map((item) => <li key={item.title}>{item.title}</li>)}
-                </ul>
-              </div>
                 </div>
               ) : null}
             </SectionCard>
 
             <SectionCard
               title="Ask for guidance"
-              subtitle="Use a specific scenario question to get practical advice for the next semester, internship cycle, or decision point."
+              subtitle="Ask about a real decision or concern and the platform will turn the current student context into practical advice."
             >
               <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 16 }}>
             <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>

@@ -15,6 +15,8 @@ export type SessionState = {
 };
 
 const SESSION_TIMEOUT_MS = 5000;
+const STALE_REFRESH_GRACE_MS = 2000;
+const STALE_REFRESH_MS = SESSION_TIMEOUT_MS + STALE_REFRESH_GRACE_MS;
 
 let state: SessionState = {
   session: null,
@@ -27,7 +29,9 @@ const listeners = new Set<() => void>();
 let authClient: SupabaseClient | null = null;
 let authListenerBound = false;
 let activeRefresh: Promise<void> | null = null;
+let activeRefreshStartedAt: number | null = null;
 let sessionInitialized = false;
+let latestRefreshId = 0;
 
 function emit(next: SessionState) {
   state = next;
@@ -98,8 +102,21 @@ export function subscribeToSession(listener: () => void) {
 }
 
 export function initializeSession() {
+  if (activeRefreshStartedAt !== null && Date.now() - activeRefreshStartedAt > STALE_REFRESH_MS) {
+    activeRefresh = null;
+    activeRefreshStartedAt = null;
+  }
+
   if (sessionInitialized) {
-    return activeRefresh ?? Promise.resolve();
+    if (activeRefresh) {
+      return activeRefresh;
+    }
+
+    if (state.loading || state.lastCheckedAt === null) {
+      return refreshSession({ force: true });
+    }
+
+    return Promise.resolve();
   }
 
   sessionInitialized = true;
@@ -119,6 +136,11 @@ export async function refreshSession(options?: { force?: boolean }) {
     return;
   }
 
+  if (activeRefreshStartedAt !== null && Date.now() - activeRefreshStartedAt > STALE_REFRESH_MS) {
+    activeRefresh = null;
+    activeRefreshStartedAt = null;
+  }
+
   if (activeRefresh && !options?.force) {
     return activeRefresh;
   }
@@ -129,11 +151,20 @@ export async function refreshSession(options?: { force?: boolean }) {
     error: null,
   });
 
+  const refreshId = ++latestRefreshId;
+  activeRefreshStartedAt = Date.now();
+
   activeRefresh = (async () => {
     try {
       const result = await getSessionWithTimeout(supabase);
+      if (refreshId !== latestRefreshId) {
+        return;
+      }
       emitSession(result.data.session || null, result.error?.message || null);
     } catch (error) {
+      if (refreshId !== latestRefreshId) {
+        return;
+      }
       emit({
         session: state.session,
         loading: false,
@@ -141,7 +172,10 @@ export async function refreshSession(options?: { force?: boolean }) {
         lastCheckedAt: Date.now(),
       });
     } finally {
-      activeRefresh = null;
+      if (refreshId === latestRefreshId) {
+        activeRefresh = null;
+        activeRefreshStartedAt = null;
+      }
     }
   })();
 

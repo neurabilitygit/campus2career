@@ -8,6 +8,7 @@ import { generateParentBriefsJob } from "./jobs/generate-parent-briefs";
 import { generateAlerts } from "./jobs/generate-alerts";
 import { refreshInsights } from "./jobs/refresh-insights";
 import { processParseJobs } from "./jobs/process-parse-jobs";
+import type { WorkerJobResult } from "./jobs/jobStatus";
 
 const jobRegistry = {
   "seed-target-role-families": seedTargetRoleFamilies,
@@ -33,7 +34,10 @@ function listJobs() {
 
 async function runJob(jobName: WorkerJobName) {
   console.log(`Running worker job: ${jobName}`);
-  await jobRegistry[jobName]();
+  const result = await jobRegistry[jobName]() as WorkerJobResult | void;
+  if (result) {
+    console.log(`Worker job result: ${JSON.stringify(result, null, 2)}`);
+  }
   console.log(`Worker job completed: ${jobName}`);
 }
 
@@ -41,7 +45,8 @@ async function runParseLoop(intervalMs: number) {
   console.log(`Starting parse queue loop (interval ${intervalMs}ms)`);
   while (true) {
     try {
-      await processParseJobs();
+      const result = await processParseJobs();
+      console.log(`Parse loop result: ${JSON.stringify(result)}`);
     } catch (error) {
       console.error("Parse queue iteration failed", error);
     }

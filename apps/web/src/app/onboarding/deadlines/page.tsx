@@ -42,12 +42,12 @@ export default function OnboardingDeadlinesPage() {
   return (
     <AppShell
       title="Add an important date"
-      subtitle="A few well-chosen deadlines make the student plan much more concrete and time-aware."
+      subtitle="One or two important dates are enough to make the student plan much more concrete and time-aware."
     >
       <RequireRole expectedRoles={["student", "admin"]} fallbackTitle="Student sign-in required">
         <SectionCard
-          title="Deadline details"
-          subtitle="Use this for internship windows, application deadlines, tests, or any decision point you want the student plan to respect."
+          title="Next date that matters"
+          subtitle="Use this for internship windows, application deadlines, tests, or any decision point the plan should respect."
           tone="highlight"
         >
           <div style={{ display: "grid", gap: 12 }}>

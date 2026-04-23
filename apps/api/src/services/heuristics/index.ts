@@ -10,13 +10,18 @@ export function applyHeuristics(
 ): HeuristicFlag[] {
   const flags: HeuristicFlag[] = [];
   const year = input.signals.currentAcademicYear;
+  const hasExperienceEvidence = input.experiences.length > 0;
+  const hasNetworkEvidence = input.contacts.length > 0 || input.outreach.length > 0;
+  const hasArtifactEvidence = input.artifacts.length > 0;
 
   if (!input.signals.hasInternshipByJuniorYear && year === "junior") {
     flags.push({
       code: "NO_INTERNSHIP_BY_JUNIOR_YEAR",
-      severity: "critical",
-      title: "No internship by junior year",
-      explanation: "This materially weakens launch readiness for many white-collar entry paths.",
+      severity: hasExperienceEvidence ? "critical" : "warning",
+      title: hasExperienceEvidence ? "No internship by junior year" : "No internship evidence is stored for junior year",
+      explanation: hasExperienceEvidence
+        ? "This materially weakens launch readiness for many white-collar entry paths."
+        : "The system does not yet see internship evidence in the stored experience record, so this should be treated as a missing-evidence warning first.",
       recommendedActions: [
         "Prioritize internship applications immediately",
         "Add short-cycle project or micro-internship options",
@@ -28,9 +33,11 @@ export function applyHeuristics(
   if (!input.signals.hasFirstOrSecondDegreeProfessionalNetwork) {
     flags.push({
       code: "WEAK_NETWORK",
-      severity: "critical",
-      title: "No first- or second-degree professional network",
-      explanation: "Lack of network access reduces visibility, referrals, and informational learning.",
+      severity: hasNetworkEvidence ? "critical" : "warning",
+      title: hasNetworkEvidence ? "No first- or second-degree professional network" : "Networking evidence is missing or weak",
+      explanation: hasNetworkEvidence
+        ? "Lack of network access reduces visibility, referrals, and informational learning."
+        : "The system does not yet have enough stored contacts or outreach history to tell the difference between a weak network and missing network data.",
       recommendedActions: [
         "Map parent, alumni, professor, and community contacts",
         "Run initial informational interviews",
@@ -56,9 +63,11 @@ export function applyHeuristics(
   if (!input.signals.hasIndependentProjectBySeniorYear && year === "senior") {
     flags.push({
       code: "NO_INDEPENDENT_PROJECT_BY_SENIOR_YEAR",
-      severity: "critical",
-      title: "No independent project by senior year",
-      explanation: "This weakens proof-of-work and independence signaling.",
+      severity: hasArtifactEvidence ? "critical" : "warning",
+      title: hasArtifactEvidence ? "No independent project by senior year" : "No independent project evidence is stored for senior year",
+      explanation: hasArtifactEvidence
+        ? "This weakens proof-of-work and independence signaling."
+        : "No project-like artifact is stored yet, so this should be treated as missing evidence until proof-of-work is recorded more clearly.",
       recommendedActions: [
         "Ship one independent project within the next 30 days",
         "Create a short artifact or portfolio piece",

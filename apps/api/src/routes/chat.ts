@@ -16,10 +16,24 @@ export async function scenarioChatDemoRoute(_req: IncomingMessage, res: ServerRe
       "Student responds better to concise guidance",
       "Student needs visible proof-of-work"
     ],
+    truthNotes: demoDataAnalystScoringInput.dataQualityNotes,
     scoring
   });
 
   res.statusCode = 200;
   res.setHeader("content-type", "application/json");
-  res.end(JSON.stringify({ response }, null, 2));
+  res.end(
+    JSON.stringify(
+      {
+        ok: true,
+        mode: "demo",
+        warning: "This endpoint returns demo-only scenario guidance and does not read any real student record.",
+        response: response.response,
+        deliveryMode: response.deliveryMode,
+        degradedReason: response.degradedReason || null,
+      },
+      null,
+      2
+    )
+  );
 }

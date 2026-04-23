@@ -78,6 +78,7 @@ export function extractStructuredTranscript(input: {
     .split(/\r?\n/)
     .map((line) => line.trim())
     .filter(Boolean);
+  let detectedTermHeaderCount = 0;
 
   const terms: TranscriptTermInput[] = [];
   let currentTerm: TranscriptTermInput = {
@@ -88,6 +89,7 @@ export function extractStructuredTranscript(input: {
 
   for (const line of lines) {
     if (looksLikeTermHeader(line)) {
+      detectedTermHeaderCount += 1;
       if (currentTerm.courses.length > 0 || terms.length === 0) {
         if (currentTerm.courses.length > 0 || terms.length === 0) {
           terms.push(currentTerm);
@@ -134,7 +136,14 @@ export function extractStructuredTranscript(input: {
     institutionCanonicalName: input.institutionCanonicalName,
     transcriptSummary:
       input.transcriptSummary ??
-      `Extracted ${normalizedTerms.reduce((sum, term) => sum + term.courses.length, 0)} course entries across ${normalizedTerms.length} term(s).`,
+      [
+        `Extracted ${normalizedTerms.reduce((sum, term) => sum + term.courses.length, 0)} course entries across ${normalizedTerms.length} term(s).`,
+        detectedTermHeaderCount === 0
+          ? "No explicit term headers were recognized, so courses were grouped under imported fallback term labels."
+          : null,
+      ]
+        .filter(Boolean)
+        .join(" "),
     parsedStatus: "parsed",
     terms: normalizedTerms,
   };

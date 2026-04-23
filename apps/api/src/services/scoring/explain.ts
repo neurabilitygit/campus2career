@@ -27,6 +27,12 @@ export interface ScoreExplanationResult {
   strongestDrivers: ScoreExplanationDriver[];
   biggestGaps: ScoreExplanationDriver[];
   dataQualityAlerts: string[];
+  evidenceSummary: {
+    known: string[];
+    weak: string[];
+    missing: string[];
+    assessmentMode: "measured" | "provisional";
+  };
   immediateActions: string[];
   counterfactual?: {
     compareToRoleFamily: string;
@@ -165,6 +171,15 @@ function buildDataQualityAlerts(input: StudentScoringInput): string[] {
   return Array.from(new Set(alerts));
 }
 
+function buildEvidenceSummary(input: StudentScoringInput, scoring: ScoringOutput) {
+  return {
+    known: scoring.evidenceQuality.knownEvidence,
+    weak: scoring.evidenceQuality.weakEvidence,
+    missing: scoring.evidenceQuality.missingEvidence,
+    assessmentMode: scoring.evidenceQuality.assessmentMode,
+  };
+}
+
 function buildImmediateActions(scoring: ScoringOutput, input: StudentScoringInput): string[] {
   const actions = new Set<string>();
 
@@ -231,6 +246,9 @@ export function explainScore(input: {
   const topStrength = strongestDrivers[0];
   const summaryHeadline = `${titleCase(input.selectedScoring.targetRoleFamily)} is currently ${titleCase(input.selectedScoring.trajectoryStatus)} at ${input.selectedScoring.overallScore}/100`;
   const summaryText = [
+    input.selectedScoring.evidenceQuality.assessmentMode === "provisional"
+      ? "This is a provisional readiness read because several evidence areas are still missing or thin."
+      : null,
     topStrength ? `${topStrength.label} is helping most right now.` : null,
     topGap ? `${topGap.label} is the biggest drag on the score.` : null,
     input.selectedScoring.recommendations[0]?.title
@@ -275,6 +293,7 @@ export function explainScore(input: {
     strongestDrivers,
     biggestGaps,
     dataQualityAlerts: buildDataQualityAlerts(input.selectedInput),
+    evidenceSummary: buildEvidenceSummary(input.selectedInput, input.selectedScoring),
     immediateActions: buildImmediateActions(input.selectedScoring, input.selectedInput),
     counterfactual,
   };

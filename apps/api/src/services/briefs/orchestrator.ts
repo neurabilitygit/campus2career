@@ -50,5 +50,10 @@ export async function generateAndPersistParentBrief(input: {
     recommendedParentActions: input.scoring.recommendations.map((r) => r.title).slice(0, 3).join(" | "),
   });
 
-  return { brief, context: ctx };
+  return {
+    brief: brief.brief,
+    deliveryMode: brief.deliveryMode,
+    degradedReason: brief.degradedReason,
+    context: ctx,
+  };
 }

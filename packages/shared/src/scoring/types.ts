@@ -8,6 +8,8 @@ import type {
 export type TrajectoryStatus = "on_track" | "watch" | "at_risk";
 export type GapSeverity = "low" | "medium" | "high";
 export type ProficiencyBand = "none" | "basic" | "intermediate" | "advanced";
+export type EvidenceLevel = "strong" | "moderate" | "thin" | "missing";
+export type AssessmentMode = "measured" | "provisional";
 
 export interface OccupationSkillRequirement {
   skillName: string;
@@ -228,6 +230,26 @@ export interface HeuristicFlag {
   recommendedActions: string[];
 }
 
+export interface SubScoreEvidenceDetail {
+  score: number;
+  status: "strong" | "developing" | "weak";
+  evidenceLevel: EvidenceLevel;
+  confidenceLabel: ConfidenceLabel;
+  interpretation: string;
+  knownSignals: string[];
+  missingSignals: string[];
+}
+
+export interface ScoringEvidenceQuality {
+  overallEvidenceLevel: EvidenceLevel;
+  confidenceLabel: ConfidenceLabel;
+  assessmentMode: AssessmentMode;
+  knownEvidence: string[];
+  weakEvidence: string[];
+  missingEvidence: string[];
+  provisionalReasons: string[];
+}
+
 export interface ScoringOutput {
   studentId: string;
   targetRoleFamily: string;
@@ -235,6 +257,8 @@ export interface ScoringOutput {
   trajectoryStatus: TrajectoryStatus;
   overallScore: number;
   subScores: SubScores;
+  subScoreDetails: Record<keyof SubScores, SubScoreEvidenceDetail>;
+  evidenceQuality: ScoringEvidenceQuality;
   topStrengths: string[];
   topRisks: string[];
   heuristicFlags: HeuristicFlag[];

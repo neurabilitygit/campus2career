@@ -49,9 +49,9 @@ export default function OnboardingSectorsPage() {
           sectorClusters: selected,
         }),
       });
-      setStatus("Saved. Taking you to the document center...");
+      setStatus("Saved. Returning to the dashboard...");
       startTransition(() => {
-        router.push("/uploads");
+        router.push("/student?section=strategy");
       });
     } catch (err: any) {
       setStatus("");
@@ -61,13 +61,13 @@ export default function OnboardingSectorsPage() {
 
   return (
     <AppShell
-      title="Choose career interest areas"
-      subtitle="This does not lock the student into a path. It simply tells the system where to begin when scoring and suggesting next moves."
+      title="Choose starting career areas"
+      subtitle="This gives the dashboard an initial direction. It does not lock the student into a final path."
     >
       <RequireRole expectedRoles={["student", "admin"]} fallbackTitle="Student sign-in required">
         <SectionCard
-          title="Select the most relevant areas"
-          subtitle="Pick a few that feel closest to the student’s current interests. You can always change them later."
+          title="Pick a starting direction"
+          subtitle="Choose the areas that feel closest right now. You can refine this later after seeing the score and role options."
           tone="highlight"
         >
           <div
