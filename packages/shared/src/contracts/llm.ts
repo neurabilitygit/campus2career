@@ -4,7 +4,8 @@ export type LlmRunType =
   | "transcript_reconcile"
   | "job_normalize"
   | "score_explain"
-  | "requirements_repair";
+  | "requirements_repair"
+  | "communication_translation";
 
 export type LlmRunStatus = "started" | "succeeded" | "failed" | "timed_out";
 

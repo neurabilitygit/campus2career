@@ -6,6 +6,10 @@ import { resolveRequestContext } from "../services/auth/resolveRequestContext";
 import { unauthorized, badRequest, json, serviceUnavailable } from "../utils/http";
 import { buildStudentScoringInput } from "../services/student/aggregateStudentContext";
 import { readJsonBody } from "../utils/body";
+import { CommunicationRepository } from "../repositories/communication/communicationRepository";
+import { summarizeCommunicationPreferences } from "../services/communication/preferences";
+
+const communicationRepo = new CommunicationRepository();
 
 const scenarioChatLiveBodySchema = z.object({
   scenarioQuestion: z.string().trim().min(1, "scenarioQuestion is required").max(8000),
@@ -32,7 +36,7 @@ export async function scenarioChatLiveRoute(req: IncomingMessage, res: ServerRes
     }
 
     const { scenarioQuestion, communicationStyle, targetRoleFamily, targetSectorCluster } = parsed.data;
-    const style = communicationStyle && communicationStyle.length > 0 ? communicationStyle : "direct";
+    const style = communicationStyle && communicationStyle.length > 0 ? communicationStyle : undefined;
 
     const ctx = await resolveRequestContext(req);
 
@@ -45,13 +49,16 @@ export async function scenarioChatLiveRoute(req: IncomingMessage, res: ServerRes
       targetSectorCluster,
     });
     const scoring = runScoring(scoringInput);
+    const studentPreferences = await communicationRepo.getStudentPreferences(ctx.studentProfileId);
+    const preferenceSummary = summarizeCommunicationPreferences(studentPreferences);
 
     const result = await runScenarioChatWithContext({
       studentProfileId: ctx.studentProfileId,
       targetRoleFamily: scoringInput.targetRoleFamily,
       targetSectorCluster: scoringInput.targetSectorCluster,
       scenarioQuestion,
-      communicationStyle: style,
+      communicationStyle: style || preferenceSummary.preferredStyleLabel,
+      communicationPreferenceNotes: preferenceSummary.studentPromptNotes,
       scoring,
       scoringInput,
     });

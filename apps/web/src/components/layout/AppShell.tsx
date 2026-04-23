@@ -66,7 +66,17 @@ const navGroups: ShellNavGroup[] = [
   {
     label: "Family and support",
     items: [
-      { href: "/parent", label: "Parent", description: "Family-facing guidance and brief" },
+      {
+        href: "/parent",
+        label: "Parent",
+        description: "Family-facing guidance and brief",
+        children: [
+          { href: "/parent", label: "Overview" },
+          { href: "/parent/communication", label: "Communication" },
+          { href: "/parent/history", label: "History" },
+          { href: "/parent/onboarding", label: "Parent onboarding" },
+        ],
+      },
       { href: "/coach", label: "Coach", description: "Support and diagnostics" },
     ],
   },

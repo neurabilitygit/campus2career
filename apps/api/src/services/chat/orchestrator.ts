@@ -17,6 +17,7 @@ export async function runScenarioChatWithContext(input: {
   targetSectorCluster: string;
   scenarioQuestion: string;
   communicationStyle?: string;
+  communicationPreferenceNotes?: string[];
   scoring: ScoringOutput;
   scoringInput?: StudentScoringInput;
 }) {
@@ -29,6 +30,7 @@ export async function runScenarioChatWithContext(input: {
     targetSectorCluster: input.targetSectorCluster,
     scenarioQuestion: input.scenarioQuestion,
     communicationStyle: input.communicationStyle,
+    communicationPreferenceNotes: input.communicationPreferenceNotes,
     parentVisibleInsights: ctx.parentVisibleInsights,
     scoring: input.scoring,
     truthNotes: [
@@ -50,6 +52,7 @@ export async function runScenarioChatWithContext(input: {
     bodyMarkdown: renderScenarioMarkdown(result.response),
     structuredPayload: {
       ...result.response,
+      communicationPreferenceNotes: input.communicationPreferenceNotes || [],
       truthNotes: [
         ...(input.scoringInput?.dataQualityNotes || []),
         ctx.targetGoalTruthStatus !== "direct"

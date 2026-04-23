@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { AppShell } from "../layout/AppShell";
 import { SectionCard } from "../layout/SectionCard";
 import { KeyValueList } from "../layout/KeyValueList";
@@ -269,6 +270,53 @@ export default function ParentDashboardView() {
           brief={brief.data?.brief}
           monthLabel={brief.data?.monthLabel || "Current month"}
         />
+
+        <SectionCard
+          title="Communication translator"
+          subtitle="Save concerns as context, translate them into student-appropriate language, and review before any delivery."
+          tone="highlight"
+        >
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+              gap: 14,
+            }}
+          >
+            <Link
+              href="/parent/communication"
+              style={{
+                textDecoration: "none",
+                color: "#0f172a",
+                borderRadius: 18,
+                padding: 18,
+                background: "#ffffff",
+                border: "1px solid #dbe4f0",
+              }}
+            >
+              <strong style={{ display: "block", fontSize: 18 }}>Open communication workspace</strong>
+              <p style={{ margin: "8px 0 0", color: "#52657d", lineHeight: 1.6 }}>
+                Capture concerns, generate a translation strategy, and save a reviewable message draft.
+              </p>
+            </Link>
+            <Link
+              href="/parent/onboarding"
+              style={{
+                textDecoration: "none",
+                color: "#0f172a",
+                borderRadius: 18,
+                padding: 18,
+                background: "#ffffff",
+                border: "1px solid #dbe4f0",
+              }}
+            >
+              <strong style={{ display: "block", fontSize: 18 }}>Set parent communication baseline</strong>
+              <p style={{ margin: "8px 0 0", color: "#52657d", lineHeight: 1.6 }}>
+                Tell the system what tends not to work so translation starts from a calmer family context.
+              </p>
+            </Link>
+          </div>
+        </SectionCard>
 
         <SectionCard
           title="What needs attention"

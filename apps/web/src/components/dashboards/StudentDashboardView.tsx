@@ -196,6 +196,18 @@ type ScoreExplanationResponse = {
   };
 };
 
+type StudentCommunicationMessagesResponse = {
+  ok: boolean;
+  count: number;
+  messages: Array<{
+    communicationMessageDraftId: string;
+    selectedChannel: string;
+    messageBody: string;
+    deliveredAt?: string | null;
+    createdAt?: string | null;
+  }>;
+};
+
 function titleCase(value: string | undefined | null): string {
   if (!value) return "Unknown";
   return value
@@ -314,6 +326,10 @@ export default function StudentDashboardView() {
     timeoutMs: 12000,
   });
   const jobTargets = useApiData<JobTargetsResponse>("/students/me/job-targets", true, jobTargetsNonce);
+  const communicationMessages = useApiData<StudentCommunicationMessagesResponse>(
+    "/students/me/communication-messages",
+    true
+  );
 
   const scenarioBody = useMemo(
     () => ({
@@ -1163,6 +1179,30 @@ export default function StudentDashboardView() {
               title="Ask for guidance"
               subtitle="Ask about a real decision or concern and the platform will turn the current student context into practical advice."
             >
+              {(communicationMessages.data?.messages || []).length ? (
+                <div
+                  style={{
+                    marginBottom: 18,
+                    padding: 16,
+                    borderRadius: 16,
+                    background: "#f8fbff",
+                    border: "1px solid #dbe4f0",
+                    display: "grid",
+                    gap: 10,
+                  }}
+                >
+                  <strong>Recent translated family message</strong>
+                  <div style={{ color: "#334155", lineHeight: 1.7 }}>
+                    {communicationMessages.data?.messages?.[0]?.messageBody}
+                  </div>
+                  <small style={{ color: "#64748b" }}>
+                    Delivered via {titleCase(communicationMessages.data?.messages?.[0]?.selectedChannel)}{" "}
+                    {communicationMessages.data?.messages?.[0]?.deliveredAt
+                      ? `on ${new Date(communicationMessages.data.messages[0].deliveredAt as string).toLocaleString()}`
+                      : ""}
+                  </small>
+                </div>
+              ) : null}
               <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 16 }}>
             <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
               <span>What do you want help thinking through?</span>

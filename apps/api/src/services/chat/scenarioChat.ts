@@ -10,6 +10,7 @@ export interface ScenarioChatInput {
   targetSectorCluster: string;
   scenarioQuestion: string;
   communicationStyle?: string;
+  communicationPreferenceNotes?: string[];
   parentVisibleInsights?: string[];
   scoring: ScoringOutput;
   truthNotes?: string[];
@@ -52,6 +53,7 @@ function buildStudentSystemPrompt(input: ScenarioChatInput): string {
     "Use the student's current scoring, skill gaps, and inferred style.",
     "When truth or confidence notes indicate fallback or unresolved data, acknowledge those limits instead of treating them as confirmed facts.",
     `Preferred communication style: ${input.communicationStyle || "direct"}`,
+    `Saved communication preference notes: ${(input.communicationPreferenceNotes || []).join("; ") || "None"}`,
     "Keep recommendedActions to 3 items maximum.",
     "Ground the response in the supplied scoring and evidence, not generic advice.",
     "Be specific about the next move.",
@@ -68,6 +70,7 @@ function buildStudentUserPrompt(input: ScenarioChatInput): string {
     `Top strengths: ${input.scoring.topStrengths.join("; ") || "None yet"}`,
     `Top risks: ${input.scoring.topRisks.join("; ") || "None currently"}`,
     `Skill gaps: ${input.scoring.skillGaps.map((g) => `${g.skillName} [${g.gapSeverity}]`).join("; ") || "None"}`,
+    `Communication preference notes: ${(input.communicationPreferenceNotes || []).join("; ") || "None"}`,
     `Relevant insights: ${(input.parentVisibleInsights || []).join("; ") || "None provided"}`,
     `Truth and confidence notes: ${(input.truthNotes || []).join("; ") || "None"}`,
     `Scenario question: ${input.scenarioQuestion}`,
@@ -106,6 +109,7 @@ function buildFallbackScenarioResponse(input: ScenarioChatInput, providerError?:
     basedOn: [
       `Target role: ${input.targetRoleFamily}`,
       `Trajectory: ${input.scoring.trajectoryStatus}`,
+      ...(input.communicationPreferenceNotes || []).slice(0, 2),
       ...(input.truthNotes || []).slice(0, 2),
       ...input.scoring.skillGaps.slice(0, 3).map((gap) => `Skill gap: ${gap.skillName} (${gap.gapSeverity})`),
     ],
@@ -144,6 +148,7 @@ function buildScenarioTelemetry(input: ScenarioChatInput): LlmTelemetryContext {
       targetSectorCluster: input.targetSectorCluster,
       scenarioQuestion: input.scenarioQuestion,
       communicationStyle: input.communicationStyle || "direct",
+      communicationPreferenceNotes: input.communicationPreferenceNotes || [],
       trajectoryStatus: input.scoring.trajectoryStatus,
       overallScore: input.scoring.overallScore,
       topRisks: input.scoring.topRisks,

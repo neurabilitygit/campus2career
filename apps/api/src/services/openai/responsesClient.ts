@@ -11,10 +11,16 @@ import {
   scenarioModelOutputSchema,
   type ScenarioModelOutput,
 } from "../chat/scenarioSchema";
+import {
+  communicationTranslationModelOutputJsonSchema,
+  communicationTranslationModelOutputSchema,
+  type CommunicationTranslationModelOutput,
+} from "../communication/translationSchema";
 
 let client: OpenAI | null = null;
 const COURSEWORK_INFERENCE_TIMEOUT_MS = 10000;
 const JOB_TARGET_NORMALIZATION_TIMEOUT_MS = 10000;
+const COMMUNICATION_TRANSLATION_TIMEOUT_MS = 12000;
 
 function getClient(): OpenAI {
   if (!client) {
@@ -485,4 +491,56 @@ export async function inferNormalizedJobTarget(input: {
   }
 
   return parsed.data;
+}
+
+export async function runStructuredCommunicationTranslation(input: {
+  systemPrompt: string;
+  userPrompt: string;
+} & OpenAiTelemetryOptions): Promise<{
+  output: CommunicationTranslationModelOutput;
+  llmRunId?: string;
+}> {
+  const model = process.env.OPENAI_MODEL || "gpt-5.4";
+  const { response, llmRunId } = await createLoggedResponse({
+    model,
+    telemetry: input.telemetry,
+    timeoutMs: input.timeoutMs ?? COMMUNICATION_TRANSLATION_TIMEOUT_MS,
+    requestBody: {
+      model,
+      text: {
+        format: {
+          type: "json_schema",
+          name: "communication_translation_strategy",
+          strict: true,
+          schema: communicationTranslationModelOutputJsonSchema(),
+        },
+      },
+      input: [
+        { role: "system", content: [{ type: "input_text", text: input.systemPrompt }] },
+        { role: "user", content: [{ type: "input_text", text: input.userPrompt }] },
+      ],
+    },
+  });
+
+  const raw = response.output_text?.trim();
+  if (!raw) {
+    throw new Error("No communication translation response was returned");
+  }
+
+  let decoded: unknown;
+  try {
+    decoded = JSON.parse(raw);
+  } catch {
+    throw new Error("Communication translation response was not valid JSON");
+  }
+
+  const parsed = communicationTranslationModelOutputSchema.safeParse(decoded);
+  if (!parsed.success) {
+    throw new Error("Communication translation response did not match the required schema");
+  }
+
+  return {
+    output: parsed.data,
+    llmRunId,
+  };
 }

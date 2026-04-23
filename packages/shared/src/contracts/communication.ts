@@ -1,0 +1,199 @@
+export type CommunicationChannel = "email" | "sms" | "whatsapp";
+
+export type ParentCommunicationCategory =
+  | "career_concern"
+  | "academic_concern"
+  | "internship_job_search_concern"
+  | "financial_tuition_concern"
+  | "independence_life_skills_concern"
+  | "emotional_motivational_concern"
+  | "logistical_question"
+  | "other";
+
+export type ParentCommunicationEntryStatus =
+  | "draft"
+  | "saved_as_context"
+  | "ready_for_translation"
+  | "translated"
+  | "queued_for_delivery"
+  | "delivered"
+  | "student_responded"
+  | "archived";
+
+export type ParentCommunicationIntent =
+  | "context_only"
+  | "direct"
+  | "indirect"
+  | "delayed";
+
+export type CommunicationUrgency = "low" | "medium" | "high" | "urgent";
+
+export type CommunicationTone =
+  | "gentle"
+  | "neutral"
+  | "direct"
+  | "encouraging"
+  | "question_led"
+  | "summary_first";
+
+export type CommunicationFrequency =
+  | "as_needed"
+  | "weekly"
+  | "biweekly"
+  | "monthly";
+
+export type CommunicationTimeOfDay =
+  | "morning"
+  | "afternoon"
+  | "evening"
+  | "late_night"
+  | "weekend"
+  | "variable";
+
+export type StudentGuidanceFormat =
+  | "direct_instructions"
+  | "choices"
+  | "reminders"
+  | "questions"
+  | "summaries";
+
+export type ConsentState = "granted" | "withheld" | "unknown";
+
+export type TranslationDeliveryStatus =
+  | "generated"
+  | "review_required"
+  | "withheld"
+  | "approved"
+  | "queued"
+  | "delivered"
+  | "archived";
+
+export type DefensivenessRisk = "low" | "medium" | "high";
+
+export type DeliveryProviderMode = "mock" | "provider_disabled" | "not_sent";
+
+export type CommunicationAuditEventType =
+  | "student_preferences_updated"
+  | "parent_profile_updated"
+  | "entry_created"
+  | "entry_updated"
+  | "entry_status_changed"
+  | "strategy_generated"
+  | "strategy_withheld"
+  | "draft_saved"
+  | "delivery_requested"
+  | "delivery_blocked"
+  | "delivery_mocked";
+
+export interface StudentCommunicationPreferencesRecord {
+  studentProfileId: string;
+  preferredChannels: CommunicationChannel[];
+  dislikedChannels: CommunicationChannel[];
+  preferredTone: CommunicationTone | null;
+  sensitiveTopics: string[];
+  preferredFrequency: CommunicationFrequency | null;
+  bestTimeOfDay: CommunicationTimeOfDay | null;
+  preferredGuidanceFormats: StudentGuidanceFormat[];
+  identifyParentOrigin: boolean;
+  allowParentConcernRephrasing: boolean;
+  consentParentTranslatedMessages: boolean;
+  notes: string | null;
+  updatedAt?: string;
+}
+
+export interface ParentCommunicationProfileRecord {
+  parentUserId: string;
+  studentProfileId: string;
+  householdId?: string | null;
+  mainWorries: string | null;
+  usualApproach: string | null;
+  whatDoesNotWork: string | null;
+  wantsToImprove: string | null;
+  sendPreference: "review_before_send" | "send_direct_if_allowed" | null;
+  preferredCommunicationStyle: string | null;
+  consentAcknowledged: boolean;
+  updatedAt?: string;
+}
+
+export interface ParentCommunicationEntryRecord {
+  parentCommunicationEntryId: string;
+  parentUserId: string;
+  studentProfileId: string;
+  householdId?: string | null;
+  category: ParentCommunicationCategory;
+  status: ParentCommunicationEntryStatus;
+  urgency: CommunicationUrgency;
+  deliveryIntent: ParentCommunicationIntent;
+  factsStudentShouldKnow: string | null;
+  questionsParentWantsAnswered: string | null;
+  parentConcerns: string | null;
+  recurringCommunicationFailures: string | null;
+  defensiveTopics: string | null;
+  priorAttemptsThatDidNotWork: string | null;
+  preferredOutcome: string | null;
+  freeformContext: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+  archivedAt?: string | null;
+}
+
+export interface CommunicationTranslationStrategyRecord {
+  communicationStrategyId: string;
+  parentCommunicationEntryId: string;
+  parentUserId: string;
+  studentProfileId: string;
+  householdId?: string | null;
+  sourceLlmRunId?: string | null;
+  generationMode: "llm" | "fallback";
+  consentState: ConsentState;
+  status: TranslationDeliveryStatus;
+  recommendedChannel: CommunicationChannel | null;
+  recommendedTone: CommunicationTone | null;
+  recommendedTiming: string | null;
+  recommendedFrequency: CommunicationFrequency | null;
+  defensivenessRisk: DefensivenessRisk;
+  reasonForRecommendation: string;
+  studentFacingMessageDraft: string;
+  parentFacingExplanation: string;
+  whatNotToSay: string;
+  humanReviewRecommended: boolean;
+  withholdDelivery: boolean;
+  withholdReason: string | null;
+  structuredPayload?: unknown;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CommunicationMessageDraftRecord {
+  communicationMessageDraftId: string;
+  communicationStrategyId: string;
+  parentCommunicationEntryId: string;
+  parentUserId: string;
+  studentProfileId: string;
+  householdId?: string | null;
+  selectedChannel: CommunicationChannel;
+  providerMode: DeliveryProviderMode;
+  status: TranslationDeliveryStatus;
+  messageBody: string;
+  reviewRequired: boolean;
+  approvedForDelivery: boolean;
+  approvedAt?: string | null;
+  deliveredAt?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CommunicationAuditLogRecord {
+  communicationAuditLogId: string;
+  parentCommunicationEntryId?: string | null;
+  communicationStrategyId?: string | null;
+  communicationMessageDraftId?: string | null;
+  studentProfileId: string;
+  householdId?: string | null;
+  actorUserId?: string | null;
+  actorRole: "student" | "parent" | "coach" | "admin" | "system";
+  eventType: CommunicationAuditEventType;
+  eventSummary: string;
+  eventPayload?: unknown;
+  createdAt?: string;
+}

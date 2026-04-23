@@ -121,6 +121,24 @@ export async function router(req: IncomingMessage, res: ServerResponse) {
     return;
   }
 
+  if (url === "/students/me/communication-preferences" && req.method === "GET") {
+    const { studentCommunicationPreferencesReadRoute } = await import("./routes/communication");
+    await studentCommunicationPreferencesReadRoute(req, res);
+    return;
+  }
+
+  if (url === "/students/me/communication-preferences" && req.method === "POST") {
+    const { studentCommunicationPreferencesUpsertRoute } = await import("./routes/communication");
+    await studentCommunicationPreferencesUpsertRoute(req, res);
+    return;
+  }
+
+  if (url === "/students/me/communication-messages" && req.method === "GET") {
+    const { studentCommunicationMessagesRoute } = await import("./routes/communication");
+    await studentCommunicationMessagesRoute(req, res);
+    return;
+  }
+
   if (url === "/students/me/diagnostic/first" && req.method === "GET") {
     const { firstDiagnosticRoute } = await import("./routes/studentWrite");
     await firstDiagnosticRoute(req, res);
@@ -221,6 +239,60 @@ export async function router(req: IncomingMessage, res: ServerResponse) {
   if (url === "/v1/market/diagnostics/role-mappings" && req.method === "GET") {
     const { roleMappingsDiagnosticsRoute } = await import("./routes/market");
     await roleMappingsDiagnosticsRoute(req, res);
+    return;
+  }
+
+  if (url === "/parents/me/communication-profile" && req.method === "GET") {
+    const { parentCommunicationProfileReadRoute } = await import("./routes/communication");
+    await parentCommunicationProfileReadRoute(req, res);
+    return;
+  }
+
+  if (url === "/parents/me/communication-profile" && req.method === "POST") {
+    const { parentCommunicationProfileUpsertRoute } = await import("./routes/communication");
+    await parentCommunicationProfileUpsertRoute(req, res);
+    return;
+  }
+
+  if (url === "/parents/me/communication-entries" && req.method === "GET") {
+    const { parentCommunicationEntriesListRoute } = await import("./routes/communication");
+    await parentCommunicationEntriesListRoute(req, res);
+    return;
+  }
+
+  if (url === "/parents/me/communication-entries" && req.method === "POST") {
+    const { parentCommunicationEntryCreateRoute } = await import("./routes/communication");
+    await parentCommunicationEntryCreateRoute(req, res);
+    return;
+  }
+
+  if (url === "/parents/me/communication-entries/status" && req.method === "POST") {
+    const { parentCommunicationEntryStatusRoute } = await import("./routes/communication");
+    await parentCommunicationEntryStatusRoute(req, res);
+    return;
+  }
+
+  if (url === "/parents/me/communication-translate" && req.method === "POST") {
+    const { parentCommunicationTranslateRoute } = await import("./routes/communication");
+    await parentCommunicationTranslateRoute(req, res);
+    return;
+  }
+
+  if (url === "/parents/me/communication-drafts/save" && req.method === "POST") {
+    const { parentCommunicationDraftSaveRoute } = await import("./routes/communication");
+    await parentCommunicationDraftSaveRoute(req, res);
+    return;
+  }
+
+  if (url === "/parents/me/communication-drafts/send-mock" && req.method === "POST") {
+    const { parentCommunicationDraftSendMockRoute } = await import("./routes/communication");
+    await parentCommunicationDraftSendMockRoute(req, res);
+    return;
+  }
+
+  if (url === "/parents/me/communication-history" && req.method === "GET") {
+    const { parentCommunicationHistoryRoute } = await import("./routes/communication");
+    await parentCommunicationHistoryRoute(req, res);
     return;
   }
 

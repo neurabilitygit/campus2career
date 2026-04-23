@@ -31,6 +31,8 @@ const preferredMigrationOrder = [
   "020_ai_documents.sql",
   "021_job_targets.sql",
   "022_job_targets_primary_unique.sql",
+  "023_domain_truth_provenance.sql",
+  "024_parent_student_communication.sql",
 ];
 
 const migrationOrderIndex = new Map(

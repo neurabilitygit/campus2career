@@ -140,6 +140,32 @@ type ProgramRequirementDiscoveryResponse = {
   } | null;
 };
 
+type StudentCommunicationPreferencesResponse = {
+  ok: boolean;
+  preferences: {
+    preferredChannels?: Array<"email" | "sms" | "whatsapp">;
+    dislikedChannels?: Array<"email" | "sms" | "whatsapp">;
+    preferredTone?:
+      | "gentle"
+      | "neutral"
+      | "direct"
+      | "encouraging"
+      | "question_led"
+      | "summary_first"
+      | null;
+    sensitiveTopics?: string[];
+    preferredFrequency?: "as_needed" | "weekly" | "biweekly" | "monthly" | null;
+    bestTimeOfDay?: "morning" | "afternoon" | "evening" | "late_night" | "weekend" | "variable" | null;
+    preferredGuidanceFormats?: Array<
+      "direct_instructions" | "choices" | "reminders" | "questions" | "summaries"
+    >;
+    identifyParentOrigin?: boolean;
+    allowParentConcernRephrasing?: boolean;
+    consentParentTranslatedMessages?: boolean;
+    notes?: string | null;
+  } | null;
+};
+
 const inputStyle: React.CSSProperties = {
   width: "100%",
   borderRadius: 12,
@@ -166,6 +192,10 @@ export default function OnboardingProfilePage() {
   const profile = useApiData<StudentProfileResponse>("/students/me/profile", isAuthenticated);
   const assignment = useApiData<CatalogAssignmentResponse>(
     "/students/me/academic/catalog-assignment",
+    isAuthenticated
+  );
+  const communicationPreferences = useApiData<StudentCommunicationPreferencesResponse>(
+    "/students/me/communication-preferences",
     isAuthenticated
   );
 
@@ -206,6 +236,22 @@ export default function OnboardingProfilePage() {
     useState<ProgramRequirementDiscoveryResponse | null>(null);
   const [didHydrateProfile, setDidHydrateProfile] = useState(false);
   const [didHydrateAssignment, setDidHydrateAssignment] = useState(false);
+  const [didHydrateCommunicationPreferences, setDidHydrateCommunicationPreferences] = useState(false);
+  const [communicationForm, setCommunicationForm] = useState({
+    preferredChannels: [] as Array<"email" | "sms" | "whatsapp">,
+    dislikedChannels: [] as Array<"email" | "sms" | "whatsapp">,
+    preferredTone: "",
+    sensitiveTopics: "",
+    preferredFrequency: "",
+    bestTimeOfDay: "",
+    preferredGuidanceFormats: [] as Array<
+      "direct_instructions" | "choices" | "reminders" | "questions" | "summaries"
+    >,
+    identifyParentOrigin: true,
+    allowParentConcernRephrasing: false,
+    consentParentTranslatedMessages: false,
+    notes: "",
+  });
 
   function update(key: keyof typeof form, value: string) {
     setForm((current) => ({ ...current, [key]: value }));
@@ -296,6 +342,65 @@ export default function OnboardingProfilePage() {
       majorSecondary: current.majorSecondary || currentAssignment.minor_display_name || "",
     }));
   }, [assignment.data, assignment.loading, didHydrateAssignment, isAuthenticated]);
+
+  useEffect(() => {
+    if (
+      !isAuthenticated ||
+      communicationPreferences.loading ||
+      didHydrateCommunicationPreferences
+    ) {
+      return;
+    }
+
+    setDidHydrateCommunicationPreferences(true);
+    const currentPreferences = communicationPreferences.data?.preferences;
+    if (!currentPreferences) {
+      return;
+    }
+
+    setCommunicationForm({
+      preferredChannels: currentPreferences.preferredChannels || [],
+      dislikedChannels: currentPreferences.dislikedChannels || [],
+      preferredTone: currentPreferences.preferredTone || "",
+      sensitiveTopics: (currentPreferences.sensitiveTopics || []).join(", "),
+      preferredFrequency: currentPreferences.preferredFrequency || "",
+      bestTimeOfDay: currentPreferences.bestTimeOfDay || "",
+      preferredGuidanceFormats: currentPreferences.preferredGuidanceFormats || [],
+      identifyParentOrigin: currentPreferences.identifyParentOrigin ?? true,
+      allowParentConcernRephrasing: currentPreferences.allowParentConcernRephrasing ?? false,
+      consentParentTranslatedMessages:
+        currentPreferences.consentParentTranslatedMessages ?? false,
+      notes: currentPreferences.notes || "",
+    });
+  }, [
+    communicationPreferences.data,
+    communicationPreferences.loading,
+    didHydrateCommunicationPreferences,
+    isAuthenticated,
+  ]);
+
+  function toggleChannel(
+    field: "preferredChannels" | "dislikedChannels",
+    value: "email" | "sms" | "whatsapp"
+  ) {
+    setCommunicationForm((current) => ({
+      ...current,
+      [field]: current[field].includes(value)
+        ? current[field].filter((item) => item !== value)
+        : [...current[field], value],
+    }));
+  }
+
+  function toggleGuidanceFormat(
+    value: "direct_instructions" | "choices" | "reminders" | "questions" | "summaries"
+  ) {
+    setCommunicationForm((current) => ({
+      ...current,
+      preferredGuidanceFormats: current.preferredGuidanceFormats.includes(value)
+        ? current.preferredGuidanceFormats.filter((item) => item !== value)
+        : [...current.preferredGuidanceFormats, value],
+    }));
+  }
 
   useEffect(() => {
     let active = true;
@@ -604,6 +709,27 @@ export default function OnboardingProfilePage() {
             .filter(Boolean),
           careerGoalSummary: form.careerGoalSummary,
           academicNotes: form.academicNotes,
+        }),
+      });
+
+      await apiFetch("/students/me/communication-preferences", {
+        method: "POST",
+        body: JSON.stringify({
+          preferredChannels: communicationForm.preferredChannels,
+          dislikedChannels: communicationForm.dislikedChannels,
+          preferredTone: communicationForm.preferredTone || undefined,
+          sensitiveTopics: communicationForm.sensitiveTopics
+            .split(",")
+            .map((value) => value.trim())
+            .filter(Boolean),
+          preferredFrequency: communicationForm.preferredFrequency || undefined,
+          bestTimeOfDay: communicationForm.bestTimeOfDay || undefined,
+          preferredGuidanceFormats: communicationForm.preferredGuidanceFormats,
+          identifyParentOrigin: communicationForm.identifyParentOrigin,
+          allowParentConcernRephrasing: communicationForm.allowParentConcernRephrasing,
+          consentParentTranslatedMessages:
+            communicationForm.consentParentTranslatedMessages,
+          notes: communicationForm.notes || undefined,
         }),
       });
 
@@ -1145,6 +1271,217 @@ export default function OnboardingProfilePage() {
                 rows={4}
               />
             </label>
+
+            <div
+              style={{
+                display: "grid",
+                gap: 16,
+                padding: "18px 18px 20px",
+                borderRadius: 18,
+                border: "1px solid #dbe4f0",
+                background: "#f8fbff",
+              }}
+            >
+              <strong style={{ color: "#15355b" }}>How guidance lands best</strong>
+              <p style={{ margin: 0, color: "#52657d", lineHeight: 1.6 }}>
+                These preferences shape student-facing guidance and control whether translated parent-originated messages may be delivered.
+              </p>
+
+              <div style={{ display: "grid", gap: 8 }}>
+                <strong>Preferred channels</strong>
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                  {(["email", "sms", "whatsapp"] as const).map((channel) => (
+                    <label key={channel} style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                      <input
+                        type="checkbox"
+                        checked={communicationForm.preferredChannels.includes(channel)}
+                        onChange={() => toggleChannel("preferredChannels", channel)}
+                      />
+                      <span>{channel.toUpperCase()}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div style={{ display: "grid", gap: 8 }}>
+                <strong>Channels to avoid when possible</strong>
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                  {(["email", "sms", "whatsapp"] as const).map((channel) => (
+                    <label key={channel} style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                      <input
+                        type="checkbox"
+                        checked={communicationForm.dislikedChannels.includes(channel)}
+                        onChange={() => toggleChannel("dislikedChannels", channel)}
+                      />
+                      <span>{channel.toUpperCase()}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
+                <label style={labelStyle}>
+                  Preferred tone
+                  <select
+                    style={selectStyle}
+                    value={communicationForm.preferredTone}
+                    onChange={(event) =>
+                      setCommunicationForm((current) => ({
+                        ...current,
+                        preferredTone: event.target.value,
+                      }))
+                    }
+                  >
+                    <option value="">Choose one</option>
+                    <option value="gentle">Gentle</option>
+                    <option value="neutral">Neutral</option>
+                    <option value="direct">Direct</option>
+                    <option value="encouraging">Encouraging</option>
+                    <option value="question_led">Question-led</option>
+                    <option value="summary_first">Summary first</option>
+                  </select>
+                </label>
+
+                <label style={labelStyle}>
+                  Preferred frequency
+                  <select
+                    style={selectStyle}
+                    value={communicationForm.preferredFrequency}
+                    onChange={(event) =>
+                      setCommunicationForm((current) => ({
+                        ...current,
+                        preferredFrequency: event.target.value,
+                      }))
+                    }
+                  >
+                    <option value="">Choose one</option>
+                    <option value="as_needed">As needed</option>
+                    <option value="weekly">Weekly</option>
+                    <option value="biweekly">Every two weeks</option>
+                    <option value="monthly">Monthly</option>
+                  </select>
+                </label>
+
+                <label style={labelStyle}>
+                  Best time of day
+                  <select
+                    style={selectStyle}
+                    value={communicationForm.bestTimeOfDay}
+                    onChange={(event) =>
+                      setCommunicationForm((current) => ({
+                        ...current,
+                        bestTimeOfDay: event.target.value,
+                      }))
+                    }
+                  >
+                    <option value="">Choose one</option>
+                    <option value="morning">Morning</option>
+                    <option value="afternoon">Afternoon</option>
+                    <option value="evening">Evening</option>
+                    <option value="late_night">Late night</option>
+                    <option value="weekend">Weekend</option>
+                    <option value="variable">Variable</option>
+                  </select>
+                </label>
+              </div>
+
+              <div style={{ display: "grid", gap: 8 }}>
+                <strong>Guidance formats that work best</strong>
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                  {([
+                    ["direct_instructions", "Direct instructions"],
+                    ["choices", "Choices"],
+                    ["reminders", "Reminders"],
+                    ["questions", "Questions"],
+                    ["summaries", "Summaries"],
+                  ] as const).map(([value, label]) => (
+                    <label key={value} style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                      <input
+                        type="checkbox"
+                        checked={communicationForm.preferredGuidanceFormats.includes(value)}
+                        onChange={() => toggleGuidanceFormat(value)}
+                      />
+                      <span>{label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <label style={labelStyle}>
+                Topics that feel sensitive
+                <input
+                  style={inputStyle}
+                  placeholder="Money, uncertainty, grades"
+                  value={communicationForm.sensitiveTopics}
+                  onChange={(event) =>
+                    setCommunicationForm((current) => ({
+                      ...current,
+                      sensitiveTopics: event.target.value,
+                    }))
+                  }
+                />
+              </label>
+
+              <label style={labelStyle}>
+                Notes about how advice lands best
+                <textarea
+                  style={{ ...inputStyle, minHeight: 100, resize: "vertical" }}
+                  value={communicationForm.notes}
+                  onChange={(event) =>
+                    setCommunicationForm((current) => ({
+                      ...current,
+                      notes: event.target.value,
+                    }))
+                  }
+                  rows={4}
+                />
+              </label>
+
+              <label style={{ display: "flex", gap: 10, alignItems: "flex-start", lineHeight: 1.6 }}>
+                <input
+                  type="checkbox"
+                  checked={communicationForm.identifyParentOrigin}
+                  onChange={(event) =>
+                    setCommunicationForm((current) => ({
+                      ...current,
+                      identifyParentOrigin: event.target.checked,
+                    }))
+                  }
+                  style={{ marginTop: 4 }}
+                />
+                <span>If a translated parent-originated message is shown to me, identify it as coming from my parent.</span>
+              </label>
+
+              <label style={{ display: "flex", gap: 10, alignItems: "flex-start", lineHeight: 1.6 }}>
+                <input
+                  type="checkbox"
+                  checked={communicationForm.allowParentConcernRephrasing}
+                  onChange={(event) =>
+                    setCommunicationForm((current) => ({
+                      ...current,
+                      allowParentConcernRephrasing: event.target.checked,
+                    }))
+                  }
+                  style={{ marginTop: 4 }}
+                />
+                <span>The system may rephrase a parent concern for tone and clarity before showing it to me.</span>
+              </label>
+
+              <label style={{ display: "flex", gap: 10, alignItems: "flex-start", lineHeight: 1.6 }}>
+                <input
+                  type="checkbox"
+                  checked={communicationForm.consentParentTranslatedMessages}
+                  onChange={(event) =>
+                    setCommunicationForm((current) => ({
+                      ...current,
+                      consentParentTranslatedMessages: event.target.checked,
+                    }))
+                  }
+                  style={{ marginTop: 4 }}
+                />
+                <span>I consent to receiving translated parent-originated messages when they are handled respectfully and transparently.</span>
+              </label>
+            </div>
 
             <button
               onClick={save}
