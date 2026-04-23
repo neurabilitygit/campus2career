@@ -46,7 +46,7 @@ export async function scenarioChatLiveRoute(req: IncomingMessage, res: ServerRes
     });
     const scoring = runScoring(scoringInput);
 
-    const response = await runScenarioChatWithContext({
+    const result = await runScenarioChatWithContext({
       studentProfileId: ctx.studentProfileId,
       targetRoleFamily: scoringInput.targetRoleFamily,
       targetSectorCluster: scoringInput.targetSectorCluster,
@@ -55,7 +55,13 @@ export async function scenarioChatLiveRoute(req: IncomingMessage, res: ServerRes
       scoring,
     });
 
-    return json(res, 200, { response, resolvedContext: ctx });
+    return json(res, 200, {
+      response: result.response,
+      aiDocumentId: result.aiDocumentId,
+      deliveryMode: result.deliveryMode,
+      degradedReason: result.degradedReason || null,
+      resolvedContext: ctx,
+    });
   } catch (error: any) {
     if (error?.message === "UNAUTHENTICATED") {
       return unauthorized(res);

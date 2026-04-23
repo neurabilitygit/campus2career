@@ -1,10 +1,12 @@
 import { StudentReadRepository } from "../../repositories/student/studentReadRepository";
+import { JobTargetRepository } from "../../repositories/career/jobTargetRepository";
 import type { StudentScoringInput } from "../../../../../packages/shared/src/scoring/types";
 import {
   TARGET_ROLE_SEEDS,
   getTargetRoleSeedByCanonicalName,
 } from "../../../../../packages/shared/src/market/targetRoleSeeds";
 import { buildAcademicScoringEvidence } from "../academic/scoringEvidence";
+import { AppError } from "../../utils/appError";
 
 export interface AggregatedStudentContext {
   studentProfileId: string;
@@ -16,6 +18,7 @@ export interface AggregatedStudentContext {
 }
 
 const repo = new StudentReadRepository();
+const jobTargetRepo = new JobTargetRepository();
 
 const sectorToRole = new Map(
   TARGET_ROLE_SEEDS.map((seed) => [seed.sectorCluster, { role: seed.canonicalName, sector: seed.sectorCluster }] as const)
@@ -35,6 +38,10 @@ function normalizeSectorCluster(value: string | undefined | null): string | null
 
 function resolveTargetRole(input: {
   selectedSector?: string | null;
+  primaryJobTarget?: {
+    normalizedRoleFamily?: string | null;
+    normalizedSectorCluster?: string | null;
+  } | null;
   overrideTargetRoleFamily?: string;
   overrideTargetSectorCluster?: string;
 }) {
@@ -46,11 +53,26 @@ function resolveTargetRole(input: {
     };
   }
 
+  if (input.primaryJobTarget?.normalizedRoleFamily) {
+    const seed = getTargetRoleSeedByCanonicalName(input.primaryJobTarget.normalizedRoleFamily);
+    return {
+      targetRoleFamily: seed?.canonicalName || input.primaryJobTarget.normalizedRoleFamily,
+      targetSectorCluster:
+        input.primaryJobTarget.normalizedSectorCluster ||
+        seed?.sectorCluster ||
+        "finance_financial_services",
+    };
+  }
+
   const normalizedSector = normalizeSectorCluster(input.selectedSector);
   const mapped = normalizedSector ? sectorToRole.get(normalizedSector) : undefined;
+  if (!mapped) {
+    return null;
+  }
+
   return {
-    targetRoleFamily: mapped?.role || "financial analyst",
-    targetSectorCluster: mapped?.sector || "finance_financial_services",
+    targetRoleFamily: mapped.role,
+    targetSectorCluster: mapped.sector,
   };
 }
 
@@ -67,11 +89,12 @@ function deriveAcademicYear(expectedGraduationDate?: string | null): "freshman" 
 }
 
 export async function aggregateStudentContext(studentProfileId: string): Promise<AggregatedStudentContext> {
-  const [profile, insights, deadlines, accomplishments] = await Promise.all([
+  const [profile, insights, deadlines, accomplishments, primaryJobTarget] = await Promise.all([
     repo.getStudentProfile(studentProfileId),
     repo.getParentVisibleInsights(studentProfileId),
     repo.getUpcomingDeadlines(studentProfileId),
     repo.getRecentAccomplishments(studentProfileId),
+    jobTargetRepo.getPrimaryForStudent(studentProfileId),
   ]);
 
   if (!profile) {
@@ -80,6 +103,7 @@ export async function aggregateStudentContext(studentProfileId: string): Promise
 
   const targetGoal =
     profile.career_goal_summary ||
+    primaryJobTarget?.title ||
     [profile.major_primary, profile.major_secondary].filter(Boolean).join(" / ") ||
     "Career target not yet defined";
 
@@ -107,13 +131,31 @@ export async function buildStudentScoringInput(
   const profile = await repo.getStudentProfile(studentProfileId);
   if (!profile) throw new Error(`Student profile not found for ${studentProfileId}`);
 
-  const sectors = await repo.getSelectedSectors(studentProfileId);
+  const [sectors, primaryJobTarget] = await Promise.all([
+    repo.getSelectedSectors(studentProfileId),
+    jobTargetRepo.getPrimaryForStudent(studentProfileId),
+  ]);
   const selectedSector = sectors[0]?.sector_cluster;
-  const { targetRoleFamily, targetSectorCluster } = resolveTargetRole({
+  const resolvedTarget = resolveTargetRole({
     selectedSector,
+    primaryJobTarget,
     overrideTargetRoleFamily: options?.targetRoleFamily,
     overrideTargetSectorCluster: options?.targetSectorCluster,
   });
+  if (!resolvedTarget) {
+    throw new AppError({
+      status: 400,
+      code: "target_role_unresolved",
+      message:
+        "A target role could not be resolved. Save an exact target job or select at least one sector before scoring.",
+      details: {
+        studentProfileId,
+        selectedSector: selectedSector || null,
+        hasPrimaryJobTarget: !!primaryJobTarget,
+      },
+    });
+  }
+  const { targetRoleFamily, targetSectorCluster } = resolvedTarget;
 
   const [
     occupationMetadata,

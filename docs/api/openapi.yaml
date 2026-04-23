@@ -2,19 +2,103 @@ openapi: 3.0.0
 info:
   title: Campus2Career API
   version: 1.0.0
+  description: Lightweight route inventory for the current MVP surface.
 paths:
+  /auth/me:
+    get:
+      responses:
+        "200":
+          description: Authenticated user context
   /students/me/profile:
+    get:
+      responses:
+        "200":
+          description: Current student profile
     post:
-      responses: {'200': {description: OK}}
+      responses:
+        "200":
+          description: Student profile saved
   /students/me/deadlines:
     post:
-      responses: {'201': {description: Created}}
+      responses:
+        "201":
+          description: Deadline created
   /students/me/uploads/presign:
     post:
-      responses: {'200': {description: OK}}
+      responses:
+        "200":
+          description: Signed upload target created
   /students/me/uploads/complete:
     post:
-      responses: {'200': {description: OK}}
+      responses:
+        "200":
+          description: Upload persisted and parse job queued
   /students/me/diagnostic/first:
     get:
-      responses: {'200': {description: OK}}
+      responses:
+        "200":
+          description: Student diagnostic payload
+  /students/me/academic/catalog-assignment:
+    get:
+      responses:
+        "200":
+          description: Current primary catalog assignment
+    post:
+      responses:
+        "200":
+          description: Catalog assignment saved
+  /students/me/academic/catalog-discovery:
+    post:
+      responses:
+        "200":
+          description: Institution catalog discovery result
+  /students/me/academic/program-requirements/discover:
+    post:
+      responses:
+        "200":
+          description: Program requirement discovery result
+  /v1/academic/institutions/search:
+    get:
+      responses:
+        "200":
+          description: Institution search results
+  /v1/academic/directory/options:
+    get:
+      responses:
+        "200":
+          description: Directory options for the selected institution and catalog context
+  /students/me/scoring:
+    get:
+      responses:
+        "200":
+          description: Live scoring payload
+  /students/me/scoring/preview:
+    post:
+      responses:
+        "200":
+          description: Preview scoring and comparison payload
+  /students/me/scoring/explain:
+    post:
+      responses:
+        "200":
+          description: Structured scoring explanation
+  /v1/briefs/live:
+    get:
+      responses:
+        "200":
+          description: Persisted current-month brief
+  /v1/briefs/generate:
+    post:
+      responses:
+        "200":
+          description: Brief generated or refreshed
+  /v1/parents/me/briefs/latest:
+    get:
+      responses:
+        "200":
+          description: Latest persisted parent brief
+  /v1/chat/scenario/live:
+    post:
+      responses:
+        "200":
+          description: Structured scenario guidance response

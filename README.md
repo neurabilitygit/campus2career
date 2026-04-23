@@ -1,6 +1,6 @@
 # Campus2Career Starter Repository
 
-Parent-first MVP starter for Campus2Career.
+Parent-first career intelligence MVP for students, parents, and coaches.
 
 ## Stack
 - Frontend: Vercel-ready Next.js app in `apps/web`
@@ -20,7 +20,7 @@ Parent-first MVP starter for Campus2Career.
 - `docs/api/openapi.yaml` - OpenAPI-style API contract
 
 
-## Demo endpoints
+## Key live endpoints
 - `GET /v1/scoring/demo`
 - `GET /v1/market/fixtures/validate`
 - `GET /v1/briefs/demo`
@@ -32,15 +32,16 @@ Parent-first MVP starter for Campus2Career.
 - `POST /v1/chat/scenario/live` — JSON `{ "scenarioQuestion": string, "communicationStyle"?: string }` (style defaults to `"direct"`)
 
 
-## Authenticated demo headers
-For current live-style routes, send:
+## Demo auth headers
+Demo-header auth is no longer assumed to be available.
+
+It is accepted only when:
+- `ALLOW_DEMO_AUTH=true`
+
+When enabled, current live-style routes may accept:
 - `x-demo-user-id`
 - `x-demo-role-type`
 - optional `x-demo-email`
-
-Example:
-- parent user id: `11111111-1111-1111-1111-111111111111`
-- student user id: `22222222-2222-2222-2222-222222222222`
 
 
 ## Supabase auth scaffolding
@@ -52,14 +53,14 @@ The starter repo now includes:
 
 ### Auth modes
 1. `Authorization: Bearer <supabase-jwt>` for real auth
-2. `x-demo-user-id` and `x-demo-role-type` for local fallback
+2. `x-demo-user-id` and `x-demo-role-type` only when `ALLOW_DEMO_AUTH=true`
 
 
 ## Frontend authenticated flow
 The web app now:
-- reads the Supabase browser session
+- initializes a shared Supabase browser session store once per page load
 - attaches the bearer token to API requests
-- protects dashboards behind a session gate
+- protects dashboards behind a session gate with timeout/retry messaging for slow auth checks
 
 Required frontend env:
 - `NEXT_PUBLIC_SUPABASE_URL`
@@ -70,6 +71,7 @@ Required frontend env:
 ## Frontend product shell
 Added:
 - role-aware redirect page at `/app`
+- desktop-style two-column shell with a fixed navigation pane and flexible detail pane
 - parent, student, and coach dashboard shells
 - onboarding pages
 - upload flow pages
@@ -81,6 +83,12 @@ Current live-wired flows:
 - student profile read -> `GET /students/me/profile`
 - deadline creation -> `POST /students/me/deadlines`
 - upload-target request -> `POST /students/me/uploads/presign`
+- upload completion -> `POST /students/me/uploads/complete`
+- student catalog assignment -> `GET|POST /students/me/academic/catalog-assignment`
+- institution search -> `GET /v1/academic/institutions/search?q=...`
+- institution directory options -> `GET /v1/academic/directory/options?...`
+- institution catalog discovery -> `POST /students/me/academic/catalog-discovery`
+- program requirement discovery -> `POST /students/me/academic/program-requirements/discover`
 
 ## Institution directory
 Added:
@@ -99,6 +107,7 @@ Required worker env for the institution import:
 The upload screens now use a Supabase-style signed upload flow:
 - backend mints signed upload targets
 - frontend uploads file bodies with `uploadToSignedUrl`
+- upload completion verifies the stored object exists and belongs to the resolved student profile before persistence
 - set `SUPABASE_STORAGE_BUCKET` to your bucket name
 
 
@@ -127,3 +136,9 @@ Convenience command:
 
 GitHub Actions runs the same sequence against a fresh local Postgres service in
 `.github/workflows/ci.yml`.
+
+## Hardening notes
+- Unknown or invalid resolved auth roles now fail explicitly instead of silently defaulting to `student`.
+- Transcript parse failures no longer create placeholder transcript graphs. Failed extraction leaves the artifact and parse job in a failed state.
+- Scoring no longer fabricates a default `"financial analyst"` target when the student has neither an exact target job nor a sector-to-role mapping. In that case the API returns `target_role_unresolved`.
+- Program requirement discovery now returns diagnostic notes when website lookup or LLM-assisted extraction cannot produce a trustworthy course list.

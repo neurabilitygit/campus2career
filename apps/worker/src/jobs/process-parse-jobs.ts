@@ -5,7 +5,11 @@ import { StudentReadRepository } from "../../../api/src/repositories/student/stu
 import { extractDocumentText } from "../../../api/src/services/academic/documentExtraction";
 import { extractStructuredTranscript } from "../../../api/src/services/academic/transcriptExtraction";
 import { StudentWriteRepository } from "../../../api/src/repositories/student/studentWriteRepository";
-import { autoMatchTranscriptToPrimaryCatalog, persistStudentTranscriptGraph } from "../../../api/src/services/academic/transcriptService";
+import {
+  autoMatchTranscriptToPrimaryCatalog,
+  persistStudentTranscriptGraph,
+  updateStudentTranscriptStatus,
+} from "../../../api/src/services/academic/transcriptService";
 import { downloadArtifactFromStorage } from "../../../api/src/services/storage/artifactDownload";
 
 const artifactRepo = new ArtifactRepository();
@@ -141,19 +145,6 @@ function extractBaseFileName(fileUri: string): string {
   return fileName.replace(/\.[a-z0-9]+$/i, "");
 }
 
-function buildTranscriptPlaceholderCourse(fileUri: string, summary: string) {
-  const baseName = extractBaseFileName(fileUri);
-  return {
-    rawCourseCode: undefined,
-    rawCourseTitle: `Imported transcript artifact: ${baseName}`,
-    creditsAttempted: undefined,
-    creditsEarned: undefined,
-    grade: undefined,
-    completionStatus: "completed" as const,
-    rawTextExcerpt: summary,
-  };
-}
-
 async function persistTranscriptGraph(job: any, summary: string) {
   const artifact = await artifactRepo.getAcademicArtifactById(job.academic_artifact_id);
   const profile = await studentReadRepo.getStudentProfile(job.student_profile_id);
@@ -162,64 +153,53 @@ async function persistTranscriptGraph(job: any, summary: string) {
     ? await catalogRepo.findInstitutionByName(profile.school_name)
     : null;
 
-  let extractedTranscriptInput;
-  let extractionMethod: string | null = null;
-
-  if (artifact?.file_uri) {
-    try {
-      const downloadedArtifact = await downloadArtifactFromStorage({
-        objectPath: artifact.file_uri,
-      });
-      const extracted = extractDocumentText({
-        buffer: downloadedArtifact.buffer,
-        fileName: downloadedArtifact.fileName,
-        contentType: downloadedArtifact.contentType,
-      });
-
-      if (extracted.text.trim()) {
-        extractedTranscriptInput = extractStructuredTranscript({
-          studentProfileId: job.student_profile_id,
-          academicArtifactId: job.academic_artifact_id,
-          institutionCanonicalName: matchedInstitution?.canonical_name,
-          transcriptSummary: `${summary} Extraction method: ${extracted.method}.`,
-          transcriptText: extracted.text,
-        });
-        extractionMethod = extracted.method;
-      }
-    } catch (error) {
-      console.warn(
-        `Transcript artifact download/extraction failed for ${job.academic_artifact_id}:`,
-        error
-      );
-    }
+  if (!artifact?.file_uri) {
+    throw new Error("TRANSCRIPT_ARTIFACT_FILE_URI_MISSING");
   }
 
-  const studentTranscriptId = await persistStudentTranscriptGraph(
-    extractedTranscriptInput ?? {
-      studentProfileId: job.student_profile_id,
-      academicArtifactId: job.academic_artifact_id,
-      institutionCanonicalName: matchedInstitution?.canonical_name,
-      transcriptSummary: summary,
-      parsedStatus: matchedInstitution ? "matched" : "review_required",
-      terms: [
-        {
-          termLabel: "Imported Transcript",
-          displayOrder: 0,
-          courses: [
-            buildTranscriptPlaceholderCourse(
-              artifact?.file_uri || `artifact-${job.academic_artifact_id}`,
-              summary
-            ),
-          ],
-        },
-      ],
-    }
-  );
+  let extractedTranscriptInput: ReturnType<typeof extractStructuredTranscript>;
+  let extractionMethod: string | null = null;
+
+  const downloadedArtifact = await downloadArtifactFromStorage({
+    objectPath: artifact.file_uri,
+  });
+  const extracted = extractDocumentText({
+    buffer: downloadedArtifact.buffer,
+    fileName: downloadedArtifact.fileName,
+    contentType: downloadedArtifact.contentType,
+  });
+
+  if (!extracted.text.trim()) {
+    throw new Error("TRANSCRIPT_ARTIFACT_TEXT_EMPTY");
+  }
+
+  extractedTranscriptInput = extractStructuredTranscript({
+    studentProfileId: job.student_profile_id,
+    academicArtifactId: job.academic_artifact_id,
+    institutionCanonicalName: matchedInstitution?.canonical_name,
+    transcriptSummary: `${summary} Extraction method: ${extracted.method}.`,
+    transcriptText: extracted.text,
+  });
+  extractionMethod = extracted.method;
+
+  const studentTranscriptId = await persistStudentTranscriptGraph({
+    studentProfileId: job.student_profile_id,
+    academicArtifactId: job.academic_artifact_id,
+    institutionCanonicalName: matchedInstitution?.canonical_name,
+    transcriptSummary: extractedTranscriptInput.transcriptSummary,
+    parsedStatus: "parsed",
+    terms: extractedTranscriptInput.terms,
+  });
 
   const matchingResult = await autoMatchTranscriptToPrimaryCatalog(
     job.student_profile_id,
     studentTranscriptId
   );
+  await updateStudentTranscriptStatus({
+    studentTranscriptId,
+    parsedStatus: matchingResult.matchingCatalogBound ? "matched" : "parsed",
+    transcriptSummary: `${extractedTranscriptInput.transcriptSummary} Auto-match summary: ${matchingResult.matchedCount} matched, ${matchingResult.unmatchedCount} unmatched.`,
+  });
 
   return {
     studentTranscriptId,
@@ -240,11 +220,10 @@ function summarizeParser(artifactType: string): string {
 
 export async function processParseJobs() {
   console.log("Processing queued artifact parse jobs...");
-  const jobs = await artifactRepo.listQueuedParseJobs();
+  const jobs = await artifactRepo.claimQueuedParseJobs();
 
   for (const job of jobs) {
     try {
-      await artifactRepo.markParseJobProcessing(job.artifact_parse_job_id);
       let summary = summarizeParser(job.artifact_type);
 
       if (job.artifact_type === "resume") {
@@ -264,6 +243,10 @@ export async function processParseJobs() {
       await artifactRepo.markParseJobCompleted(job.artifact_parse_job_id, summary);
       console.log(`Completed parse job ${job.artifact_parse_job_id}`);
     } catch (error: any) {
+      await artifactRepo.markArtifactFailed(
+        job.academic_artifact_id,
+        error?.message || String(error)
+      );
       await artifactRepo.markParseJobFailed(
         job.artifact_parse_job_id,
         error?.message || String(error)

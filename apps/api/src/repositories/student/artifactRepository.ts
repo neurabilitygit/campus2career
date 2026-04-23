@@ -40,6 +40,16 @@ export interface UploadTargetRow {
   consumed_at: string | null;
 }
 
+export interface QueuedParseJobRow {
+  artifact_parse_job_id: string;
+  academic_artifact_id: string;
+  student_profile_id: string;
+  artifact_type: string;
+  status: "queued" | "processing" | "completed" | "failed";
+  parser_type: string;
+  queued_at: string;
+}
+
 export class ArtifactRepository {
   async upsertUploadTarget(input: {
     uploadTargetId: string;
@@ -181,22 +191,33 @@ export class ArtifactRepository {
     );
   }
 
-  async listQueuedParseJobs() {
-    const result = await query(
+  async claimQueuedParseJobs(limit: number = 25): Promise<QueuedParseJobRow[]> {
+    const result = await query<QueuedParseJobRow>(
       `
-      select
-        artifact_parse_job_id,
-        academic_artifact_id,
-        student_profile_id,
-        artifact_type,
-        status,
-        parser_type,
-        queued_at
-      from artifact_parse_jobs
-      where status = 'queued'
-      order by queued_at asc
-      limit 25
+      with claimed as (
+        select artifact_parse_job_id
+        from artifact_parse_jobs
+        where status = 'queued'
+        order by queued_at asc
+        for update skip locked
+        limit $1
+      )
+      update artifact_parse_jobs jobs
+      set status = 'processing',
+          started_at = now()
+      from claimed
+      where jobs.artifact_parse_job_id = claimed.artifact_parse_job_id
+      returning
+        jobs.artifact_parse_job_id,
+        jobs.academic_artifact_id,
+        jobs.student_profile_id,
+        jobs.artifact_type,
+        jobs.status,
+        jobs.parser_type,
+        jobs.queued_at
       `
+      ,
+      [limit]
     );
     return result.rows;
   }
@@ -219,18 +240,6 @@ export class ArtifactRepository {
       [academicArtifactId]
     );
     return result.rows[0] || null;
-  }
-
-  async markParseJobProcessing(jobId: string) {
-    await query(
-      `
-      update artifact_parse_jobs
-      set status = 'processing',
-          started_at = now()
-      where artifact_parse_job_id = $1
-      `,
-      [jobId]
-    );
   }
 
   async markParseJobCompleted(jobId: string, resultSummary: string) {
@@ -264,6 +273,18 @@ export class ArtifactRepository {
       `
       update academic_artifacts
       set parsed_status = 'parsed',
+          extracted_summary = $2
+      where academic_artifact_id = $1
+      `,
+      [artifactId, extractedSummary]
+    );
+  }
+
+  async markArtifactFailed(artifactId: string, extractedSummary: string) {
+    await query(
+      `
+      update academic_artifacts
+      set parsed_status = 'failed',
           extracted_summary = $2
       where academic_artifact_id = $1
       `,

@@ -50,3 +50,28 @@ export async function createSignedUploadTarget(input: {
     token: data.token,
   };
 }
+
+export async function verifyStorageObjectExists(input: {
+  bucket: string;
+  path: string;
+}): Promise<boolean> {
+  const client = getAdminClient();
+  const pathSegments = input.path.split("/").filter(Boolean);
+  const objectName = pathSegments.pop();
+  const folderPath = pathSegments.join("/");
+
+  if (!objectName) {
+    return false;
+  }
+
+  const { data, error } = await client.storage.from(input.bucket).list(folderPath, {
+    limit: 100,
+    search: objectName,
+  });
+
+  if (error) {
+    throw new Error(`Failed to verify uploaded object: ${error.message}`);
+  }
+
+  return (data || []).some((entry) => entry.name === objectName);
+}

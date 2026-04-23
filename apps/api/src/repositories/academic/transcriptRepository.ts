@@ -221,6 +221,27 @@ export class TranscriptRepository {
     return result.rows[0] || null;
   }
 
+  async updateTranscriptStatus(input: {
+    studentTranscriptId: string;
+    parsedStatus: "pending" | "parsed" | "matched" | "review_required" | "failed";
+    transcriptSummary?: string | null;
+  }) {
+    await query(
+      `
+      update student_transcripts
+      set parsed_status = $2,
+          transcript_summary = coalesce($3, transcript_summary),
+          updated_at = now()
+      where student_transcript_id = $1
+      `,
+      [
+        input.studentTranscriptId,
+        input.parsedStatus,
+        input.transcriptSummary ?? null,
+      ]
+    );
+  }
+
   async listTranscriptTerms(studentTranscriptId: string): Promise<TranscriptTermRow[]> {
     const result = await query<TranscriptTermRow>(
       `

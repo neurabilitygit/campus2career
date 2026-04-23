@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Campus2Career CTO Technical Brief</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 48px;
+      font-family: Avenir, Helvetica, Arial, sans-serif;
+      color: #12213a;
+      background: #f6f8fb;
+      line-height: 1.5;
+    }
+    .page {
+      max-width: 860px;
+      margin: 0 auto;
+      background: #ffffff;
+      border: 1px solid #d9e3f2;
+      border-radius: 24px;
+      padding: 44px;
+    }
+    .eyebrow {
+      color: #155eef;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    h1 {
+      margin: 10px 0 14px;
+      font-size: 40px;
+      line-height: 1.04;
+    }
+    h2 {
+      margin: 28px 0 10px;
+      font-size: 22px;
+      color: #0f3d63;
+    }
+    h3 {
+      margin: 18px 0 8px;
+      font-size: 16px;
+      color: #132238;
+    }
+    p {
+      margin: 0 0 12px;
+      color: #334155;
+    }
+    ul {
+      margin: 8px 0 0;
+      padding-left: 20px;
+    }
+    li {
+      margin: 7px 0;
+      color: #334155;
+    }
+    code {
+      padding: 2px 5px;
+      border-radius: 5px;
+      background: #eef2f7;
+      color: #0f3d63;
+      font-size: 12px;
+    }
+    .hero {
+      margin: 24px 0;
+      padding: 22px;
+      border-radius: 18px;
+      background: linear-gradient(135deg, #eef6ff 0%, #ecfdf5 100%);
+      border: 1px solid #dce8f6;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-top: 12px;
+    }
+    .card {
+      padding: 16px;
+      border-radius: 16px;
+      background: #f8fbff;
+      border: 1px solid #e1e9f5;
+    }
+    .card strong {
+      display: block;
+      margin-bottom: 6px;
+      color: #132238;
+    }
+    .footer {
+      margin-top: 32px;
+      padding-top: 16px;
+      border-top: 1px solid #e1e9f5;
+      color: #64748b;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <div class="eyebrow">Campus2Career CTO technical brief</div>
+    <h1>An evidence-driven career readiness platform for students, parents, and advisors.</h1>
+    <div class="hero">
+      <p>
+        Campus2Career is organized as a TypeScript monorepo with a Next.js web application, a Node API, a background worker, shared scoring contracts, and PostgreSQL persistence. The technical goal is to convert fragmented student, academic, document, and labor-market data into explainable readiness scores and practical guidance.
+      </p>
+    </div>
+
+    <h2>System goal</h2>
+    <p>
+      The platform evaluates whether a student's current college path is producing credible evidence for a desired job after graduation. It combines student profile data, curriculum requirements, transcript and artifact extraction, occupation data, market signals, role skills, deterministic scoring, and LLM-generated narrative guidance.
+    </p>
+
+    <h2>Application organization</h2>
+    <div class="grid">
+      <div class="card">
+        <strong>Web app</strong>
+        <code>apps/web</code> is a Next.js application. It handles Supabase OAuth session state, onboarding, document upload, dashboards, and role-context navigation.
+      </div>
+      <div class="card">
+        <strong>API service</strong>
+        <code>apps/api</code> exposes authenticated student, parent, coach, academic, market, upload, scoring, brief, and chat routes.
+      </div>
+      <div class="card">
+        <strong>Worker</strong>
+        <code>apps/worker</code> polls queued parse jobs, downloads uploaded artifacts, extracts text, updates artifact state, and performs transcript/catalog follow-up work.
+      </div>
+      <div class="card">
+        <strong>Shared contracts</strong>
+        <code>packages/shared</code> centralizes scoring types, career contracts, target role seeds, and cross-app payload shapes.
+      </div>
+    </div>
+
+    <h2>Primary data flow</h2>
+    <ul>
+      <li>User signs in through Supabase OAuth; the API verifies Supabase JWTs and resolves the application role and student context.</li>
+      <li>Student onboarding stores school, major, minor, geography, sector selections, and target job data in PostgreSQL.</li>
+      <li>Academic directory and catalog routes load institution, program, major, minor, and requirement structures from seeded data, official pages, uploaded PDFs, and LLM-assisted extraction when appropriate.</li>
+      <li>Upload routes mint Supabase Storage signed upload URLs, verify ownership and object existence, persist artifacts idempotently, and queue parse jobs.</li>
+      <li>The worker consumes parse jobs and updates artifact, transcript, and catalog-derived evidence records.</li>
+      <li>The scoring engine aggregates role requirements, market signals, academic evidence, artifacts, contacts, outreach, deadlines, and execution signals into readiness outputs.</li>
+      <li>Parent brief and scenario-chat services convert scoring and context into user-facing narrative guidance, with fallbacks when LLM delivery is unavailable or too slow.</li>
+    </ul>
+
+    <h2>Use of LLMs</h2>
+    <p>
+      GPT-5.4 is used for structured scenario guidance, parent brief generation, job-target normalization, and LLM-assisted coursework extraction from official school-page snippets. The system keeps deterministic scoring separate from LLM narrative generation so user-facing advice can be improved without making the core score opaque.
+    </p>
+    <p>
+      The current hardening work adds SDK-level timeout cancellation for OpenAI calls, structured fallback behavior, and telemetry through <code>llm_runs</code> so provider failures, timeouts, and degraded responses can be inspected.
+    </p>
+
+    <h2>Key data sources</h2>
+    <ul>
+      <li>Student-entered profile, target job, geography, and sector preferences.</li>
+      <li>Official or seeded college institution and catalog data.</li>
+      <li>Uploaded transcripts, resumes, program requirement PDFs, and supporting artifacts.</li>
+      <li>O*NET-derived occupation mappings and role-skill requirements.</li>
+      <li>BLS and seeded market signals used by the market-demand scoring layer.</li>
+      <li>LLM-assisted extraction outputs that are labeled separately from direct-source or uploaded-PDF evidence.</li>
+    </ul>
+
+    <h2>Expected technical benefits</h2>
+    <ul>
+      <li>Single source of truth for student readiness across web, API, worker, and shared scoring contracts.</li>
+      <li>Traceable score inputs and outputs, including market metadata, skill gaps, academic progress, and next actions.</li>
+      <li>Safer upload processing through server-minted paths, ownership checks, storage existence checks, idempotent persistence, and worker state transitions.</li>
+      <li>Better operational observability through explicit LLM run status, parse-job status, and route-level error responses.</li>
+      <li>Extension path for headless APIs, job-platform integrations, richer school catalog ingestion, and partner data feeds.</li>
+    </ul>
+
+    <h2>Current review priorities</h2>
+    <ul>
+      <li>Continue validating real parent-student household linking with separate accounts, not only test-context switching.</li>
+      <li>Improve target-goal UX so free-text career goals cannot silently disagree with structured scored targets.</li>
+      <li>Expand seeded institution, catalog, role, market, and requirement coverage for faster first-run value.</li>
+      <li>Keep LLM output visibly labeled when it is inferred or fallback-generated rather than sourced directly.</li>
+      <li>Finalize staging infrastructure, secrets management, CI checks, and production-safe observability before external launch.</li>
+    </ul>
+
+    <div class="footer">
+      Prepared for pre-staging CTO review. This brief reflects the current monorepo architecture and the intended technical control model for scoring, extraction, uploads, and LLM-assisted guidance.
+    </div>
+  </main>
+</body>
+</html>

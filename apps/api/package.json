@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "node --env-file=.env.local --import tsx/esm src/index.ts",
+    "dev": "node --watch --env-file=.env.local --import tsx/esm src/index.ts",
     "typecheck": "tsc --noEmit",
     "db:migrate": "node --env-file=.env.local --import tsx/esm src/scripts/applyDbMigrations.ts",
     "db:seed:institutions": "node --env-file=.env.local --import tsx/esm src/scripts/seedInstitutionDirectoryBootstrap.ts",

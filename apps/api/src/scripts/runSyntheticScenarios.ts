@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { query } from "../db/client";
+import { closeDbPool, query } from "../db/client";
 import { stableId } from "../services/market/idFactory";
 import { StudentWriteRepository } from "../repositories/student/studentWriteRepository";
 import { OnboardingRepository } from "../repositories/student/onboardingRepository";
@@ -1021,40 +1021,44 @@ function printReport(result: Awaited<ReturnType<typeof runScenario>>) {
 }
 
 async function main() {
-  const cli = parseArgs(process.argv.slice(2));
-  const matrix = loadScenarioMatrix();
+  try {
+    const cli = parseArgs(process.argv.slice(2));
+    const matrix = loadScenarioMatrix();
 
-  if (cli.listOnly) {
-    console.log("Available synthetic scenarios:");
-    for (const scenario of matrix.scenarios) {
-      console.log(`- ${scenario.id}: ${scenario.label}`);
+    if (cli.listOnly) {
+      console.log("Available synthetic scenarios:");
+      for (const scenario of matrix.scenarios) {
+        console.log(`- ${scenario.id}: ${scenario.label}`);
+      }
+      return;
     }
-    return;
-  }
 
-  const scenarios = cli.scenarioId
-    ? matrix.scenarios.filter((scenario) => scenario.id === cli.scenarioId)
-    : matrix.scenarios;
+    const scenarios = cli.scenarioId
+      ? matrix.scenarios.filter((scenario) => scenario.id === cli.scenarioId)
+      : matrix.scenarios;
 
-  if (!scenarios.length) {
-    throw new Error(`No synthetic scenario found for ${cli.scenarioId}`);
-  }
+    if (!scenarios.length) {
+      throw new Error(`No synthetic scenario found for ${cli.scenarioId}`);
+    }
 
-  const results = [];
-  for (const scenario of scenarios) {
-    const result = await runScenario(scenario, {
-      keepExisting: cli.keepExisting,
-    });
-    results.push(result);
-    printReport(result);
-  }
+    const results = [];
+    for (const scenario of scenarios) {
+      const result = await runScenario(scenario, {
+        keepExisting: cli.keepExisting,
+      });
+      results.push(result);
+      printReport(result);
+    }
 
-  const passed = results.filter((result) => result.assertions.passed).length;
-  const failed = results.length - passed;
-  console.log(`\nSynthetic scenario summary: ${passed} passed, ${failed} failed, ${results.length} total.`);
+    const passed = results.filter((result) => result.assertions.passed).length;
+    const failed = results.length - passed;
+    console.log(`\nSynthetic scenario summary: ${passed} passed, ${failed} failed, ${results.length} total.`);
 
-  if (failed > 0) {
-    process.exitCode = 1;
+    if (failed > 0) {
+      process.exitCode = 1;
+    }
+  } finally {
+    await closeDbPool().catch(() => undefined);
   }
 }
 

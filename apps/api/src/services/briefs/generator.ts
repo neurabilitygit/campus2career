@@ -2,6 +2,8 @@ import { generateStructuredParentBrief } from "../openai/responsesClient";
 import type { ScoringOutput } from "../../../../../packages/shared/src/scoring/types";
 
 export interface ParentBriefInput {
+  studentProfileId?: string;
+  householdId?: string | null;
   studentName: string;
   monthLabel: string;
   targetGoal: string;
@@ -10,6 +12,8 @@ export interface ParentBriefInput {
   upcomingDeadlines: string[];
   parentVisibleInsights: string[];
 }
+
+const PARENT_BRIEF_PROVIDER_TIMEOUT_MS = 12000;
 
 function buildSystemPrompt(): string {
   return [
@@ -53,6 +57,25 @@ export async function generateParentBrief(input: ParentBriefInput): Promise<stri
     return await generateStructuredParentBrief({
       systemPrompt: buildSystemPrompt(),
       userPrompt: buildUserPrompt(input),
+      timeoutMs: PARENT_BRIEF_PROVIDER_TIMEOUT_MS,
+      telemetry: input.studentProfileId
+        ? {
+            runType: "parent_brief",
+            promptVersion: "parent_brief_v1",
+            studentProfileId: input.studentProfileId,
+            householdId: input.householdId ?? null,
+            inputPayload: {
+              studentName: input.studentName,
+              monthLabel: input.monthLabel,
+              targetGoal: input.targetGoal,
+              trajectoryStatus: input.scoring.trajectoryStatus,
+              overallScore: input.scoring.overallScore,
+              topRisks: input.scoring.topRisks,
+              topStrengths: input.scoring.topStrengths,
+              recommendationTitles: input.scoring.recommendations.map((item) => item.title),
+            },
+          }
+        : undefined,
     });
   } catch (error) {
     const providerMessage = error instanceof Error ? error.message : String(error);

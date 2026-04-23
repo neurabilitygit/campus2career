@@ -125,15 +125,18 @@ type ProgramRequirementDiscoveryResponse = {
   usedLlmAssistance?: boolean;
   uploadUrl?: string | null;
   message: string;
+  diagnostics?: string[];
   major?: {
     provenanceMethod?: "direct_scrape" | "llm_assisted";
     sourcePage?: string | null;
     sourceNote?: string | null;
+    diagnostics?: string[];
   } | null;
   minor?: {
     provenanceMethod?: "direct_scrape" | "llm_assisted";
     sourcePage?: string | null;
     sourceNote?: string | null;
+    diagnostics?: string[];
   } | null;
 };
 
@@ -970,6 +973,16 @@ export default function OnboardingProfilePage() {
                       <Link href={catalogUploadHref}>program PDF upload flow</Link>
                       .
                     </p>
+                    {programRequirementsDiscovery.diagnostics?.length ? (
+                      <div style={{ display: "grid", gap: 6 }}>
+                        <strong style={{ fontSize: 14 }}>Why the automatic lookup stopped</strong>
+                        <ul style={{ margin: 0, paddingLeft: 18 }}>
+                          {programRequirementsDiscovery.diagnostics.map((item) => (
+                            <li key={item}>{item}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : null}
                   </div>
                 ) : null}
                 {programRequirementsDiscovery && !programRequirementsDiscovery.uploadRecommended && programRequirementsDiscovery.usedLlmAssistance ? (
@@ -994,6 +1007,13 @@ export default function OnboardingProfilePage() {
                       can strengthen this record later by uploading the official program PDF through the{" "}
                       <Link href={catalogUploadHref}>program PDF upload flow</Link>.
                     </p>
+                    {programRequirementsDiscovery.diagnostics?.length ? (
+                      <ul style={{ margin: 0, paddingLeft: 18 }}>
+                        {programRequirementsDiscovery.diagnostics.map((item) => (
+                          <li key={item}>{item}</li>
+                        ))}
+                      </ul>
+                    ) : null}
                   </div>
                 ) : null}
               </div>

@@ -1,0 +1,174 @@
+%PDF-1.4
+%‚„œ”
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [6 0 R 8 0 R] /Count 2 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>
+endobj
+5 0 obj
+<< /Length 4602 >>
+stream
+0.96 0.98 1 rg 0 0 612 792 re f
+1 1 1 rg 36 36 540 720 re f
+0.84 0.89 0.96 RG 36 36 540 720 re S
+0.08 0.37 0.94 rg
+BT /F2 9 Tf 54 738 Td (CAMPUS2CAREER) Tj ET
+0.07 0.13 0.23 rg
+BT /F2 20 Tf 54 725 Td (An evidence-driven career readiness platform for) Tj ET
+0.07 0.13 0.23 rg
+BT /F2 20 Tf 54 700 Td (students, parents, and advisors.) Tj ET
+0.07 0.13 0.23 rg
+BT /F1 10.5 Tf 54 676 Td (A TypeScript monorepo with a Next.js web app, Node API, background worker, shared) Tj ET
+0.07 0.13 0.23 rg
+BT /F1 10.5 Tf 54 662 Td (scoring contracts, PostgreSQL persistence, Supabase Storage, and controlled LLM) Tj ET
+0.07 0.13 0.23 rg
+BT /F1 10.5 Tf 54 648 Td (assistance.) Tj ET
+0.06 0.24 0.39 rg
+BT /F2 14 Tf 54 624 Td (System goal) Tj ET
+0.07 0.13 0.23 rg
+BT /F1 10.5 Tf 54 604 Td (Campus2Career evaluates whether a student's current college path is producing credible) Tj ET
+0.07 0.13 0.23 rg
+BT /F1 10.5 Tf 54 590 Td (evidence for a desired job after graduation. It combines profile data, curriculum) Tj ET
+0.07 0.13 0.23 rg
+BT /F1 10.5 Tf 54 576 Td (requirements, transcript and artifact extraction, occupation data, market signals,) Tj ET
+0.07 0.13 0.23 rg
+BT /F1 10.5 Tf 54 562 Td (role skills, deterministic scoring, and LLM-generated narrative guidance.) Tj ET
+0.06 0.24 0.39 rg
+BT /F2 14 Tf 54 538 Td (Technology organization) Tj ET
+0.07 0.13 0.23 rg
+BT /F1 10.5 Tf 64 518 Td (- apps/web: Next.js UI for OAuth session state, onboarding, uploads, dashboards,) Tj ET
+0.07 0.13 0.23 rg
+BT /F1 10.5 Tf 75 504 Td (and role-context navigation.) Tj ET
+0.07 0.13 0.23 rg
+BT /F1 10.5 Tf 64 490 Td (- apps/api: Node TypeScript API for authenticated student, parent, coach,) Tj ET
+0.07 0.13 0.23 rg
+BT /F1 10.5 Tf 75 476 Td (academic, market, upload, scoring, brief, and chat routes.) Tj ET
+0.07 0.13 0.23 rg
+BT /F1 10.5 Tf 64 462 Td (- apps/worker: background processor for queued parse jobs, storage downloads,) Tj ET
+0.07 0.13 0.23 rg
+BT /F1 10.5 Tf 75 448 Td (text extraction, transcript/catalog updates, and artifact state transitions.) Tj ET
+0.07 0.13 0.23 rg
+BT /F1 10.5 Tf 64 434 Td (- packages/shared: scoring types, career contracts, target role seeds, and) Tj ET
+0.07 0.13 0.23 rg
+BT /F1 10.5 Tf 75 420 Td (shared payload definitions.) Tj ET
+0.07 0.13 0.23 rg
+BT /F1 10.5 Tf 64 406 Td (- PostgreSQL plus Supabase Storage: persistent relational state, signed upload) Tj ET
+0.07 0.13 0.23 rg
+BT /F1 10.5 Tf 75 392 Td (targets, and source documents.) Tj ET
+0.06 0.24 0.39 rg
+BT /F2 14 Tf 54 368 Td (Primary data flow) Tj ET
+0.07 0.13 0.23 rg
+BT /F1 10.5 Tf 64 348 Td (- Supabase OAuth signs in the user; the API verifies JWTs and resolves role plus) Tj ET
+0.07 0.13 0.23 rg
+BT /F1 10.5 Tf 75 334 Td (student context.) Tj ET
+0.07 0.13 0.23 rg
+BT /F1 10.5 Tf 64 320 Td (- Onboarding stores school, major, minor, geography, sector selections, and) Tj ET
+0.07 0.13 0.23 rg
+BT /F1 10.5 Tf 75 306 Td (target job data.) Tj ET
+0.07 0.13 0.23 rg
+BT /F1 10.5 Tf 64 292 Td (- Academic services load institution, program, major, minor, and requirement) Tj ET
+0.07 0.13 0.23 rg
+BT /F1 10.5 Tf 75 278 Td (structures from seeded data, official pages, uploaded PDFs, and labeled LLM-) Tj ET
+0.07 0.13 0.23 rg
+BT /F1 10.5 Tf 75 264 Td (assisted extraction.) Tj ET
+0.07 0.13 0.23 rg
+BT /F1 10.5 Tf 64 250 Td (- Upload routes mint server-owned paths, verify storage object existence,) Tj ET
+0.07 0.13 0.23 rg
+BT /F1 10.5 Tf 75 236 Td (persist artifacts idempotently, and queue parse jobs.) Tj ET
+0.07 0.13 0.23 rg
+BT /F1 10.5 Tf 64 222 Td (- The worker processes queued jobs and updates artifact, transcript, and) Tj ET
+0.07 0.13 0.23 rg
+BT /F1 10.5 Tf 75 208 Td (catalog-derived evidence.) Tj ET
+0.07 0.13 0.23 rg
+BT /F1 10.5 Tf 64 194 Td (- The scoring engine aggregates role requirements, market signals, academic) Tj ET
+0.07 0.13 0.23 rg
+BT /F1 10.5 Tf 75 180 Td (evidence, artifacts, contacts, outreach, deadlines, and execution signals.) Tj ET
+0.06 0.24 0.39 rg
+BT /F2 14 Tf 54 156 Td (LLM use and controls) Tj ET
+0.07 0.13 0.23 rg
+BT /F1 10.5 Tf 54 136 Td (GPT-5.4 supports structured scenario guidance, parent brief generation, job-target) Tj ET
+0.07 0.13 0.23 rg
+BT /F1 10.5 Tf 54 122 Td (normalization, and LLM-assisted coursework extraction from official school-page) Tj ET
+0.07 0.13 0.23 rg
+BT /F1 10.5 Tf 54 108 Td (snippets. Deterministic scoring remains separate from LLM narrative generation so the) Tj ET
+0.07 0.13 0.23 rg
+BT /F1 10.5 Tf 54 94 Td (score remains inspectable.) Tj ET
+0.07 0.13 0.23 rg
+BT /F1 10.5 Tf 54 80 Td (The current hardening adds SDK-level timeout cancellation, structured fallback) Tj ET
+endstream
+endobj
+6 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 5 0 R >>
+endobj
+7 0 obj
+<< /Length 2133 >>
+stream
+0.96 0.98 1 rg 0 0 612 792 re f
+1 1 1 rg 36 36 540 720 re f
+0.84 0.89 0.96 RG 36 36 540 720 re S
+0.07 0.13 0.23 rg
+BT /F1 10.5 Tf 54 738 Td (behavior, and telemetry through llm_runs so provider failures, timeouts, and degraded) Tj ET
+0.07 0.13 0.23 rg
+BT /F1 10.5 Tf 54 724 Td (responses can be inspected.) Tj ET
+0.06 0.24 0.39 rg
+BT /F2 14 Tf 54 700 Td (Expected technical benefits) Tj ET
+0.07 0.13 0.23 rg
+BT /F1 10.5 Tf 64 680 Td (- Single source of truth for readiness across web, API, worker, and shared) Tj ET
+0.07 0.13 0.23 rg
+BT /F1 10.5 Tf 75 666 Td (scoring contracts.) Tj ET
+0.07 0.13 0.23 rg
+BT /F1 10.5 Tf 64 652 Td (- Traceable score inputs and outputs, including market metadata, skill gaps,) Tj ET
+0.07 0.13 0.23 rg
+BT /F1 10.5 Tf 75 638 Td (academic progress, and next actions.) Tj ET
+0.07 0.13 0.23 rg
+BT /F1 10.5 Tf 64 624 Td (- Safer upload processing through server-minted paths, ownership checks, storage) Tj ET
+0.07 0.13 0.23 rg
+BT /F1 10.5 Tf 75 610 Td (existence checks, idempotent persistence, and worker state transitions.) Tj ET
+0.07 0.13 0.23 rg
+BT /F1 10.5 Tf 64 596 Td (- Extension path for headless APIs, job-platform integrations, richer school) Tj ET
+0.07 0.13 0.23 rg
+BT /F1 10.5 Tf 75 582 Td (catalog ingestion, and partner data feeds.) Tj ET
+0.06 0.24 0.39 rg
+BT /F2 14 Tf 54 558 Td (Review priorities) Tj ET
+0.07 0.13 0.23 rg
+BT /F1 10.5 Tf 64 538 Td (- Validate real parent-student household linking with separate accounts.) Tj ET
+0.07 0.13 0.23 rg
+BT /F1 10.5 Tf 64 524 Td (- Improve target-goal UX so free-text career goals cannot silently disagree with) Tj ET
+0.07 0.13 0.23 rg
+BT /F1 10.5 Tf 75 510 Td (structured scored targets.) Tj ET
+0.07 0.13 0.23 rg
+BT /F1 10.5 Tf 64 496 Td (- Expand seeded institution, catalog, role, market, and requirement coverage.) Tj ET
+0.07 0.13 0.23 rg
+BT /F1 10.5 Tf 64 482 Td (- Keep LLM output visibly labeled when inferred or fallback-generated.) Tj ET
+0.07 0.13 0.23 rg
+BT /F1 10.5 Tf 64 468 Td (- Finalize staging infrastructure, secrets management, CI checks, and) Tj ET
+0.07 0.13 0.23 rg
+BT /F1 10.5 Tf 75 454 Td (production-safe observability.) Tj ET
+endstream
+endobj
+8 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 7 0 R >>
+endobj
+xref
+0 9
+0000000000 65535 f 
+0000000015 00000 n 
+0000000064 00000 n 
+0000000127 00000 n 
+0000000197 00000 n 
+0000000272 00000 n 
+0000004926 00000 n 
+0000005062 00000 n 
+0000007247 00000 n 
+trailer
+<< /Size 9 /Root 1 0 R >>
+startxref
+7383
+%%EOF

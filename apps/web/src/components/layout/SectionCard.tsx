@@ -37,7 +37,6 @@ export function SectionCard(props: {
         ...toneStyles,
         borderRadius: 26,
         padding: "22px clamp(18px, 2.6vw, 28px)",
-        marginBottom: 18,
         boxShadow: "0 18px 40px rgba(15, 23, 42, 0.06)",
         backdropFilter: "blur(14px)",
       }}

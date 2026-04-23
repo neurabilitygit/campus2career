@@ -1,12 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { apiFetch } from "../lib/apiClient";
+import { apiFetch, type ApiRequestInit } from "../lib/apiClient";
 
-export function useApiData<T = any>(path: string, enabled: boolean = true, refetchNonce: number = 0) {
+export function useApiData<T = any>(
+  path: string,
+  enabled: boolean = true,
+  refetchNonce: number = 0,
+  requestInit?: ApiRequestInit
+) {
   const [data, setData] = useState<T | null>(null);
   const [loading, setLoading] = useState(enabled);
   const [error, setError] = useState<string | null>(null);
+  const requestKey = JSON.stringify(requestInit || {});
 
   useEffect(() => {
     let active = true;
@@ -19,7 +25,7 @@ export function useApiData<T = any>(path: string, enabled: boolean = true, refet
     setLoading(true);
     setError(null);
 
-    apiFetch(path)
+    apiFetch(path, requestInit)
       .then((result) => {
         if (active) {
           setData(result);
@@ -36,18 +42,24 @@ export function useApiData<T = any>(path: string, enabled: boolean = true, refet
     return () => {
       active = false;
     };
-  }, [path, enabled, refetchNonce]);
+  }, [path, enabled, refetchNonce, requestKey]);
 
   return { data, loading, error };
 }
 
 /** POST JSON and parse response; re-runs when `body` shallow-serialization changes. */
-export function useApiJsonPost<T = unknown>(path: string, body: Record<string, unknown>, enabled: boolean = true) {
+export function useApiJsonPost<T = unknown>(
+  path: string,
+  body: Record<string, unknown>,
+  enabled: boolean = true,
+  requestInit?: ApiRequestInit
+) {
   const [data, setData] = useState<T | null>(null);
   const [loading, setLoading] = useState(enabled);
   const [error, setError] = useState<string | null>(null);
 
   const bodyKey = JSON.stringify(body);
+  const requestKey = JSON.stringify(requestInit || {});
 
   useEffect(() => {
     let active = true;
@@ -62,7 +74,7 @@ export function useApiJsonPost<T = unknown>(path: string, body: Record<string, u
     setLoading(true);
     setError(null);
 
-    apiFetch(path, { method: "POST", body: bodyKey })
+    apiFetch(path, { ...requestInit, method: "POST", body: bodyKey })
       .then((result) => {
         if (active) {
           setData(result as T);
@@ -79,7 +91,7 @@ export function useApiJsonPost<T = unknown>(path: string, body: Record<string, u
     return () => {
       active = false;
     };
-  }, [path, bodyKey, enabled]);
+  }, [path, bodyKey, enabled, requestKey]);
 
   return { data, loading, error };
 }

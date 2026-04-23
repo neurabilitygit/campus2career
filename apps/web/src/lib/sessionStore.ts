@@ -27,6 +27,7 @@ const listeners = new Set<() => void>();
 let authClient: SupabaseClient | null = null;
 let authListenerBound = false;
 let activeRefresh: Promise<void> | null = null;
+let sessionInitialized = false;
 
 function emit(next: SessionState) {
   state = next;
@@ -67,14 +68,22 @@ function ensureAuthListener() {
 }
 
 async function getSessionWithTimeout(supabase: SupabaseClient) {
-  return Promise.race([
-    supabase.auth.getSession(),
-    new Promise<never>((_, reject) => {
-      window.setTimeout(() => {
-        reject(new Error("Session check timed out."));
-      }, SESSION_TIMEOUT_MS);
-    }),
-  ]);
+  let timeoutId: number | null = null;
+
+  try {
+    return await Promise.race([
+      supabase.auth.getSession(),
+      new Promise<never>((_, reject) => {
+        timeoutId = window.setTimeout(() => {
+          reject(new Error("Session check timed out."));
+        }, SESSION_TIMEOUT_MS);
+      }),
+    ]);
+  } finally {
+    if (timeoutId !== null) {
+      window.clearTimeout(timeoutId);
+    }
+  }
 }
 
 export function getSessionSnapshot(): SessionState {
@@ -86,6 +95,15 @@ export function subscribeToSession(listener: () => void) {
   return () => {
     listeners.delete(listener);
   };
+}
+
+export function initializeSession() {
+  if (sessionInitialized) {
+    return activeRefresh ?? Promise.resolve();
+  }
+
+  sessionInitialized = true;
+  return refreshSession();
 }
 
 export async function refreshSession(options?: { force?: boolean }) {

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { AuthButtons } from "../components/AuthButtons";
+import { AppShell } from "../components/layout/AppShell";
 import { useSession } from "../hooks/useSession";
 import { useApiData } from "../hooks/useApiData";
 import {
@@ -221,13 +221,9 @@ export default function HomePage() {
   const roleContent = roleDescriptions[resolvedRole];
 
   return (
-    <main
-      style={{
-        minHeight: "100vh",
-        padding: "28px 24px 48px",
-        background:
-          "radial-gradient(circle at top left, rgba(255,183,71,0.35), transparent 28%), radial-gradient(circle at top right, rgba(75,179,253,0.28), transparent 30%), linear-gradient(180deg, #fff8ef 0%, #f7fbff 44%, #eef6ff 100%)",
-      }}
+    <AppShell
+      title="Home"
+      subtitle="Start here, then use the persistent sidebar to move through setup, documents, and each role workspace."
     >
       <div style={{ maxWidth: 1160, margin: "0 auto", display: "grid", gap: 28 }}>
         <section
@@ -318,12 +314,11 @@ export default function HomePage() {
                 }}
               >
                 <div style={{ display: "grid", gap: 6 }}>
-                  <strong style={{ fontSize: 16 }}>Open your account</strong>
+                  <strong style={{ fontSize: 16 }}>Start with the right flow</strong>
                   <p style={{ margin: 0, color: "#c7d8ff", lineHeight: 1.5 }}>
-                    Continue with Google to reach your saved experience. Active controls stay lit, while inactive controls fade back.
+                    Sign in from the sidebar, then continue to onboarding, documents, or the role workspace that matches your view.
                   </p>
                 </div>
-                <AuthButtons />
                 <ContextSwitcher isAuthenticated={isAuthenticated} auth={auth} />
               </div>
             </div>
@@ -474,6 +469,6 @@ export default function HomePage() {
           </div>
         </section>
       </div>
-    </main>
+    </AppShell>
   );
 }

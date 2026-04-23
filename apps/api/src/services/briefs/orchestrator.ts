@@ -19,6 +19,8 @@ export async function generateAndPersistParentBrief(input: {
   const ctx = await aggregateStudentContext(input.studentProfileId);
 
   const brief = await generateParentBrief({
+    studentProfileId: input.studentProfileId,
+    householdId: input.householdId ?? null,
     studentName: ctx.studentName,
     monthLabel: input.monthLabel,
     targetGoal: ctx.targetGoal,

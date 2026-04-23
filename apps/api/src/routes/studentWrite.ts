@@ -8,7 +8,7 @@ import { StudentWriteRepository } from "../repositories/student/studentWriteRepo
 import { OnboardingRepository } from "../repositories/student/onboardingRepository";
 import { StudentReadRepository } from "../repositories/student/studentReadRepository";
 import { ArtifactRepository } from "../repositories/student/artifactRepository";
-import { createSignedUploadTarget } from "../services/storage/supabaseStorage";
+import { createSignedUploadTarget, verifyStorageObjectExists } from "../services/storage/supabaseStorage";
 import { persistArtifactAndQueueParse } from "../services/student/artifactIntake";
 import { runScoring } from "../services/scoring";
 import { finalizeOnboardingAndDiagnostic } from "../services/student/diagnosticService";
@@ -625,6 +625,17 @@ export async function uploadCompleteRoute(req: IncomingMessage, res: ServerRespo
       return badRequest(
         res,
         "The upload target has expired. Request a fresh upload link and upload the file again."
+      );
+    }
+
+    const objectExists = await verifyStorageObjectExists({
+      bucket: uploadTarget.bucket,
+      path: body.objectPath,
+    });
+    if (!objectExists) {
+      return badRequest(
+        res,
+        "The uploaded file could not be found in storage yet. Finish the browser upload first, then try completion again."
       );
     }
 

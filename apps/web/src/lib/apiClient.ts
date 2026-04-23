@@ -3,9 +3,13 @@ import { getStoredTestContextRole } from "./testContext";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080";
-const API_TIMEOUT_MS = 8000;
+const DEFAULT_API_TIMEOUT_MS = 15000;
 
-export async function apiFetch(path: string, init: RequestInit = {}) {
+export type ApiRequestInit = RequestInit & {
+  timeoutMs?: number;
+};
+
+export async function apiFetch(path: string, init: ApiRequestInit = {}) {
   const supabase = getSupabaseBrowserClient();
   let token: string | undefined;
 
@@ -29,15 +33,17 @@ export async function apiFetch(path: string, init: RequestInit = {}) {
     headers.set("x-test-context-role", testContextRole);
   }
 
+  const timeoutMs = init.timeoutMs ?? DEFAULT_API_TIMEOUT_MS;
   const controller = new AbortController();
   const timeoutId = window.setTimeout(() => {
     controller.abort();
-  }, API_TIMEOUT_MS);
+  }, timeoutMs);
 
   let response: Response;
   try {
+    const { timeoutMs: _timeoutMs, ...fetchInit } = init;
     response = await fetch(`${API_BASE_URL}${path}`, {
-      ...init,
+      ...fetchInit,
       headers,
       cache: "no-store",
       signal: controller.signal,
@@ -45,7 +51,7 @@ export async function apiFetch(path: string, init: RequestInit = {}) {
   } catch (error) {
     window.clearTimeout(timeoutId);
     if (error instanceof DOMException && error.name === "AbortError") {
-      throw new Error(`API request timed out after ${API_TIMEOUT_MS / 1000}s: ${path}`);
+      throw new Error(`API request timed out after ${timeoutMs / 1000}s: ${path}`);
     }
     throw error;
   }

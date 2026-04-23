@@ -71,6 +71,7 @@ interface ProgramRequirementDiscoveryResult {
   provenanceMethod?: "direct_scrape" | "llm_assisted";
   sourceNote?: string | null;
   usedLlmAssistance?: boolean;
+  diagnostics?: string[];
 }
 
 function normalizeWhitespace(value: string): string {
@@ -1406,18 +1407,21 @@ async function discoverSingleProgramRequirements(input: {
   kind: ProgramKind;
   websiteUrl: string;
 }): Promise<ProgramRequirementDiscoveryResult> {
+  const diagnostics: string[] = [];
   const seedPages = (
     await Promise.all(buildCatalogSeedUrls(input.websiteUrl).map((url) => fetchHtmlPage(url)))
   ).filter((page): page is HtmlPage => !!page);
   const homePage = seedPages[0] || null;
 
   if (!homePage && seedPages.length === 0) {
+    diagnostics.push("No institution seed pages could be fetched from the school website.");
     return {
       status: "upload_required" as const,
       discoveredCourseCount: 0,
       sourcePage: null,
       requirementSetId: null,
       message: `The ${input.kind} page could not be discovered from the institution website.`,
+      diagnostics,
     };
   }
 
@@ -1448,6 +1452,9 @@ async function discoverSingleProgramRequirements(input: {
   const candidatePages = (
     await Promise.all(rankedLinks.map((link) => fetchHtmlPage(link.href)))
   ).filter((page): page is HtmlPage => !!page);
+  if (!candidatePages.length) {
+    diagnostics.push("No candidate program detail pages could be fetched after ranking school-site links.");
+  }
 
   const scoredPages: Array<{
     page: HtmlPage;
@@ -1516,6 +1523,9 @@ async function discoverSingleProgramRequirements(input: {
   const bestPageUrl = bestPage ? bestPage.url : null;
 
   if (!bestPage || bestCourses.length < 3) {
+    diagnostics.push(
+      `Direct page parsing found ${bestCourses.length} recognizable course rows, below the minimum threshold of 3.`
+    );
     const llmCandidatePages = scoredPages
       .filter((entry) => entry.suitabilityScore > 0 && (entry.matchedTokenCount > 0 || entry.exactProgramMention))
       .slice(0, 3)
@@ -1538,8 +1548,8 @@ async function discoverSingleProgramRequirements(input: {
           (llmResult?.courses || []).map((course) => ({
             courseCode: course.courseCode,
             courseTitle: course.courseTitle,
-            creditsMin: course.creditsMin,
-            creditsMax: course.creditsMax,
+            creditsMin: course.creditsMin ?? undefined,
+            creditsMax: course.creditsMax ?? undefined,
             rawLine: course.evidence,
           }))
         );
@@ -1549,10 +1559,21 @@ async function discoverSingleProgramRequirements(input: {
           bestCourses = llmCourses;
           provenanceMethod = "llm_assisted";
           sourceNote = llmResult.summary;
+          diagnostics.push(
+            `LLM-assisted extraction recovered ${llmCourses.length} structured courses from official school-page text.`
+          );
+        } else {
+          diagnostics.push(
+            `LLM-assisted extraction did not produce enough supported course rows${llmResult ? ` (${llmCourses.length} returned)` : ""}.`
+          );
         }
-      } catch {
-        // fall through to the standard upload-required path
+      } catch (error) {
+        diagnostics.push(
+          `LLM-assisted extraction failed: ${error instanceof Error ? error.message : String(error)}`
+        );
       }
+    } else {
+      diagnostics.push("No high-confidence school pages mentioned the selected program closely enough for LLM-assisted extraction.");
     }
   }
 
@@ -1566,6 +1587,7 @@ async function discoverSingleProgramRequirements(input: {
       provenanceMethod: undefined,
       sourceNote: sourceNote,
       usedLlmAssistance: false,
+      diagnostics,
     };
   }
 
@@ -1634,6 +1656,7 @@ async function discoverSingleProgramRequirements(input: {
     provenanceMethod,
     sourceNote,
     usedLlmAssistance: provenanceMethod === "llm_assisted",
+    diagnostics,
   };
 }
 
@@ -1658,6 +1681,7 @@ export async function discoverProgramRequirements(input: {
       major: null,
       minor: null,
       uploadUrl: "/uploads/catalog",
+      diagnostics: ["No website URL is stored for this institution in the directory."],
     };
   }
 
@@ -1739,5 +1763,6 @@ export async function discoverProgramRequirements(input: {
     usedLlmAssistance,
     major: majorResult,
     minor: minorResult,
+    diagnostics: [...(majorResult?.diagnostics || []), ...(minorResult?.diagnostics || [])].slice(0, 8),
   };
 }

@@ -18,7 +18,7 @@ const buttonBaseStyle: CSSProperties = {
 export function AuthButtons() {
   const supabase = getSupabaseBrowserClient();
   const disabledReason = getSupabaseConfigError();
-  const { isAuthenticated, loading, error, refresh } = useSession();
+  const { isAuthenticated, loading, error, refresh, hasResolvedOnce } = useSession();
   const [actionBusy, setActionBusy] = useState<"sign_in" | "sign_out" | null>(null);
   const [showSlowNotice, setShowSlowNotice] = useState(false);
 
@@ -37,8 +37,16 @@ export function AuthButtons() {
     };
   }, [loading]);
 
-  const signInDisabled = !supabase || isAuthenticated || actionBusy !== null;
-  const signOutDisabled = !supabase || !isAuthenticated || actionBusy !== null;
+  const sessionAppearsStalled = loading && showSlowNotice && !hasResolvedOnce;
+  const signInDisabled =
+    !supabase ||
+    isAuthenticated ||
+    actionBusy !== null ||
+    (loading && !sessionAppearsStalled);
+  const signOutDisabled =
+    !supabase ||
+    !isAuthenticated ||
+    actionBusy !== null;
 
   async function signInWithGoogle() {
     if (!supabase) return;
@@ -109,7 +117,7 @@ export function AuthButtons() {
         >
           {actionBusy === "sign_in"
             ? "Opening Google..."
-            : loading
+            : loading && !sessionAppearsStalled
               ? "Checking session..."
               : "Continue with Google"}
         </button>
@@ -133,7 +141,7 @@ export function AuthButtons() {
       {showSlowNotice ? (
         <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
           <p style={{ margin: 0, color: "#dbe7ff" }}>
-            Session check is taking longer than expected. You can retry now without leaving this page.
+            Session check is taking longer than expected. You can retry now or continue to Google sign-in directly.
           </p>
           <button
             type="button"

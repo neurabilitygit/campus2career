@@ -55,6 +55,12 @@ export async function router(req: IncomingMessage, res: ServerResponse) {
     return;
   }
 
+  if (url === "/students/me/scoring/explain" && req.method === "POST") {
+    const { scoringExplainRoute } = await import("./routes/scoring");
+    await scoringExplainRoute(req, res);
+    return;
+  }
+
   if (url === "/students/me/profile" && req.method === "POST") {
     const { studentProfileUpsertRoute } = await import("./routes/studentWrite");
     await studentProfileUpsertRoute(req, res);
@@ -97,9 +103,33 @@ export async function router(req: IncomingMessage, res: ServerResponse) {
     return;
   }
 
+  if (url === "/students/me/job-targets" && req.method === "GET") {
+    const { studentJobTargetsListRoute } = await import("./routes/jobTargets");
+    await studentJobTargetsListRoute(req, res);
+    return;
+  }
+
+  if (url === "/students/me/job-targets" && req.method === "POST") {
+    const { studentJobTargetCreateRoute } = await import("./routes/jobTargets");
+    await studentJobTargetCreateRoute(req, res);
+    return;
+  }
+
+  if (url === "/students/me/job-targets/primary" && req.method === "PATCH") {
+    const { studentJobTargetSetPrimaryRoute } = await import("./routes/jobTargets");
+    await studentJobTargetSetPrimaryRoute(req, res);
+    return;
+  }
+
   if (url === "/students/me/diagnostic/first" && req.method === "GET") {
     const { firstDiagnosticRoute } = await import("./routes/studentWrite");
     await firstDiagnosticRoute(req, res);
+    return;
+  }
+
+  if (url === "/students/me/ai-documents" && req.method === "GET") {
+    const { studentAiDocumentsRoute } = await import("./routes/aiDocuments");
+    await studentAiDocumentsRoute(req, res);
     return;
   }
 

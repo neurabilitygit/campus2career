@@ -1,7 +1,10 @@
-import { runScenarioChatWithWebSearch } from "../openai/responsesClient";
+import type { LlmTelemetryContext } from "../../../../../packages/shared/src/contracts/llm";
 import type { ScoringOutput } from "../../../../../packages/shared/src/scoring/types";
+import { runStructuredScenarioChatWithWebSearch } from "../openai/responsesClient";
+import type { ScenarioModelOutput } from "./scenarioSchema";
 
 export interface ScenarioChatInput {
+  studentProfileId?: string;
   studentName: string;
   targetRoleFamily: string;
   targetSectorCluster: string;
@@ -27,6 +30,13 @@ export interface ScenarioChatResponse {
   providerError?: string;
 }
 
+export interface ScenarioChatResult {
+  response: ScenarioChatResponse;
+  llmRunId?: string;
+  deliveryMode: "llm" | "fallback";
+  degradedReason?: string;
+}
+
 const SCENARIO_CHAT_PROVIDER_TIMEOUT_MS = 5000;
 
 function buildStudentSystemPrompt(input: ScenarioChatInput): string {
@@ -37,19 +47,9 @@ function buildStudentSystemPrompt(input: ScenarioChatInput): string {
     "Do not soften real risks.",
     "Use the student's current scoring, skill gaps, and inferred style.",
     `Preferred communication style: ${input.communicationStyle || "direct"}`,
-    "Respond in strict JSON only.",
-    "Schema:",
-    "{",
-    '  "headline": string,',
-    '  "summary": string,',
-    '  "whyThisMattersNow": string,',
-    '  "recommendedActions": [{ "title": string, "rationale": string, "timeframe": string }],',
-    '  "risksToWatch": string[],',
-    '  "encouragement": string,',
-    '  "basedOn": string[]',
-    "}",
     "Keep recommendedActions to 3 items maximum.",
-    "Ground the response in the supplied scoring and evidence, not generic advice."
+    "Ground the response in the supplied scoring and evidence, not generic advice.",
+    "Be specific about the next move.",
   ].join("\n");
 }
 
@@ -62,23 +62,11 @@ function buildStudentUserPrompt(input: ScenarioChatInput): string {
     `Overall score: ${input.scoring.overallScore}`,
     `Top strengths: ${input.scoring.topStrengths.join("; ") || "None yet"}`,
     `Top risks: ${input.scoring.topRisks.join("; ") || "None currently"}`,
-    `Skill gaps: ${input.scoring.skillGaps.map(g => `${g.skillName} [${g.gapSeverity}]`).join("; ") || "None"}`,
+    `Skill gaps: ${input.scoring.skillGaps.map((g) => `${g.skillName} [${g.gapSeverity}]`).join("; ") || "None"}`,
     `Relevant insights: ${(input.parentVisibleInsights || []).join("; ") || "None provided"}`,
     `Scenario question: ${input.scenarioQuestion}`,
-    "Answer the question directly and strategically."
+    "Answer the question directly and strategically.",
   ].join("\n");
-}
-
-function extractJsonObject(raw: string): unknown {
-  const trimmed = raw.trim();
-  const fencedMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
-  const candidate = fencedMatch?.[1] || trimmed;
-  const firstBrace = candidate.indexOf("{");
-  const lastBrace = candidate.lastIndexOf("}");
-  if (firstBrace === -1 || lastBrace === -1 || lastBrace <= firstBrace) {
-    throw new Error("No JSON object found in model response");
-  }
-  return JSON.parse(candidate.slice(firstBrace, lastBrace + 1));
 }
 
 function buildFallbackScenarioResponse(input: ScenarioChatInput, providerError?: string): ScenarioChatResponse {
@@ -118,21 +106,19 @@ function buildFallbackScenarioResponse(input: ScenarioChatInput, providerError?:
   };
 }
 
-function normalizeScenarioChatResponse(raw: unknown): ScenarioChatResponse {
-  const parsed = raw as Partial<ScenarioChatResponse>;
+function normalizeScenarioChatResponse(raw: ScenarioModelOutput): ScenarioChatResponse {
+  const parsed = raw as Partial<ScenarioModelOutput>;
   return {
     mode: "llm",
     headline: parsed.headline || "Scenario guidance",
     summary: parsed.summary || "No summary returned.",
     whyThisMattersNow: parsed.whyThisMattersNow || "No explanation returned.",
     recommendedActions: Array.isArray(parsed.recommendedActions)
-      ? parsed.recommendedActions
-          .slice(0, 3)
-          .map((action) => ({
-            title: String(action?.title || "Recommended action"),
-            rationale: String(action?.rationale || "This action is supported by the current scoring."),
-            timeframe: String(action?.timeframe || "Soon"),
-          }))
+      ? parsed.recommendedActions.slice(0, 3).map((action) => ({
+          title: String(action?.title || "Recommended action"),
+          rationale: String(action?.rationale || "This action is supported by the current scoring."),
+          timeframe: String(action?.timeframe || "Soon"),
+        }))
       : [],
     risksToWatch: Array.isArray(parsed.risksToWatch) ? parsed.risksToWatch.map((value) => String(value)).slice(0, 4) : [],
     encouragement: parsed.encouragement || "Keep the plan focused on the highest-leverage next move.",
@@ -140,37 +126,49 @@ function normalizeScenarioChatResponse(raw: unknown): ScenarioChatResponse {
   };
 }
 
-async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, errorMessage: string): Promise<T> {
-  let timeoutId: ReturnType<typeof setTimeout> | null = null;
-
-  try {
-    return await Promise.race([
-      promise,
-      new Promise<T>((_, reject) => {
-        timeoutId = setTimeout(() => reject(new Error(errorMessage)), timeoutMs);
-      }),
-    ]);
-  } finally {
-    if (timeoutId) {
-      clearTimeout(timeoutId);
-    }
-  }
+function buildScenarioTelemetry(input: ScenarioChatInput): LlmTelemetryContext {
+  return {
+    runType: "scenario_chat",
+    promptVersion: "student_scenario_v2_structured",
+    studentProfileId: input.studentProfileId ?? null,
+    inputPayload: {
+      studentName: input.studentName,
+      targetRoleFamily: input.targetRoleFamily,
+      targetSectorCluster: input.targetSectorCluster,
+      scenarioQuestion: input.scenarioQuestion,
+      communicationStyle: input.communicationStyle || "direct",
+      trajectoryStatus: input.scoring.trajectoryStatus,
+      overallScore: input.scoring.overallScore,
+      topRisks: input.scoring.topRisks,
+      topStrengths: input.scoring.topStrengths,
+      skillGaps: input.scoring.skillGaps.map((gap) => ({
+        skillName: gap.skillName,
+        gapSeverity: gap.gapSeverity,
+      })),
+    },
+  };
 }
 
-export async function runScenarioChat(input: ScenarioChatInput): Promise<ScenarioChatResponse> {
+export async function runScenarioChat(input: ScenarioChatInput): Promise<ScenarioChatResult> {
   try {
-    const raw = await withTimeout(
-      runScenarioChatWithWebSearch({
-        systemPrompt: buildStudentSystemPrompt(input),
-        userPrompt: buildStudentUserPrompt(input),
-      }),
-      SCENARIO_CHAT_PROVIDER_TIMEOUT_MS,
-      "SCENARIO_CHAT_TIMEOUT"
-    );
-    return normalizeScenarioChatResponse(extractJsonObject(raw));
+    const result = await runStructuredScenarioChatWithWebSearch({
+      systemPrompt: buildStudentSystemPrompt(input),
+      userPrompt: buildStudentUserPrompt(input),
+      telemetry: buildScenarioTelemetry(input),
+      timeoutMs: SCENARIO_CHAT_PROVIDER_TIMEOUT_MS,
+    });
+
+    return {
+      response: normalizeScenarioChatResponse(result.output),
+      llmRunId: result.llmRunId,
+      deliveryMode: "llm",
+    };
   } catch (error) {
-    const providerError =
-      error instanceof Error ? error.message : String(error);
-    return buildFallbackScenarioResponse(input, providerError);
+    const providerError = error instanceof Error ? error.message : String(error);
+    return {
+      response: buildFallbackScenarioResponse(input, providerError),
+      deliveryMode: "fallback",
+      degradedReason: providerError,
+    };
   }
 }

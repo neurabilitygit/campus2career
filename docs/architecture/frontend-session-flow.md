@@ -1,19 +1,28 @@
 # Frontend Session Flow
 
 ## Current implementation
-1. User signs in with Google through Supabase OAuth.
-2. Supabase stores the browser session.
-3. Frontend calls `supabase.auth.getSession()`.
-4. API client attaches `Authorization: Bearer <access_token>`.
-5. API verifies the Supabase JWT and resolves household/student context.
-6. Dashboard pages fetch authenticated data from the API.
+1. The browser initializes a shared Supabase client from `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
+2. `apps/web/src/lib/sessionStore.ts` performs a one-time session bootstrap for the page load and subscribes to Supabase auth state changes.
+3. `useSession()` reads that shared store through `useSyncExternalStore` instead of triggering a fresh auth check from every consumer.
+4. `apiFetch()` reads the current Supabase access token and attaches `Authorization: Bearer <token>` to API requests.
+5. The API verifies the JWT, resolves the authenticated user, and builds request context with the resolved student profile and household wiring.
+6. Protected screens render through `SessionGate` and `RequireRole`, which show explicit loading, retry, and sign-in UI when auth is unresolved.
+
+## Hardening changes now in place
+- The session bootstrap runs once per page load instead of once per component mount.
+- Slow session checks surface timeout/retry messaging rather than hanging indefinitely.
+- Unknown auth roles are no longer silently coerced into a student context on the backend.
+- Demo-header auth is gated by `ALLOW_DEMO_AUTH=true` and is not part of the normal web flow.
 
 ## Current dashboard pages
-- /parent
-- /student
-- /coach
+- `/app`
+- `/student`
+- `/parent`
+- `/coach`
+- `/onboarding`
+- `/uploads`
 
-## Remaining work
-- add role-aware redirects
-- replace generic JSON cards with real UI components
-- add session refresh / expired-session handling
+## Operational notes
+- A missing Supabase browser configuration disables real sign-in and upload behavior.
+- `NEXT_PUBLIC_API_BASE_URL` must point to the API origin for authenticated requests to work.
+- The current shell uses a desktop-style two-column layout with a fixed navigation pane and a flexible detail pane.

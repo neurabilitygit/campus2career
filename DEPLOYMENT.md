@@ -34,7 +34,15 @@ Use that URL for:
 
 ## 2. Apply database migrations
 
-Run the SQL files in this order:
+Recommended command:
+
+- `pnpm db:migrate`
+
+The migration runner applies a compatibility order for the current schema set so
+that `academic_artifacts` exists before `artifact_parse_jobs` on a fresh
+database.
+
+If you need to inspect the intended order manually, use:
 
 - `001_identity.sql`
 - `002_consent.sql`
@@ -51,6 +59,13 @@ Run the SQL files in this order:
 - `011_onboarding_and_parse_jobs.sql`
 - `014_academic_catalog_foundation.sql`
 - `015_transcript_graph.sql`
+- `016_student_profile_academic_notes.sql`
+- `017_requirement_set_provenance.sql`
+- `018_upload_targets.sql`
+- `019_llm_runs.sql`
+- `020_ai_documents.sql`
+- `021_job_targets.sql`
+- `022_job_targets_primary_unique.sql`
 
 Minimum tables to verify after migration:
 

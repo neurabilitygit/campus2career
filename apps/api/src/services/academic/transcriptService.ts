@@ -107,6 +107,14 @@ export async function listTranscriptTerms(studentTranscriptId: string) {
   return transcriptRepo.listTranscriptTerms(studentTranscriptId);
 }
 
+export async function updateStudentTranscriptStatus(input: {
+  studentTranscriptId: string;
+  parsedStatus: "pending" | "parsed" | "matched" | "review_required" | "failed";
+  transcriptSummary?: string | null;
+}) {
+  await transcriptRepo.updateTranscriptStatus(input);
+}
+
 function normalizeComparisonValue(value: string | null | undefined): string {
   return (value || "").trim().toLowerCase().replace(/\s+/g, " ");
 }

@@ -3,6 +3,7 @@ import type { IncomingMessage } from "node:http";
 import { getAuthenticatedUser } from "../../middleware/auth";
 import { UserContextRepository } from "../../repositories/auth/userContextRepository";
 import { StudentWriteRepository } from "../../repositories/student/studentWriteRepository";
+import { AppError } from "../../utils/appError";
 import { syncAuthenticatedUser } from "./syncAuthenticatedUser";
 
 export interface RequestContext {
@@ -20,12 +21,11 @@ export interface RequestContext {
 const repo = new UserContextRepository();
 const studentWriteRepo = new StudentWriteRepository();
 
-function normalizeRole(role: string | null | undefined): RequestContext["authenticatedRoleType"] {
+function normalizeRole(role: string | null | undefined): RequestContext["authenticatedRoleType"] | null {
   if (role === "student" || role === "parent" || role === "coach" || role === "admin") {
     return role;
   }
-  // safe fallback
-  return "student";
+  return null;
 }
 
 function stableId(namespace: string, key: string): string {
@@ -77,6 +77,19 @@ export async function resolveRequestContext(req: IncomingMessage): Promise<Reque
     (await repo.resolveApplicationRoleForUser(auth.userId)) || auth.roleType;
 
   const defaultRole = normalizeRole(resolvedRoleRaw);
+  if (!defaultRole) {
+    throw new AppError({
+      status: 503,
+      code: "auth_role_resolution_failed",
+      message:
+        "Authenticated role could not be resolved from the current user and household wiring.",
+      details: {
+        authenticatedUserId: auth.userId,
+        upstreamRoleType: auth.roleType || null,
+        resolvedRoleRaw: resolvedRoleRaw || null,
+      },
+    });
+  }
   const testContextAllowed = canUseTestContextSwitching(auth.email);
   const requestedTestRole = testContextAllowed ? readRequestedTestRole(req) : null;
   const resolvedRole = requestedTestRole ?? defaultRole;

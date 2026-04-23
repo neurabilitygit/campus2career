@@ -1,12 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { AppShell } from "../layout/AppShell";
 import { SectionCard } from "../layout/SectionCard";
 import { KeyValueList } from "../layout/KeyValueList";
 import { RequireRole } from "../RequireRole";
 import { useApiData, useApiJsonPost } from "../../hooks/useApiData";
+import { apiFetch } from "../../lib/apiClient";
 import { listTargetRoleOptions } from "../../../../../packages/shared/src/market/targetRoleSeeds";
+import type { JobTargetNormalizationResult, StudentJobTargetRecord } from "../../../../../packages/shared/src/contracts/career";
 
 const DEFAULT_SCENARIO_QUESTION =
   "What if I keep my current major but focus this semester on the highest-signal gap-closing actions?";
@@ -125,6 +128,60 @@ type ScenarioResponse = {
   };
 };
 
+type JobTargetsResponse = {
+  ok: true;
+  count: number;
+  jobTargets: StudentJobTargetRecord[];
+};
+
+type CreateJobTargetResponse = {
+  ok: true;
+  jobTargetId: string;
+  isPrimary: boolean;
+  normalized: JobTargetNormalizationResult;
+  message: string;
+};
+
+type SetPrimaryJobTargetResponse = {
+  ok: true;
+  primary?: StudentJobTargetRecord | null;
+  message: string;
+};
+
+type ScoreExplanationResponse = {
+  explanation?: {
+    summaryHeadline: string;
+    summaryText: string;
+    strongestDrivers: Array<{
+      key: string;
+      label: string;
+      score: number;
+      direction: "positive" | "negative" | "neutral";
+      detail: string;
+    }>;
+    biggestGaps: Array<{
+      key: string;
+      label: string;
+      score: number;
+      direction: "positive" | "negative" | "neutral";
+      detail: string;
+    }>;
+    dataQualityAlerts: string[];
+    immediateActions: string[];
+    counterfactual?: {
+      compareToRoleFamily: string;
+      deltaOverallScore: number;
+      summaryText: string;
+      biggestChanges: Array<{
+        key: string;
+        label: string;
+        delta: number;
+        detail: string;
+      }>;
+    } | null;
+  };
+};
+
 function titleCase(value: string | undefined | null): string {
   if (!value) return "Unknown";
   return value
@@ -147,6 +204,13 @@ function scoreLabel(score: number | undefined): string {
   return "Weak";
 }
 
+function confidenceLabel(value: number | null | undefined): string {
+  if (typeof value !== "number") return "Unknown";
+  if (value >= 0.85) return "High";
+  if (value >= 0.6) return "Medium";
+  return "Low";
+}
+
 function academicBindingLabel(
   requirementProgress: ScoringInputPayload["requirementProgress"] | undefined
 ): string {
@@ -166,10 +230,53 @@ function academicBindingLabel(
 }
 
 const roleOptions = listTargetRoleOptions();
+const studentSectionItems = [
+  {
+    key: "strategy",
+    href: "/student?section=strategy",
+    label: "Strategy",
+    description: "Target role, score, and explanation",
+  },
+  {
+    key: "evidence",
+    href: "/student?section=evidence",
+    label: "Evidence",
+    description: "Academics and market inputs",
+  },
+  {
+    key: "guidance",
+    href: "/student?section=guidance",
+    label: "Guidance",
+    description: "Subscores, risks, and next steps",
+  },
+] as const;
+
+type StudentSectionKey = (typeof studentSectionItems)[number]["key"];
 
 export default function StudentDashboardView() {
+  const searchParams = useSearchParams();
   const [selectedRole, setSelectedRole] = useState("");
   const [compareRole, setCompareRole] = useState("");
+  const [jobTargetsNonce, setJobTargetsNonce] = useState(0);
+  const [jobTargetDraft, setJobTargetDraft] = useState({
+    title: "",
+    employer: "",
+    location: "",
+    jobDescriptionText: "",
+  });
+  const [jobTargetAction, setJobTargetAction] = useState<{
+    saving: boolean;
+    settingPrimary: string | null;
+    error: string | null;
+    success: string | null;
+    normalization: JobTargetNormalizationResult | null;
+  }>({
+    saving: false,
+    settingPrimary: null,
+    error: null,
+    success: null,
+    normalization: null,
+  });
   const [draftQuestion, setDraftQuestion] = useState(DEFAULT_SCENARIO_QUESTION);
   const [draftStyle, setDraftStyle] = useState("direct");
   const [applied, setApplied] = useState({
@@ -186,14 +293,13 @@ export default function StudentDashboardView() {
     [selectedRole, compareRole]
   );
 
-  const scoring = useApiJsonPost<ScoringResponse>("/students/me/scoring/preview", scoringBody, true);
-
-  useEffect(() => {
-    const resolvedRole = scoring.data?.scoring?.targetRoleFamily;
-    if (!selectedRole && resolvedRole) {
-      setSelectedRole(resolvedRole);
-    }
-  }, [scoring.data?.scoring?.targetRoleFamily, selectedRole]);
+  const scoring = useApiJsonPost<ScoringResponse>("/students/me/scoring/preview", scoringBody, true, {
+    timeoutMs: 12000,
+  });
+  const explanation = useApiJsonPost<ScoreExplanationResponse>("/students/me/scoring/explain", scoringBody, true, {
+    timeoutMs: 12000,
+  });
+  const jobTargets = useApiData<JobTargetsResponse>("/students/me/job-targets", true, jobTargetsNonce);
 
   const scenarioBody = useMemo(
     () => ({
@@ -207,7 +313,9 @@ export default function StudentDashboardView() {
     [applied.communicationStyle, applied.scenarioQuestion, scoring.data?.scoring?.targetSectorCluster, selectedRole]
   );
 
-  const scenario = useApiJsonPost<ScenarioResponse>("/v1/chat/scenario/live", scenarioBody, requestedScenario);
+  const scenario = useApiJsonPost<ScenarioResponse>("/v1/chat/scenario/live", scenarioBody, requestedScenario, {
+    timeoutMs: 20000,
+  });
   const marketSignals = scoring.data?.scoringInput?.marketSignals || [];
   const topOccupationSkills = scoring.data?.scoringInput?.occupationSkills?.slice(0, 8) || [];
   const transcript = scoring.data?.scoringInput?.transcript;
@@ -227,155 +335,556 @@ export default function StudentDashboardView() {
   const targetRoleLabel = titleCase(scoring.data?.scoring?.targetRoleFamily);
   const targetSectorLabel = titleCase(scoring.data?.scoring?.targetSectorCluster);
   const trajectoryLabel = titleCase(scoring.data?.scoring?.trajectoryStatus);
+  const savedJobTargets = jobTargets.data?.jobTargets || [];
+  const primaryJobTarget = savedJobTargets.find((jobTarget) => jobTarget.isPrimary) || null;
+  const requestedSection = searchParams.get("section");
+  const activeSection: StudentSectionKey =
+    requestedSection === "evidence" || requestedSection === "guidance" ? requestedSection : "strategy";
+
+  async function handleSaveJobTarget() {
+    const title = jobTargetDraft.title.trim();
+    if (!title) {
+      setJobTargetAction((current) => ({
+        ...current,
+        error: "Add a job title before saving.",
+        success: null,
+        normalization: null,
+      }));
+      return;
+    }
+
+    setJobTargetAction({
+      saving: true,
+      settingPrimary: null,
+      error: null,
+      success: null,
+      normalization: null,
+    });
+
+    try {
+      const result = await apiFetch("/students/me/job-targets", {
+        method: "POST",
+        body: JSON.stringify({
+          title,
+          employer: jobTargetDraft.employer.trim() || undefined,
+          location: jobTargetDraft.location.trim() || undefined,
+          jobDescriptionText: jobTargetDraft.jobDescriptionText.trim() || undefined,
+          isPrimary: true,
+        }),
+      }) as CreateJobTargetResponse;
+
+      setJobTargetDraft({
+        title: "",
+        employer: "",
+        location: "",
+        jobDescriptionText: "",
+      });
+      setSelectedRole("");
+      setJobTargetsNonce((value) => value + 1);
+      setJobTargetAction({
+        saving: false,
+        settingPrimary: null,
+        error: null,
+        success: result.message,
+        normalization: result.normalized,
+      });
+    } catch (error) {
+      setJobTargetAction({
+        saving: false,
+        settingPrimary: null,
+        error: error instanceof Error ? error.message : String(error),
+        success: null,
+        normalization: null,
+      });
+    }
+  }
+
+  async function handleSetPrimaryJobTarget(jobTargetId: string) {
+    setJobTargetAction((current) => ({
+      ...current,
+      settingPrimary: jobTargetId,
+      error: null,
+      success: null,
+    }));
+
+    try {
+      const result = await apiFetch("/students/me/job-targets/primary", {
+        method: "PATCH",
+        body: JSON.stringify({ jobTargetId }),
+      }) as SetPrimaryJobTargetResponse;
+
+      setSelectedRole("");
+      setJobTargetsNonce((value) => value + 1);
+      setJobTargetAction((current) => ({
+        ...current,
+        saving: false,
+        settingPrimary: null,
+        error: null,
+        success: result.message,
+      }));
+    } catch (error) {
+      setJobTargetAction((current) => ({
+        ...current,
+        saving: false,
+        settingPrimary: null,
+        error: error instanceof Error ? error.message : String(error),
+        success: null,
+      }));
+    }
+  }
 
   return (
     <AppShell
       title="Student dashboard"
       subtitle="Track the student’s target role, current readiness, academic progress, and the most important next move."
+      secondaryNavTitle="Student sections"
+      secondaryNavItems={[...studentSectionItems]}
+      activeSecondaryNavKey={activeSection}
     >
       <RequireRole expectedRoles={["student", "admin"]} fallbackTitle="Student sign-in required">
-        <SectionCard
-          title="Your path at a glance"
-          subtitle="This is the fastest read on what the system believes you are aiming for and what needs attention next."
-          tone="highlight"
-        >
-          {scoring.loading ? <p style={{ margin: 0 }}>Building your current snapshot...</p> : null}
-          {scoring.error ? <p style={{ margin: 0, color: "crimson" }}>{scoring.error}</p> : null}
-          {!scoring.loading && !scoring.error ? (
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-                gap: 14,
-              }}
+        {activeSection === "strategy" ? (
+          <>
+            <SectionCard
+              title="Your path at a glance"
+              subtitle="This is the fastest read on what the system believes you are aiming for and what needs attention next."
+              tone="highlight"
             >
-              <div style={{ borderRadius: 18, padding: 18, background: "#ffffff", border: "1px solid rgba(73, 102, 149, 0.12)" }}>
-                <div style={{ color: "#5f728a", fontSize: 12, fontWeight: 800, textTransform: "uppercase", letterSpacing: 0.05 }}>
-                  Current target
-                </div>
-                <div style={{ fontSize: 28, fontWeight: 800, marginTop: 8 }}>{targetRoleLabel}</div>
-                <div style={{ marginTop: 6, color: "#52657d" }}>{targetSectorLabel}</div>
-              </div>
-              <div style={{ borderRadius: 18, padding: 18, background: "#ffffff", border: "1px solid rgba(73, 102, 149, 0.12)" }}>
-                <div style={{ color: "#5f728a", fontSize: 12, fontWeight: 800, textTransform: "uppercase", letterSpacing: 0.05 }}>
-                  Overall readiness
-                </div>
-                <div style={{ fontSize: 34, fontWeight: 800, marginTop: 8 }}>
-                  {scoring.data?.scoring?.overallScore ?? "?"}
-                </div>
-                <div style={{ marginTop: 6, color: "#52657d" }}>
-                  {trajectoryLabel} · {scoreLabel(scoring.data?.scoring?.overallScore)}
-                </div>
-              </div>
-              <div style={{ borderRadius: 18, padding: 18, background: "#ffffff", border: "1px solid rgba(73, 102, 149, 0.12)" }}>
-                <div style={{ color: "#5f728a", fontSize: 12, fontWeight: 800, textTransform: "uppercase", letterSpacing: 0.05 }}>
-                  Biggest concern
-                </div>
-                <div style={{ marginTop: 8, lineHeight: 1.55 }}>{primaryRisk || "No specific concern is showing yet."}</div>
-              </div>
-              <div style={{ borderRadius: 18, padding: 18, background: "#ffffff", border: "1px solid rgba(73, 102, 149, 0.12)" }}>
-                <div style={{ color: "#5f728a", fontSize: 12, fontWeight: 800, textTransform: "uppercase", letterSpacing: 0.05 }}>
-                  Best next move
-                </div>
-                <div style={{ marginTop: 8, lineHeight: 1.55 }}>
-                  {topRecommendation?.title || "Add more student information to unlock a clearer next step."}
-                </div>
-              </div>
-            </div>
-          ) : null}
-        </SectionCard>
-
-        <SectionCard
-          title="Choose the role you want to aim for"
-          subtitle="You can score the current path against a specific job and compare it with a second option before making changes."
-        >
-          <div style={{ display: "grid", gap: 16 }}>
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
-                gap: 14,
-              }}
-            >
-              <label style={{ display: "grid", gap: 6 }}>
-                <span>Primary target job</span>
-                <select value={selectedRole} onChange={(e) => setSelectedRole(e.target.value)}>
-                  <option value="">Use default inferred target</option>
-                  {roleOptions.map((option) => (
-                    <option key={option.canonicalName} value={option.canonicalName}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label style={{ display: "grid", gap: 6 }}>
-                <span>Compare against</span>
-                <select value={compareRole} onChange={(e) => setCompareRole(e.target.value)}>
-                  <option value="">No comparison</option>
-                  {roleOptions
-                    .filter((option) => option.canonicalName !== selectedRole)
-                    .map((option) => (
-                      <option key={option.canonicalName} value={option.canonicalName}>
-                        {option.label}
-                      </option>
-                    ))}
-                </select>
-              </label>
-            </div>
-          </div>
-        </SectionCard>
-
-        <SectionCard
-          title="Current score snapshot"
-          subtitle="This is the headline view before you drill into academics, market signals, and recommendations."
-        >
-          {scoring.loading ? <p>Loading scoring...</p> : null}
-          {scoring.error ? <p style={{ color: "crimson" }}>{scoring.error}</p> : null}
-          {!scoring.loading && !scoring.error ? (
-            <div style={{ display: "grid", gap: 16 }}>
-              <KeyValueList
-                items={[
-                  { label: "Target role", value: titleCase(scoring.data?.scoring?.targetRoleFamily) },
-                  { label: "Target sector", value: titleCase(scoring.data?.scoring?.targetSectorCluster) },
-                  { label: "Trajectory status", value: titleCase(scoring.data?.scoring?.trajectoryStatus) },
-                  { label: "Overall score", value: scoring.data?.scoring?.overallScore ?? "Unknown" },
-                ]}
-              />
-              {comparison?.scoring ? (
+              {scoring.loading ? <p style={{ margin: 0 }}>Building your current snapshot...</p> : null}
+              {scoring.error ? <p style={{ margin: 0, color: "crimson" }}>{scoring.error}</p> : null}
+              {!scoring.loading && !scoring.error ? (
                 <div
                   style={{
-                    border: "1px solid #dbe4f0",
-                    borderRadius: 16,
-                    padding: 16,
-                    background: "#f8fbff",
                     display: "grid",
-                    gap: 10,
+                    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+                    gap: 14,
                   }}
                 >
-                  <strong>Comparison: {titleCase(comparison.scoring.targetRoleFamily)}</strong>
-                  <div style={{ color: "#475569" }}>
-                    Overall score delta relative to the selected role: {formatDelta(comparison.deltaOverallScore)}
+                  <div style={{ borderRadius: 18, padding: 18, background: "#ffffff", border: "1px solid rgba(73, 102, 149, 0.12)" }}>
+                    <div style={{ color: "#5f728a", fontSize: 12, fontWeight: 800, textTransform: "uppercase", letterSpacing: 0.05 }}>
+                      Current target
+                    </div>
+                    <div style={{ fontSize: 28, fontWeight: 800, marginTop: 8 }}>{targetRoleLabel}</div>
+                    <div style={{ marginTop: 6, color: "#52657d" }}>{targetSectorLabel}</div>
                   </div>
-                  <KeyValueList
-                    items={Object.entries(comparison.deltaSubScores || {}).map(([key, value]) => ({
-                      label: titleCase(key),
-                      value: formatDelta(value),
-                    }))}
-                  />
+                  <div style={{ borderRadius: 18, padding: 18, background: "#ffffff", border: "1px solid rgba(73, 102, 149, 0.12)" }}>
+                    <div style={{ color: "#5f728a", fontSize: 12, fontWeight: 800, textTransform: "uppercase", letterSpacing: 0.05 }}>
+                      Overall readiness
+                    </div>
+                    <div style={{ fontSize: 34, fontWeight: 800, marginTop: 8 }}>
+                      {scoring.data?.scoring?.overallScore ?? "?"}
+                    </div>
+                    <div style={{ marginTop: 6, color: "#52657d" }}>
+                      {trajectoryLabel} · {scoreLabel(scoring.data?.scoring?.overallScore)}
+                    </div>
+                  </div>
+                  <div style={{ borderRadius: 18, padding: 18, background: "#ffffff", border: "1px solid rgba(73, 102, 149, 0.12)" }}>
+                    <div style={{ color: "#5f728a", fontSize: 12, fontWeight: 800, textTransform: "uppercase", letterSpacing: 0.05 }}>
+                      Biggest concern
+                    </div>
+                    <div style={{ marginTop: 8, lineHeight: 1.55 }}>{primaryRisk || "No specific concern is showing yet."}</div>
+                  </div>
+                  <div style={{ borderRadius: 18, padding: 18, background: "#ffffff", border: "1px solid rgba(73, 102, 149, 0.12)" }}>
+                    <div style={{ color: "#5f728a", fontSize: 12, fontWeight: 800, textTransform: "uppercase", letterSpacing: 0.05 }}>
+                      Best next move
+                    </div>
+                    <div style={{ marginTop: 8, lineHeight: 1.55 }}>
+                      {topRecommendation?.title || "Add more student information to unlock a clearer next step."}
+                    </div>
+                  </div>
                 </div>
               ) : null}
-            </div>
-          ) : null}
-        </SectionCard>
+            </SectionCard>
 
-        <SectionCard
-          title="What your academic record is contributing"
-          subtitle="This section explains how much the system currently understands about your transcript and degree path."
-        >
-          {scoring.loading ? <p>Loading academic progress...</p> : null}
-          {scoring.error ? <p style={{ color: "crimson" }}>Academic scoring context is unavailable because the scoring request failed.</p> : null}
-          {!scoring.loading && !scoring.error ? (
-            <div style={{ display: "grid", gap: 16 }}>
+            <SectionCard
+              title="Set the exact job you want to pursue"
+              subtitle="Save a real target job here. When no temporary override is selected below, scoring will use this saved target by default."
+            >
+              <div style={{ display: "grid", gap: 16 }}>
+                {jobTargets.loading ? <p style={{ margin: 0 }}>Loading saved job targets...</p> : null}
+                {jobTargets.error ? <p style={{ margin: 0, color: "crimson" }}>{jobTargets.error}</p> : null}
+                {primaryJobTarget ? (
+                  <div
+                    style={{
+                      borderRadius: 18,
+                      padding: 18,
+                      background: "#ffffff",
+                      border: "1px solid rgba(73, 102, 149, 0.12)",
+                      display: "grid",
+                      gap: 10,
+                    }}
+                  >
+                    <div style={{ color: "#5f728a", fontSize: 12, fontWeight: 800, textTransform: "uppercase", letterSpacing: 0.05 }}>
+                      Current saved target
+                    </div>
+                    <div style={{ fontSize: 24, fontWeight: 800 }}>{primaryJobTarget.title}</div>
+                    <div style={{ color: "#52657d" }}>
+                      {[primaryJobTarget.employer, primaryJobTarget.location].filter(Boolean).join(" · ") || "No employer or location added"}
+                    </div>
+                    <KeyValueList
+                      items={[
+                        { label: "Mapped role family", value: titleCase(primaryJobTarget.normalizedRoleFamily) },
+                        { label: "Mapped sector", value: titleCase(primaryJobTarget.normalizedSectorCluster) },
+                        { label: "O*NET code", value: primaryJobTarget.onetCode || "Unknown" },
+                        { label: "Match confidence", value: confidenceLabel(primaryJobTarget.normalizationConfidence) },
+                      ]}
+                    />
+                  </div>
+                ) : (
+                  <div
+                    style={{
+                      borderRadius: 18,
+                      padding: 18,
+                      background: "#f8fbff",
+                      border: "1px solid rgba(73, 102, 149, 0.12)",
+                      color: "#475569",
+                      lineHeight: 1.6,
+                    }}
+                  >
+                    No exact target job is saved yet. If a sector has been selected, the platform can still score against the matching broad role family. Otherwise scoring will pause until a target is chosen.
+                  </div>
+                )}
+
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+                    gap: 14,
+                  }}
+                >
+                  <label style={{ display: "grid", gap: 6 }}>
+                    <span>Job title</span>
+                    <input
+                      value={jobTargetDraft.title}
+                      onChange={(e) => setJobTargetDraft((current) => ({ ...current, title: e.target.value }))}
+                      placeholder="Example: Corporate Finance Analyst"
+                    />
+                  </label>
+                  <label style={{ display: "grid", gap: 6 }}>
+                    <span>Employer</span>
+                    <input
+                      value={jobTargetDraft.employer}
+                      onChange={(e) => setJobTargetDraft((current) => ({ ...current, employer: e.target.value }))}
+                      placeholder="Optional"
+                    />
+                  </label>
+                  <label style={{ display: "grid", gap: 6 }}>
+                    <span>Location</span>
+                    <input
+                      value={jobTargetDraft.location}
+                      onChange={(e) => setJobTargetDraft((current) => ({ ...current, location: e.target.value }))}
+                      placeholder="Optional"
+                    />
+                  </label>
+                </div>
+                <label style={{ display: "grid", gap: 6 }}>
+                  <span>Job description or posting notes</span>
+                  <textarea
+                    value={jobTargetDraft.jobDescriptionText}
+                    onChange={(e) => setJobTargetDraft((current) => ({ ...current, jobDescriptionText: e.target.value }))}
+                    rows={5}
+                    placeholder="Paste responsibilities, required skills, or anything specific about the role if you have it."
+                    style={{
+                      width: "100%",
+                      fontFamily: "inherit",
+                      borderRadius: 18,
+                      border: "1px solid rgba(73, 102, 149, 0.18)",
+                      padding: "14px 16px",
+                      background: "rgba(255,255,255,0.82)",
+                    }}
+                  />
+                </label>
+                <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+                  <button
+                    type="button"
+                    onClick={handleSaveJobTarget}
+                    style={{
+                      width: "fit-content",
+                      border: "none",
+                      borderRadius: 999,
+                      padding: "13px 18px",
+                      background: "linear-gradient(135deg, #155eef, #16a3ff)",
+                      color: "#ffffff",
+                      fontWeight: 800,
+                    }}
+                  >
+                    {jobTargetAction.saving ? "Saving target..." : "Save exact target job"}
+                  </button>
+                  {jobTargetAction.success ? <span style={{ color: "#166534" }}>{jobTargetAction.success}</span> : null}
+                  {jobTargetAction.error ? <span style={{ color: "crimson" }}>{jobTargetAction.error}</span> : null}
+                </div>
+                {jobTargetAction.normalization ? (
+                  <div
+                    style={{
+                      border: "1px solid #dbe4f0",
+                      borderRadius: 14,
+                      padding: "14px 16px",
+                      background: "#f8fbff",
+                      color: "#475569",
+                      lineHeight: 1.6,
+                    }}
+                  >
+                    Saved target mapped to {titleCase(jobTargetAction.normalization.normalizedRoleFamily)} in {titleCase(jobTargetAction.normalization.normalizedSectorCluster)}.
+                    {" "}
+                    Confidence: {jobTargetAction.normalization.confidenceLabel || confidenceLabel(jobTargetAction.normalization.normalizationConfidence)}.
+                  </div>
+                ) : null}
+                {savedJobTargets.length > 1 ? (
+                  <div style={{ display: "grid", gap: 10 }}>
+                    <strong>Other saved targets</strong>
+                    {savedJobTargets.filter((jobTarget) => !jobTarget.isPrimary).map((jobTarget) => (
+                      <div
+                        key={jobTarget.jobTargetId}
+                        style={{
+                          border: "1px solid #dbe4f0",
+                          borderRadius: 14,
+                          padding: 14,
+                          background: "#fbfdff",
+                          display: "flex",
+                          justifyContent: "space-between",
+                          gap: 12,
+                          alignItems: "center",
+                          flexWrap: "wrap",
+                        }}
+                      >
+                        <div style={{ display: "grid", gap: 4 }}>
+                          <div style={{ fontWeight: 800 }}>{jobTarget.title}</div>
+                          <div style={{ color: "#475569" }}>
+                            {[jobTarget.employer, jobTarget.location].filter(Boolean).join(" · ") || "No employer or location added"}
+                          </div>
+                          <div style={{ color: "#64748b", fontSize: 14 }}>
+                            {titleCase(jobTarget.normalizedRoleFamily)} · {titleCase(jobTarget.normalizedSectorCluster)}
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleSetPrimaryJobTarget(jobTarget.jobTargetId)}
+                          style={{
+                            borderRadius: 999,
+                            border: "1px solid rgba(21, 94, 239, 0.22)",
+                            background: "#ffffff",
+                            color: "#155eef",
+                            fontWeight: 700,
+                            padding: "10px 14px",
+                          }}
+                        >
+                          {jobTargetAction.settingPrimary === jobTarget.jobTargetId ? "Updating..." : "Use for scoring"}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            </SectionCard>
+
+            <SectionCard
+              title="Preview different role families"
+              subtitle="Use this when you want to test a different path. Leave the first field empty to score against the saved exact target above."
+            >
+              <div style={{ display: "grid", gap: 16 }}>
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+                    gap: 14,
+                  }}
+                >
+                  <label style={{ display: "grid", gap: 6 }}>
+                    <span>Temporary score override</span>
+                    <select value={selectedRole} onChange={(e) => setSelectedRole(e.target.value)}>
+                      <option value="">Use saved exact target or inferred default</option>
+                      {roleOptions.map((option) => (
+                        <option key={option.canonicalName} value={option.canonicalName}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label style={{ display: "grid", gap: 6 }}>
+                    <span>Compare against</span>
+                    <select value={compareRole} onChange={(e) => setCompareRole(e.target.value)}>
+                      <option value="">No comparison</option>
+                      {roleOptions
+                        .filter((option) => option.canonicalName !== selectedRole)
+                        .map((option) => (
+                          <option key={option.canonicalName} value={option.canonicalName}>
+                            {option.label}
+                          </option>
+                        ))}
+                    </select>
+                  </label>
+                </div>
+                <div style={{ color: "#52657d", lineHeight: 1.6 }}>
+                  {selectedRole
+                    ? `The score preview is currently forced to ${titleCase(selectedRole)}.`
+                    : primaryJobTarget
+                      ? `The score preview is currently using the saved target "${primaryJobTarget.title}".`
+                      : "No saved exact target exists yet, so the system is still using the inferred default role."}
+                </div>
+              </div>
+            </SectionCard>
+
+            <SectionCard
+              title="Current score snapshot"
+              subtitle="This is the headline view before you drill into academics, market signals, and recommendations."
+            >
+              {scoring.loading ? <p>Loading scoring...</p> : null}
+              {scoring.error ? <p style={{ color: "crimson" }}>{scoring.error}</p> : null}
+              {!scoring.loading && !scoring.error ? (
+                <div style={{ display: "grid", gap: 16 }}>
+                  <KeyValueList
+                    items={[
+                      { label: "Saved exact target", value: primaryJobTarget?.title || "None saved" },
+                      { label: "Target role", value: titleCase(scoring.data?.scoring?.targetRoleFamily) },
+                      { label: "Target sector", value: titleCase(scoring.data?.scoring?.targetSectorCluster) },
+                      { label: "Trajectory status", value: titleCase(scoring.data?.scoring?.trajectoryStatus) },
+                      { label: "Overall score", value: scoring.data?.scoring?.overallScore ?? "Unknown" },
+                    ]}
+                  />
+                  {comparison?.scoring ? (
+                    <div
+                      style={{
+                        border: "1px solid #dbe4f0",
+                        borderRadius: 16,
+                        padding: 16,
+                        background: "#f8fbff",
+                        display: "grid",
+                        gap: 10,
+                      }}
+                    >
+                      <strong>Comparison: {titleCase(comparison.scoring.targetRoleFamily)}</strong>
+                      <div style={{ color: "#475569" }}>
+                        Overall score delta relative to the selected role: {formatDelta(comparison.deltaOverallScore)}
+                      </div>
+                      <KeyValueList
+                        items={Object.entries(comparison.deltaSubScores || {}).map(([key, value]) => ({
+                          label: titleCase(key),
+                          value: formatDelta(value),
+                        }))}
+                      />
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+            </SectionCard>
+
+            <SectionCard
+              title="Why the score landed here"
+              subtitle="This translates the scoring math into a simple explanation so you can see what is helping, what is holding you back, and what would change under another role."
+            >
+              {explanation.loading ? <p>Building score explanation...</p> : null}
+              {explanation.error ? <p style={{ color: "crimson" }}>{explanation.error}</p> : null}
+              {!explanation.loading && !explanation.error && explanation.data?.explanation ? (
+                <div style={{ display: "grid", gap: 16 }}>
+                  <div
+                    style={{
+                      borderRadius: 18,
+                      padding: 18,
+                      background: "linear-gradient(135deg, rgba(21,94,239,0.08), rgba(34,197,94,0.08))",
+                      border: "1px solid rgba(148,163,184,0.28)",
+                    }}
+                  >
+                    <div style={{ fontWeight: 800, fontSize: 20 }}>{explanation.data.explanation.summaryHeadline}</div>
+                    <p style={{ marginBottom: 0, color: "#334155", lineHeight: 1.7 }}>
+                      {explanation.data.explanation.summaryText}
+                    </p>
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 14 }}>
+                    <div style={{ display: "grid", gap: 10 }}>
+                      <strong>What is helping most</strong>
+                      {explanation.data.explanation.strongestDrivers.map((driver) => (
+                        <div
+                          key={driver.key}
+                          style={{
+                            border: "1px solid #dbe4f0",
+                            borderRadius: 14,
+                            padding: 14,
+                            background: "#fbfdff",
+                          }}
+                        >
+                          <div style={{ fontWeight: 800 }}>{driver.label}</div>
+                          <div style={{ color: "#155e75", marginTop: 4 }}>{driver.score}</div>
+                          <div style={{ color: "#475569", marginTop: 6 }}>{driver.detail}</div>
+                        </div>
+                      ))}
+                    </div>
+                    <div style={{ display: "grid", gap: 10 }}>
+                      <strong>What needs work next</strong>
+                      {explanation.data.explanation.biggestGaps.map((driver) => (
+                        <div
+                          key={driver.key}
+                          style={{
+                            border: "1px solid #f1d5db",
+                            borderRadius: 14,
+                            padding: 14,
+                            background: "#fff7f8",
+                          }}
+                        >
+                          <div style={{ fontWeight: 800 }}>{driver.label}</div>
+                          <div style={{ color: "#b42318", marginTop: 4 }}>{driver.score}</div>
+                          <div style={{ color: "#475569", marginTop: 6 }}>{driver.detail}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {explanation.data.explanation.dataQualityAlerts.length ? (
+                    <div>
+                      <strong>Missing information still limiting the score</strong>
+                      <ul style={{ marginBottom: 0 }}>
+                        {explanation.data.explanation.dataQualityAlerts.map((alert) => <li key={alert}>{alert}</li>)}
+                      </ul>
+                    </div>
+                  ) : null}
+
+                  {explanation.data.explanation.immediateActions.length ? (
+                    <div>
+                      <strong>Best next actions</strong>
+                      <ul style={{ marginBottom: 0 }}>
+                        {explanation.data.explanation.immediateActions.map((action) => <li key={action}>{action}</li>)}
+                      </ul>
+                    </div>
+                  ) : null}
+
+                  {explanation.data.explanation.counterfactual ? (
+                    <div
+                      style={{
+                        border: "1px solid #dbe4f0",
+                        borderRadius: 16,
+                        padding: 16,
+                        background: "#f8fbff",
+                        display: "grid",
+                        gap: 10,
+                      }}
+                    >
+                      <strong>Comparison explanation: {titleCase(explanation.data.explanation.counterfactual.compareToRoleFamily)}</strong>
+                      <div style={{ color: "#475569" }}>{explanation.data.explanation.counterfactual.summaryText}</div>
+                      {explanation.data.explanation.counterfactual.biggestChanges.length ? (
+                        <KeyValueList
+                          items={explanation.data.explanation.counterfactual.biggestChanges.map((change) => ({
+                            label: `${change.label} (${formatDelta(change.delta)})`,
+                            value: change.detail,
+                          }))}
+                        />
+                      ) : null}
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+            </SectionCard>
+          </>
+        ) : null}
+
+        {activeSection === "evidence" ? (
+          <>
+            <SectionCard
+              title="What your academic record is contributing"
+              subtitle="This section explains how much the system currently understands about your transcript and degree path."
+            >
+              {scoring.loading ? <p>Loading academic progress...</p> : null}
+              {scoring.error ? <p style={{ color: "crimson" }}>Academic scoring context is unavailable because the scoring request failed.</p> : null}
+              {!scoring.loading && !scoring.error ? (
+                <div style={{ display: "grid", gap: 16 }}>
               <KeyValueList
                 items={[
                   { label: "Transcript status", value: titleCase(transcript?.parsedStatus) },
@@ -463,19 +972,19 @@ export default function StudentDashboardView() {
                   </p>
                 </div>
               ) : null}
-            </div>
-          ) : null}
-        </SectionCard>
+                </div>
+              ) : null}
+            </SectionCard>
 
-        <SectionCard
-          title="Market outlook behind this score"
-          subtitle="These signals help explain whether the target role looks favorable and which skills matter most in that market."
-          tone="quiet"
-        >
-          {scoring.loading ? <p>Loading market inputs...</p> : null}
-          {scoring.error ? <p style={{ color: "crimson" }}>Scoring input unavailable because the scoring request failed.</p> : null}
-          {!scoring.loading && !scoring.error ? (
-            <div style={{ display: "grid", gap: 16 }}>
+            <SectionCard
+              title="Market outlook behind this score"
+              subtitle="These signals help explain whether the target role looks favorable and which skills matter most in that market."
+              tone="quiet"
+            >
+              {scoring.loading ? <p>Loading market inputs...</p> : null}
+              {scoring.error ? <p style={{ color: "crimson" }}>Scoring input unavailable because the scoring request failed.</p> : null}
+              {!scoring.loading && !scoring.error ? (
+                <div style={{ display: "grid", gap: 16 }}>
               <KeyValueList
                 items={[
                   { label: "Resolved O*NET code", value: scoring.data?.scoringInput?.occupationMetadata?.onetCode || "Unmapped" },
@@ -523,18 +1032,22 @@ export default function StudentDashboardView() {
                   </div>
                 )) : <p style={{ margin: 0, color: "#64748b" }}>No imported occupation skill requirements are loaded for this role.</p>}
               </div>
-            </div>
-          ) : null}
-        </SectionCard>
+                </div>
+              ) : null}
+            </SectionCard>
+          </>
+        ) : null}
 
-        <SectionCard
-          title="Where the score is coming from"
-          subtitle="Use these subscores to see whether the biggest weakness is academics, experience, proof of work, networking, or execution."
-        >
-          {scoring.loading ? <p>Loading subscores...</p> : null}
-          {scoring.error ? <p style={{ color: "crimson" }}>{scoring.error}</p> : null}
-          {!scoring.loading && !scoring.error ? (
-            <div style={{ display: "grid", gap: 16 }}>
+        {activeSection === "guidance" ? (
+          <>
+            <SectionCard
+              title="Where the score is coming from"
+              subtitle="Use these subscores to see whether the biggest weakness is academics, experience, proof of work, networking, or execution."
+            >
+              {scoring.loading ? <p>Loading subscores...</p> : null}
+              {scoring.error ? <p style={{ color: "crimson" }}>{scoring.error}</p> : null}
+              {!scoring.loading && !scoring.error ? (
+                <div style={{ display: "grid", gap: 16 }}>
               <div
                 style={{
                   display: "grid",
@@ -570,15 +1083,15 @@ export default function StudentDashboardView() {
                   {(scoring.data?.scoring?.recommendations || []).slice(0, 5).map((item) => <li key={item.title}>{item.title}</li>)}
                 </ul>
               </div>
-            </div>
-          ) : null}
-        </SectionCard>
+                </div>
+              ) : null}
+            </SectionCard>
 
-        <SectionCard
-          title="Ask for guidance"
-          subtitle="Use a specific scenario question to get practical advice for the next semester, internship cycle, or decision point."
-        >
-          <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 16 }}>
+            <SectionCard
+              title="Ask for guidance"
+              subtitle="Use a specific scenario question to get practical advice for the next semester, internship cycle, or decision point."
+            >
+              <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 16 }}>
             <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
               <span>What do you want help thinking through?</span>
               <textarea
@@ -634,14 +1147,14 @@ export default function StudentDashboardView() {
             >
               {scenario.loading ? "Processing…" : "Get guidance"}
             </button>
-          </div>
-          {scenario.loading ? <p>Processing scenario guidance...</p> : null}
-          {scenario.error ? <p style={{ color: "crimson" }}>{scenario.error}</p> : null}
-          {!scenario.loading && !scenario.error && !scenario.data?.response && requestedScenario ? (
-            <p style={{ color: "#475569" }}>No scenario response was returned.</p>
-          ) : null}
-          {!scenario.loading && !scenario.error && scenario.data?.response ? (
-            <div style={{ display: "grid", gap: 16 }}>
+              </div>
+              {scenario.loading ? <p>Processing scenario guidance...</p> : null}
+              {scenario.error ? <p style={{ color: "crimson" }}>{scenario.error}</p> : null}
+              {!scenario.loading && !scenario.error && !scenario.data?.response && requestedScenario ? (
+                <p style={{ color: "#475569" }}>No scenario response was returned.</p>
+              ) : null}
+              {!scenario.loading && !scenario.error && scenario.data?.response ? (
+                <div style={{ display: "grid", gap: 16 }}>
               <div
                 style={{
                   borderRadius: 18,
@@ -704,9 +1217,11 @@ export default function StudentDashboardView() {
                   AI response fallback was used so guidance stayed available. Provider detail: {scenario.data.response.providerError || "Unavailable"}
                 </p>
               ) : null}
-            </div>
-          ) : null}
-        </SectionCard>
+                </div>
+              ) : null}
+            </SectionCard>
+          </>
+        ) : null}
       </RequireRole>
     </AppShell>
   );

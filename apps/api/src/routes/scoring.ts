@@ -2,6 +2,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import { z } from "zod";
 import { demoFinanceAnalystScoringInput } from "../fixtures/demoStudentScoringInput";
 import { runScoring } from "../services/scoring";
+import { explainScore } from "../services/scoring/explain";
 import { resolveRequestContext } from "../services/auth/resolveRequestContext";
 import { buildStudentScoringInput } from "../services/student/aggregateStudentContext";
 import { unauthorized, badRequest, json } from "../utils/http";
@@ -123,6 +124,68 @@ export async function scoringPreviewRoute(req: IncomingMessage, res: ServerRespo
       scoring: selected.scoring,
       scoringInput: selected.scoringInput,
       comparison,
+      resolvedContext: ctx,
+    });
+  } catch (error: any) {
+    if (error?.message === "UNAUTHENTICATED") {
+      return unauthorized(res);
+    }
+    throw error;
+  }
+}
+
+export async function scoringExplainRoute(req: IncomingMessage, res: ServerResponse) {
+  try {
+    let raw: unknown;
+    try {
+      raw = await readJsonBody(req);
+    } catch {
+      return badRequest(res, "Invalid JSON body");
+    }
+
+    const parsed = scoringPreviewBodySchema.safeParse(raw);
+    if (!parsed.success) {
+      const message =
+        parsed.error.issues.map((issue) => (issue.path.length ? `${issue.path.join(".")}: ` : "") + issue.message).join("; ") ||
+        "Invalid request body";
+      return badRequest(res, message);
+    }
+
+    const ctx = await resolveRequestContext(req);
+    if (!ctx.studentProfileId) {
+      return badRequest(res, "No student profile could be resolved for the authenticated user");
+    }
+
+    const selected = await buildScoringPayload(ctx.studentProfileId, {
+      targetRoleFamily: parsed.data.targetRoleFamily,
+      targetSectorCluster: parsed.data.targetSectorCluster,
+    });
+
+    let comparison:
+      | {
+          scoring: ReturnType<typeof runScoring>;
+          scoringInput: typeof selected.scoringInput;
+        }
+      | undefined;
+
+    if (
+      parsed.data.compareToRoleFamily &&
+      parsed.data.compareToRoleFamily.toLowerCase() !== selected.scoring.targetRoleFamily.toLowerCase()
+    ) {
+      comparison = await buildScoringPayload(ctx.studentProfileId, {
+        targetRoleFamily: parsed.data.compareToRoleFamily,
+      });
+    }
+
+    const explanation = explainScore({
+      selectedInput: selected.scoringInput,
+      selectedScoring: selected.scoring,
+      comparisonInput: comparison?.scoringInput,
+      comparisonScoring: comparison?.scoring,
+    });
+
+    return json(res, 200, {
+      explanation,
       resolvedContext: ctx,
     });
   } catch (error: any) {

@@ -3,6 +3,7 @@
 import { useEffect, useSyncExternalStore } from "react";
 import {
   getSessionSnapshot,
+  initializeSession,
   refreshSession,
   subscribeToSession,
 } from "../lib/sessionStore";
@@ -15,7 +16,7 @@ export function useSession() {
   );
 
   useEffect(() => {
-    void refreshSession();
+    void initializeSession();
   }, []);
 
   return {
