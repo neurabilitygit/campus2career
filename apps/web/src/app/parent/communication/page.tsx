@@ -4,8 +4,11 @@ import { useMemo, useState } from "react";
 import { AppShell } from "../../../components/layout/AppShell";
 import { SectionCard } from "../../../components/layout/SectionCard";
 import { RequireRole } from "../../../components/RequireRole";
+import { FieldInfoLabel } from "../../../components/forms/FieldInfoLabel";
+import { useAuthContext } from "../../../hooks/useAuthContext";
 import { useApiData } from "../../../hooks/useApiData";
 import { apiFetch } from "../../../lib/apiClient";
+import { formatStudentReference, normalizeFirstName } from "../../../lib/studentName";
 
 type ParentProfileResponse = {
   ok: boolean;
@@ -76,6 +79,7 @@ function titleCase(value: string | null | undefined) {
 }
 
 export default function ParentCommunicationPage() {
+  const auth = useAuthContext();
   const profile = useApiData<ParentProfileResponse>("/parents/me/communication-profile", true);
   const [entriesNonce, setEntriesNonce] = useState(0);
   const entries = useApiData<EntriesResponse>("/parents/me/communication-entries", true, entriesNonce);
@@ -104,6 +108,7 @@ export default function ParentCommunicationPage() {
     () => sortedEntries.find((entry) => entry.parentCommunicationEntryId === activeEntryId) || null,
     [activeEntryId, sortedEntries]
   );
+  const studentFirstName = normalizeFirstName(auth.data?.context?.studentFirstName);
 
   async function saveEntry() {
     setStatus("Saving communication context...");
@@ -197,7 +202,9 @@ export default function ParentCommunicationPage() {
   return (
     <AppShell
       title="Communication translator"
-      subtitle="Translate a concern into something the student is more likely to receive constructively, while keeping consent and dignity intact."
+      subtitle={`Translate a concern into something ${formatStudentReference(studentFirstName, {
+        fallback: "the student",
+      })} is more likely to receive constructively, while keeping consent and dignity intact.`}
     >
       <RequireRole expectedRoles={["parent", "admin"]} fallbackTitle="Parent sign-in required">
         {!profile.data?.profile?.consentAcknowledged ? (
@@ -221,7 +228,11 @@ export default function ParentCommunicationPage() {
           <div style={{ display: "grid", gap: 14 }}>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
               <label style={labelStyle}>
-                Category
+                <FieldInfoLabel
+                  label="Category"
+                  info="Classify the kind of concern or question you are adding."
+                  example="Academic concern"
+                />
                 <select
                   value={form.category}
                   onChange={(event) => setForm((current) => ({ ...current, category: event.target.value }))}
@@ -238,7 +249,11 @@ export default function ParentCommunicationPage() {
                 </select>
               </label>
               <label style={labelStyle}>
-                Urgency
+                <FieldInfoLabel
+                  label="Urgency"
+                  info="Show how time-sensitive this issue feels right now."
+                  example="High"
+                />
                 <select
                   value={form.urgency}
                   onChange={(event) => setForm((current) => ({ ...current, urgency: event.target.value }))}
@@ -251,7 +266,11 @@ export default function ParentCommunicationPage() {
                 </select>
               </label>
               <label style={labelStyle}>
-                Intended use
+                <FieldInfoLabel
+                  label="Intended use"
+                  info="Choose whether this is just context or something that may become a message."
+                  example="Save as context only"
+                />
                 <select
                   value={form.deliveryIntent}
                   onChange={(event) => setForm((current) => ({ ...current, deliveryIntent: event.target.value }))}
@@ -266,17 +285,61 @@ export default function ParentCommunicationPage() {
             </div>
 
             {[
-              ["factsStudentShouldKnow", "Facts the student should know"],
-              ["questionsParentWantsAnswered", "Questions you want answered"],
-              ["parentConcerns", "Concerns"],
-              ["recurringCommunicationFailures", "Recurring communication failures"],
-              ["defensiveTopics", "Topics that tend to create defensiveness"],
-              ["priorAttemptsThatDidNotWork", "Prior attempts that did not work"],
-              ["preferredOutcome", "Preferred outcome"],
-              ["freeformContext", "Any other context"],
-            ].map(([key, label]) => (
+              [
+                "factsStudentShouldKnow",
+                "Facts the student should know",
+                "State information that matters before any advice is given.",
+                "The internship deadline is in three weeks",
+              ],
+              [
+                "questionsParentWantsAnswered",
+                "Questions you want answered",
+                "List the questions you hope the student will eventually address.",
+                "Have you asked anyone to review your resume yet?",
+              ],
+              [
+                "parentConcerns",
+                "Concerns",
+                "Name the concern plainly without drafting the final message yet.",
+                "Applications have not started and time is running short",
+              ],
+              [
+                "recurringCommunicationFailures",
+                "Recurring communication failures",
+                "Describe patterns where these conversations usually go off track.",
+                "The student stops replying when I send a long text",
+              ],
+              [
+                "defensiveTopics",
+                "Topics that tend to create defensiveness",
+                "Call out subjects that need extra care or slower timing.",
+                "Grades, money, and comparing to peers",
+              ],
+              [
+                "priorAttemptsThatDidNotWork",
+                "Prior attempts that did not work",
+                "Record what you already tried so the system does not repeat it.",
+                "I reminded them twice by text and then called the same night",
+              ],
+              [
+                "preferredOutcome",
+                "Preferred outcome",
+                "Describe the result you want from the conversation.",
+                "A calm plan for the next two application steps",
+              ],
+              [
+                "freeformContext",
+                "Any other context",
+                "Add nuance that does not fit the other fields.",
+                "This week is already heavy because of exams",
+              ],
+            ].map(([key, label, info, example]) => (
               <label key={key} style={labelStyle}>
-                {label}
+                <FieldInfoLabel
+                  label={label}
+                  info={info}
+                  example={example}
+                />
                 <textarea
                   rows={key === "freeformContext" ? 5 : 3}
                   value={(form as Record<string, string>)[key]}
@@ -289,7 +352,7 @@ export default function ParentCommunicationPage() {
             ))}
 
             <div style={{ display: "grid", gap: 10 }}>
-              <button onClick={() => void saveEntry()} style={{ width: "fit-content" }}>
+              <button onClick={() => void saveEntry()} className="ui-button ui-button--primary" style={{ width: "fit-content" }}>
                 Save concern or question
               </button>
               {status ? <p style={{ margin: 0, color: "#155eef" }}>{status}</p> : null}
@@ -333,7 +396,11 @@ export default function ParentCommunicationPage() {
             })}
           </div>
           <div style={{ marginTop: 16 }}>
-            <button onClick={() => void translateEntry()} disabled={!activeEntryId}>
+            <button
+              onClick={() => void translateEntry()}
+              disabled={!activeEntryId}
+              className={`ui-button ${activeEntryId ? "ui-button--primary" : "ui-button--secondary ui-button--disabled"}`}
+            >
               Generate translation strategy
             </button>
           </div>
@@ -364,8 +431,14 @@ export default function ParentCommunicationPage() {
                 </div>
               ) : null}
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                <button onClick={() => void saveDraft()}>Save draft</button>
-                <button onClick={() => void sendMock()} disabled={strategy.withholdDelivery}>
+                <button onClick={() => void saveDraft()} className="ui-button ui-button--secondary">
+                  Save draft
+                </button>
+                <button
+                  onClick={() => void sendMock()}
+                  disabled={strategy.withholdDelivery}
+                  className={`ui-button ${strategy.withholdDelivery ? "ui-button--secondary ui-button--disabled" : "ui-button--primary"}`}
+                >
                   Record mock delivery
                 </button>
               </div>

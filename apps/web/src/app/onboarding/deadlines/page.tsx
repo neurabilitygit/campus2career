@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { AppShell } from "../../../components/layout/AppShell";
 import { SectionCard } from "../../../components/layout/SectionCard";
 import { RequireRole } from "../../../components/RequireRole";
+import { FieldInfoLabel } from "../../../components/forms/FieldInfoLabel";
 import { apiFetch } from "../../../lib/apiClient";
 
 export default function OnboardingDeadlinesPage() {
@@ -51,46 +52,66 @@ export default function OnboardingDeadlinesPage() {
           tone="highlight"
         >
           <div style={{ display: "grid", gap: 12 }}>
-            <input
-              placeholder="What is this date for?"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              style={{ borderRadius: 16, border: "1px solid rgba(73, 102, 149, 0.18)", padding: "12px 14px" }}
-            />
-            <select
-              value={deadlineType}
-              onChange={(e) => setDeadlineType(e.target.value)}
-              style={{ borderRadius: 16, border: "1px solid rgba(73, 102, 149, 0.18)", padding: "12px 14px" }}
-            >
-              <option value="internship_window">Internship window</option>
-              <option value="application_due">Application due</option>
-              <option value="decision_point">Decision point</option>
-              <option value="test_date">Test date</option>
-            </select>
-            <input
-              type="date"
-              value={dueDate}
-              onChange={(e) => setDueDate(e.target.value)}
-              style={{ borderRadius: 16, border: "1px solid rgba(73, 102, 149, 0.18)", padding: "12px 14px" }}
-            />
-            <textarea
-              placeholder="Add any notes the student or parent should remember"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              rows={4}
-              style={{ borderRadius: 16, border: "1px solid rgba(73, 102, 149, 0.18)", padding: "12px 14px" }}
-            />
+            <label style={{ display: "grid", gap: 6 }}>
+              <FieldInfoLabel
+                label="What is this date for?"
+                info="Name the milestone so the plan can anchor around it."
+                example="Summer internship application deadline"
+              />
+              <input
+                placeholder="What is this date for?"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                style={{ borderRadius: 16, border: "1px solid rgba(73, 102, 149, 0.18)", padding: "12px 14px" }}
+              />
+            </label>
+            <label style={{ display: "grid", gap: 6 }}>
+              <FieldInfoLabel
+                label="Type of date"
+                info="Choose the kind of milestone this is."
+                example="Application due"
+              />
+              <select
+                value={deadlineType}
+                onChange={(e) => setDeadlineType(e.target.value)}
+                style={{ borderRadius: 16, border: "1px solid rgba(73, 102, 149, 0.18)", padding: "12px 14px" }}
+              >
+                <option value="internship_window">Internship window</option>
+                <option value="application_due">Application due</option>
+                <option value="decision_point">Decision point</option>
+                <option value="test_date">Test date</option>
+              </select>
+            </label>
+            <label style={{ display: "grid", gap: 6 }}>
+              <FieldInfoLabel
+                label="Due date"
+                info="Use the date the student needs to act by."
+                example="2026-10-15"
+              />
+              <input
+                type="date"
+                value={dueDate}
+                onChange={(e) => setDueDate(e.target.value)}
+                style={{ borderRadius: 16, border: "1px solid rgba(73, 102, 149, 0.18)", padding: "12px 14px" }}
+              />
+            </label>
+            <label style={{ display: "grid", gap: 6 }}>
+              <FieldInfoLabel
+                label="Notes"
+                info="Add details worth remembering about this date."
+                example="Need transcript and one recommender"
+              />
+              <textarea
+                placeholder="Add any notes the student or parent should remember"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                rows={4}
+                style={{ borderRadius: 16, border: "1px solid rgba(73, 102, 149, 0.18)", padding: "12px 14px" }}
+              />
+            </label>
             <button
               onClick={save}
-              style={{
-                width: "fit-content",
-                border: "none",
-                borderRadius: 999,
-                padding: "13px 18px",
-                background: "linear-gradient(135deg, #155eef, #16a3ff)",
-                color: "#ffffff",
-                fontWeight: 800,
-              }}
+              className="ui-button ui-button--primary"
             >
               Save and continue
             </button>

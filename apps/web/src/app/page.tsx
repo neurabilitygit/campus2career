@@ -1,16 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import { AppShell } from "../components/layout/AppShell";
 import { useSession } from "../hooks/useSession";
 import { useApiData } from "../hooks/useApiData";
-import {
-  getStoredTestContextRole,
-  setStoredTestContextRole,
-  subscribeToTestContextRole,
-  type TestContextRole,
-} from "../lib/testContext";
 
 const roleDescriptions = {
   guest: {
@@ -23,19 +16,19 @@ const roleDescriptions = {
     label: "For students",
     summary:
       "See how your major, coursework, and activities translate into real career readiness, then focus on the next moves that matter most.",
-    accent: "#155eef",
+    accent: "#0d6fb8",
   },
   parent: {
     label: "For parents",
     summary:
       "Follow the student’s direction with less guesswork through concise updates, clearer priorities, and family-friendly next steps.",
-    accent: "#0891b2",
+    accent: "#7e57c2",
   },
   coach: {
     label: "For coaches",
     summary:
       "Guide students from one connected view of academics, career targets, and action signals instead of piecing together context manually.",
-    accent: "#7c3aed",
+    accent: "#198c67",
   },
   admin: {
     label: "For platform testing",
@@ -51,21 +44,21 @@ const roleCards = [
     body:
       "Translate coursework, transcripts, goals, and projects into simple signals about readiness, gaps, and the best next step.",
     href: "/student",
-    palette: "linear-gradient(135deg, rgba(21,94,239,0.18), rgba(75,179,253,0.28))",
+    palette: "linear-gradient(135deg, rgba(13,111,184,0.18), rgba(111,191,222,0.28))",
   },
   {
     title: "Parent visibility without overload",
     body:
       "Show what is changing for the student in a calmer, more useful way so parents can help without micromanaging.",
     href: "/parent",
-    palette: "linear-gradient(135deg, rgba(8,145,178,0.18), rgba(45,212,191,0.26))",
+    palette: "linear-gradient(135deg, rgba(126,87,194,0.18), rgba(205,180,255,0.26))",
   },
   {
     title: "Coach and platform workflow",
     body:
       "Keep onboarding, scoring, documents, and role-based guidance connected through one shared system of record.",
     href: "/coach",
-    palette: "linear-gradient(135deg, rgba(124,58,237,0.18), rgba(236,72,153,0.24))",
+    palette: "linear-gradient(135deg, rgba(25,140,103,0.18), rgba(138,214,183,0.24))",
   },
 ];
 
@@ -91,124 +84,9 @@ const journeySteps = [
 type AuthMeResponse = {
   context?: {
     authenticatedRoleType?: "student" | "parent" | "coach" | "admin";
-    testContextSwitchingEnabled?: boolean;
-    testContextAllowedRoles?: TestContextRole[];
-    testContextOverrideRole?: TestContextRole | null;
     email?: string;
   };
 };
-
-function ContextSwitcher(props: {
-  isAuthenticated: boolean;
-  auth: ReturnType<typeof useApiData<AuthMeResponse>>;
-}) {
-  const [selectedRole, setSelectedRole] = useState<TestContextRole | null>(null);
-
-  useEffect(() => {
-    setSelectedRole(getStoredTestContextRole());
-    return subscribeToTestContextRole(setSelectedRole);
-  }, []);
-
-  const canSwitch = !!props.auth.data?.context?.testContextSwitchingEnabled;
-  const allowedRoles = props.auth.data?.context?.testContextAllowedRoles || [];
-  const effectiveRole = props.auth.data?.context?.authenticatedRoleType;
-
-  if (!props.isAuthenticated) {
-    return null;
-  }
-
-  if (props.auth.loading) {
-    return (
-      <div
-        style={{
-          padding: 18,
-          borderRadius: 22,
-          background: "rgba(255,255,255,0.08)",
-          border: "1px solid rgba(255,255,255,0.12)",
-        }}
-      >
-        <strong style={{ display: "block", marginBottom: 8 }}>Testing context</strong>
-        <p style={{ margin: 0, color: "#dbe7ff" }}>
-          Checking whether this account can preview multiple workspaces.
-        </p>
-      </div>
-    );
-  }
-
-  if (!canSwitch) {
-    return null;
-  }
-
-  const handleRoleSelection = (role: TestContextRole | null) => {
-    setStoredTestContextRole(role);
-    window.location.reload();
-  };
-
-  return (
-    <div
-      style={{
-        padding: 18,
-        borderRadius: 22,
-        background: "rgba(255,255,255,0.08)",
-        border: "1px solid rgba(255,255,255,0.12)",
-        display: "grid",
-        gap: 14,
-      }}
-    >
-      <div style={{ display: "grid", gap: 6 }}>
-        <strong style={{ fontSize: 16 }}>Workspace preview</strong>
-        <p style={{ margin: 0, color: "#dbe7ff", lineHeight: 1.5 }}>
-          This account can temporarily switch between student, parent, and coach views for local testing.
-        </p>
-        <p style={{ margin: 0, color: "#c7d8ff", fontSize: 13 }}>
-          Current workspace: <strong>{effectiveRole || "unknown"}</strong>
-          {" · "}
-          Preview mode: <strong>{selectedRole || "account default"}</strong>
-        </p>
-      </div>
-      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-        {allowedRoles.map((role) => {
-          const isActive = selectedRole === role;
-          return (
-            <button
-              key={role}
-              onClick={() => handleRoleSelection(role)}
-              style={{
-                border: "none",
-                borderRadius: 999,
-                padding: "11px 16px",
-                cursor: "pointer",
-                fontWeight: 800,
-                textTransform: "capitalize",
-                background: isActive
-                  ? "linear-gradient(135deg, #34d399 0%, #7dd3fc 100%)"
-                  : "rgba(255,255,255,0.12)",
-                color: isActive ? "#082f49" : "#f8fafc",
-                boxShadow: isActive ? "0 14px 28px rgba(52, 211, 153, 0.22)" : "none",
-              }}
-            >
-              {role}
-            </button>
-          );
-        })}
-        <button
-          onClick={() => handleRoleSelection(null)}
-          style={{
-            borderRadius: 999,
-            padding: "11px 16px",
-            cursor: "pointer",
-            fontWeight: 800,
-            border: "1px solid rgba(255,255,255,0.18)",
-            background: selectedRole === null ? "#f8fafc" : "transparent",
-            color: selectedRole === null ? "#0f172a" : "#f8fafc",
-          }}
-        >
-          Default
-        </button>
-      </div>
-    </div>
-  );
-}
 
 export default function HomePage() {
   const { isAuthenticated } = useSession();
@@ -231,9 +109,10 @@ export default function HomePage() {
             borderRadius: 32,
             padding: "32px clamp(20px, 5vw, 44px)",
             background:
-              "linear-gradient(135deg, rgba(9, 12, 31, 0.96), rgba(17, 37, 79, 0.93) 48%, rgba(9, 93, 122, 0.9) 100%)",
-            color: "#f8fafc",
-            boxShadow: "0 32px 60px rgba(15, 23, 42, 0.18)",
+              "linear-gradient(135deg, rgba(255,255,255,0.94), rgba(244,248,253,0.96) 58%, rgba(249,244,236,0.94) 100%)",
+            color: "#112033",
+            border: "1px solid rgba(255,255,255,0.78)",
+            boxShadow: "0 32px 60px rgba(15, 23, 42, 0.1)",
             overflow: "hidden",
             position: "relative",
           }}
@@ -270,20 +149,7 @@ export default function HomePage() {
               }}
             >
               <div style={{ display: "grid", gap: 14, maxWidth: 720 }}>
-                <div
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 8,
-                    padding: "8px 14px",
-                    borderRadius: 999,
-                    background: "rgba(248, 250, 252, 0.1)",
-                    fontSize: 13,
-                    fontWeight: 700,
-                    letterSpacing: 0.4,
-                    textTransform: "uppercase",
-                  }}
-                >
+                <div className="ui-pill">
                   <span style={{ width: 10, height: 10, borderRadius: "50%", background: roleContent.accent }} />
                   {roleContent.label}
                 </div>
@@ -297,7 +163,7 @@ export default function HomePage() {
                 >
                   Rising Senior
                 </h1>
-                <p style={{ margin: 0, fontSize: "clamp(1rem, 1.8vw, 1.2rem)", lineHeight: 1.6, color: "#dbe7ff" }}>
+                <p style={{ margin: 0, fontSize: "clamp(1rem, 1.8vw, 1.2rem)", lineHeight: 1.6, color: "#52657d" }}>
                   {roleContent.summary}
                 </p>
               </div>
@@ -307,48 +173,52 @@ export default function HomePage() {
                   maxWidth: 360,
                   padding: 20,
                   borderRadius: 24,
-                  background: "rgba(255,255,255,0.08)",
-                  backdropFilter: "blur(10px)",
+                  background: "rgba(255,255,255,0.78)",
+                  border: "1px solid rgba(255,255,255,0.74)",
+                  boxShadow: "0 16px 32px rgba(15, 23, 42, 0.06)",
                   display: "grid",
                   gap: 14,
                 }}
               >
                 <div style={{ display: "grid", gap: 6 }}>
                   <strong style={{ fontSize: 16 }}>Start with the right flow</strong>
-                  <p style={{ margin: 0, color: "#c7d8ff", lineHeight: 1.5 }}>
-                    Sign in from the sidebar, then continue to onboarding, documents, or the role workspace that matches your view.
+                  <p style={{ margin: 0, color: "#52657d", lineHeight: 1.5 }}>
+                    Use the account menu in the upper-right to sign in, then move into onboarding, documents, or the workspace that matches your role.
                   </p>
                 </div>
-                <ContextSwitcher isAuthenticated={isAuthenticated} auth={auth} />
+                <div
+                  style={{
+                    padding: 18,
+                    borderRadius: 22,
+                    background: "rgba(248,251,255,0.82)",
+                    border: "1px solid rgba(73, 102, 149, 0.12)",
+                    display: "grid",
+                    gap: 10,
+                  }}
+                >
+                  <strong style={{ fontSize: 16 }}>Account and workspace controls</strong>
+                  <p style={{ margin: 0, color: "#52657d", lineHeight: 1.6 }}>
+                    Sign in, sign out, open Help, and switch preview workspaces from the header. That keeps the navigation focused on the product itself.
+                  </p>
+                  {isAuthenticated ? (
+                    <p style={{ margin: 0, color: "#64748b", fontSize: 13 }}>
+                      Current account role: <strong>{auth.data?.context?.authenticatedRoleType || "unknown"}</strong>
+                    </p>
+                  ) : null}
+                </div>
               </div>
             </div>
 
             <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
               <Link
                 href="/app"
-                style={{
-                  textDecoration: "none",
-                  background: "linear-gradient(135deg, #ff7a18 0%, #ffd166 100%)",
-                  color: "#1f2937",
-                  padding: "14px 20px",
-                  borderRadius: 999,
-                  fontWeight: 800,
-                  boxShadow: "0 14px 30px rgba(255, 122, 24, 0.28)",
-                }}
+                className="ui-button ui-button--primary"
               >
                 Open my workspace
               </Link>
               <Link
                 href="/onboarding"
-                style={{
-                  textDecoration: "none",
-                  background: "rgba(255,255,255,0.12)",
-                  color: "#f8fafc",
-                  padding: "14px 20px",
-                  borderRadius: 999,
-                  fontWeight: 700,
-                  border: "1px solid rgba(255,255,255,0.18)",
-                }}
+                className="ui-button ui-button--secondary"
               >
                 Start setup
               </Link>
@@ -363,24 +233,15 @@ export default function HomePage() {
             gap: 18,
           }}
         >
-          {roleCards.map((card) => (
-            <Link
-              key={card.title}
-              href={card.href}
-              style={{
-                textDecoration: "none",
-                color: "#0f172a",
-                borderRadius: 26,
-                padding: 22,
-                background: card.palette,
-                border: "1px solid rgba(148, 163, 184, 0.18)",
-                boxShadow: "0 18px 30px rgba(148, 163, 184, 0.16)",
-                display: "grid",
-                gap: 10,
-              }}
-            >
-              <strong style={{ fontSize: 20 }}>{card.title}</strong>
-              <p style={{ margin: 0, lineHeight: 1.6 }}>{card.body}</p>
+            {roleCards.map((card) => (
+              <Link
+                key={card.title}
+                href={card.href}
+                className="ui-feature-link-card"
+                style={{ background: card.palette }}
+              >
+                <strong style={{ fontSize: 20 }}>{card.title}</strong>
+                <p style={{ margin: 0, lineHeight: 1.6 }}>{card.body}</p>
               <span style={{ fontWeight: 700 }}>Explore this view →</span>
             </Link>
           ))}
@@ -413,13 +274,13 @@ export default function HomePage() {
                 </p>
               </div>
               <div>
-                <strong style={{ color: "#0891b2" }}>Parents</strong>
+                <strong style={{ color: "#7e57c2" }}>Parents</strong>
                 <p style={{ margin: "6px 0 0 0", lineHeight: 1.6 }}>
                   See parent-safe summaries, month-by-month trajectory updates, and focused context about where support is most useful.
                 </p>
               </div>
               <div>
-                <strong style={{ color: "#7c3aed" }}>Coaches</strong>
+                <strong style={{ color: "#198c67" }}>Coaches</strong>
                 <p style={{ margin: "6px 0 0 0", lineHeight: 1.6 }}>
                   Work from one connected picture of profile data, uploads, deadlines, insight generation, and market-aware advising.
                 </p>
@@ -441,15 +302,7 @@ export default function HomePage() {
             <h2 style={{ margin: 0, fontSize: 24 }}>What happens inside the product</h2>
             <div style={{ display: "grid", gap: 12 }}>
               {journeySteps.map((step) => (
-                <div
-                  key={step.title}
-                  style={{
-                    borderRadius: 18,
-                    padding: "14px 16px",
-                    background: "rgba(255,255,255,0.8)",
-                    border: "1px solid rgba(21, 94, 239, 0.1)",
-                  }}
-                >
+                <div key={step.title} className="ui-soft-panel">
                   <strong>{step.title}</strong>
                   <p style={{ margin: "6px 0 0 0", lineHeight: 1.6 }}>{step.body}</p>
                 </div>
@@ -459,10 +312,10 @@ export default function HomePage() {
               <Link href="/student" style={{ textDecoration: "none", color: "#155eef", fontWeight: 700 }}>
                 Student dashboard
               </Link>
-              <Link href="/parent" style={{ textDecoration: "none", color: "#0891b2", fontWeight: 700 }}>
+              <Link href="/parent" style={{ textDecoration: "none", color: "#7e57c2", fontWeight: 700 }}>
                 Parent dashboard
               </Link>
-              <Link href="/uploads" style={{ textDecoration: "none", color: "#7c3aed", fontWeight: 700 }}>
+              <Link href="/uploads" style={{ textDecoration: "none", color: "#198c67", fontWeight: 700 }}>
                 Upload center
               </Link>
             </div>

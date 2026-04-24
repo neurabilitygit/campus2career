@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { AppShell } from "../../../components/layout/AppShell";
 import { SectionCard } from "../../../components/layout/SectionCard";
 import { RequireRole } from "../../../components/RequireRole";
+import { FieldInfoLabel } from "../../../components/forms/FieldInfoLabel";
 import { useApiData } from "../../../hooks/useApiData";
 import { apiFetch } from "../../../lib/apiClient";
 
@@ -105,7 +106,11 @@ export default function ParentOnboardingPage() {
         >
           <div style={{ display: "grid", gap: 14 }}>
             <label style={labelStyle}>
-              What are you most worried about?
+              <FieldInfoLabel
+                label="What are you most worried about?"
+                info="Name the main concern you want handled more constructively."
+                example="My student is delaying internship applications"
+              />
               <textarea
                 rows={4}
                 value={form.mainWorries}
@@ -115,7 +120,11 @@ export default function ParentOnboardingPage() {
             </label>
 
             <label style={labelStyle}>
-              How do you usually communicate with the student?
+              <FieldInfoLabel
+                label="How do you usually communicate with the student?"
+                info="Describe what you normally do when you bring something up."
+                example="I text first, then follow up with a phone call"
+              />
               <textarea
                 rows={4}
                 value={form.usualApproach}
@@ -125,7 +134,11 @@ export default function ParentOnboardingPage() {
             </label>
 
             <label style={labelStyle}>
-              What tends not to work?
+              <FieldInfoLabel
+                label="What tends not to work?"
+                info="Capture patterns that usually create tension or shutdown."
+                example="Long messages feel like pressure and get ignored"
+              />
               <textarea
                 rows={4}
                 value={form.whatDoesNotWork}
@@ -135,7 +148,11 @@ export default function ParentOnboardingPage() {
             </label>
 
             <label style={labelStyle}>
-              What would you like to improve?
+              <FieldInfoLabel
+                label="What would you like to improve?"
+                info="Describe the better communication outcome you want."
+                example="Shorter, calmer conversations with clearer next steps"
+              />
               <textarea
                 rows={4}
                 value={form.wantsToImprove}
@@ -145,7 +162,11 @@ export default function ParentOnboardingPage() {
             </label>
 
             <label style={labelStyle}>
-              Preferred workflow
+              <FieldInfoLabel
+                label="Preferred workflow"
+                info="Choose whether you want to review messages before anything is prepared for delivery."
+                example="Review before send"
+              />
               <select
                 value={form.sendPreference}
                 onChange={(event) => setForm((current) => ({ ...current, sendPreference: event.target.value as typeof form.sendPreference }))}
@@ -157,7 +178,11 @@ export default function ParentOnboardingPage() {
             </label>
 
             <label style={labelStyle}>
-              Preferred parent communication style
+              <FieldInfoLabel
+                label="Preferred parent communication style"
+                info="Describe the tone or style you want the system to preserve."
+                example="Calm, concise, question-led"
+              />
               <input
                 value={form.preferredCommunicationStyle}
                 onChange={(event) => setForm((current) => ({ ...current, preferredCommunicationStyle: event.target.value }))}
@@ -184,12 +209,16 @@ export default function ParentOnboardingPage() {
                 style={{ marginTop: 4 }}
               />
               <span style={{ lineHeight: 1.6 }}>
-                I understand this feature is for respectful communication support. It is not a covert surveillance or manipulation tool.
+                <FieldInfoLabel
+                  label="I understand this feature is for respectful communication support. It is not a covert surveillance or manipulation tool."
+                  info="You are acknowledging that this tool is for transparency, coaching, and clearer communication."
+                  example="Use it to reframe a concern, not to hide where it came from"
+                />
               </span>
             </label>
 
             <div style={{ display: "grid", gap: 10 }}>
-              <button onClick={() => void save()} style={{ width: "fit-content" }}>
+              <button onClick={() => void save()} className="ui-button ui-button--primary" style={{ width: "fit-content" }}>
                 Save parent baseline
               </button>
               {status ? <p style={{ margin: 0, color: "#155eef" }}>{status}</p> : null}

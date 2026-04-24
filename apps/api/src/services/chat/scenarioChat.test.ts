@@ -23,7 +23,7 @@ function baseScoring(): ScoringOutput {
       roleAlignment: {
         score: 40,
         status: "weak",
-        evidenceLevel: "thin",
+        evidenceLevel: "weak",
         confidenceLabel: "medium",
         interpretation: "Weak role alignment",
         knownSignals: [],
@@ -41,7 +41,7 @@ function baseScoring(): ScoringOutput {
       academicReadiness: {
         score: 35,
         status: "weak",
-        evidenceLevel: "thin",
+        evidenceLevel: "weak",
         confidenceLabel: "medium",
         interpretation: "Academic evidence is still limited",
         knownSignals: [],
@@ -50,7 +50,7 @@ function baseScoring(): ScoringOutput {
       experienceStrength: {
         score: 20,
         status: "weak",
-        evidenceLevel: "thin",
+        evidenceLevel: "weak",
         confidenceLabel: "medium",
         interpretation: "Experience is light",
         knownSignals: [],
@@ -59,7 +59,7 @@ function baseScoring(): ScoringOutput {
       proofOfWorkStrength: {
         score: 18,
         status: "weak",
-        evidenceLevel: "thin",
+        evidenceLevel: "weak",
         confidenceLabel: "medium",
         interpretation: "Proof of work is light",
         knownSignals: [],
@@ -68,7 +68,7 @@ function baseScoring(): ScoringOutput {
       networkStrength: {
         score: 22,
         status: "weak",
-        evidenceLevel: "thin",
+        evidenceLevel: "weak",
         confidenceLabel: "medium",
         interpretation: "Network is light",
         knownSignals: [],
@@ -77,7 +77,7 @@ function baseScoring(): ScoringOutput {
       executionMomentum: {
         score: 50,
         status: "developing",
-        evidenceLevel: "thin",
+        evidenceLevel: "weak",
         confidenceLabel: "medium",
         interpretation: "Execution is mixed",
         knownSignals: [],
@@ -108,7 +108,7 @@ function baseScoring(): ScoringOutput {
       },
     ],
     evidenceQuality: {
-      overallEvidenceLevel: "thin",
+      overallEvidenceLevel: "weak",
       confidenceLabel: "medium",
       assessmentMode: "provisional",
       knownEvidence: [],

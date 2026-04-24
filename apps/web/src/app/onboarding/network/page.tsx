@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { AppShell } from "../../../components/layout/AppShell";
 import { SectionCard } from "../../../components/layout/SectionCard";
 import { RequireRole } from "../../../components/RequireRole";
+import { FieldInfoLabel } from "../../../components/forms/FieldInfoLabel";
 import { apiFetch } from "../../../lib/apiClient";
 
 export default function OnboardingNetworkPage() {
@@ -43,32 +44,31 @@ export default function OnboardingNetworkPage() {
           tone="highlight"
         >
           <div style={{ display: "grid", gap: 14 }}>
-            <textarea
-              rows={10}
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Jordan Lee - VP Finance, family friend, open to a warm introduction"
-              style={{
-                width: "100%",
-                minHeight: 220,
-                borderRadius: 20,
-                border: "1px solid rgba(73, 102, 149, 0.18)",
-                padding: "16px 18px",
-                background: "rgba(255,255,255,0.82)",
-              }}
-            />
+            <label style={{ display: "grid", gap: 6 }}>
+              <FieldInfoLabel
+                label="Relationship notes"
+                info="List people who may offer advice, introductions, or context."
+                example="Jordan Lee - family friend at Deloitte, open to a warm intro"
+              />
+              <textarea
+                rows={10}
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Jordan Lee - VP Finance, family friend, open to a warm introduction"
+                style={{
+                  width: "100%",
+                  minHeight: 220,
+                  borderRadius: 20,
+                  border: "1px solid rgba(73, 102, 149, 0.18)",
+                  padding: "16px 18px",
+                  background: "rgba(255,255,255,0.82)",
+                }}
+              />
+            </label>
             <div style={{ display: "grid", gap: 10 }}>
               <button
                 onClick={save}
-                style={{
-                  width: "fit-content",
-                  border: "none",
-                  borderRadius: 999,
-                  padding: "13px 18px",
-                  background: "linear-gradient(135deg, #155eef, #16a3ff)",
-                  color: "#ffffff",
-                  fontWeight: 800,
-                }}
+                className="ui-button ui-button--primary"
               >
                 Save and continue
               </button>

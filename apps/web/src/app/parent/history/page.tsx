@@ -3,7 +3,9 @@
 import { AppShell } from "../../../components/layout/AppShell";
 import { SectionCard } from "../../../components/layout/SectionCard";
 import { RequireRole } from "../../../components/RequireRole";
+import { useAuthContext } from "../../../hooks/useAuthContext";
 import { useApiData } from "../../../hooks/useApiData";
+import { formatStudentReference, normalizeFirstName } from "../../../lib/studentName";
 
 type HistoryResponse = {
   ok: boolean;
@@ -50,12 +52,17 @@ function titleCase(value: string | null | undefined) {
 }
 
 export default function ParentCommunicationHistoryPage() {
+  const auth = useAuthContext();
   const history = useApiData<HistoryResponse>("/parents/me/communication-history", true);
+  const studentFirstName = normalizeFirstName(auth.data?.context?.studentFirstName);
 
   return (
     <AppShell
       title="Communication history"
-      subtitle="Review what was saved, translated, held, or mock-delivered so the feature stays auditable."
+      subtitle={`Review what was saved, translated, held, or mock-delivered so ${formatStudentReference(
+        studentFirstName,
+        { possessive: true, fallback: "the student's" }
+      )} communication record stays auditable.`}
     >
       <RequireRole expectedRoles={["parent", "admin"]} fallbackTitle="Parent sign-in required">
         <SectionCard title="Entries" subtitle="Parent-originated context and concerns.">

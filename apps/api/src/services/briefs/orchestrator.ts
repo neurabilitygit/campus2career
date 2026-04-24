@@ -3,6 +3,7 @@ import { ParentBriefRepository } from "../../repositories/briefs/parentBriefRepo
 import { aggregateStudentContext } from "../student/aggregateStudentContext";
 import { generateParentBrief } from "./generator";
 import type { ScoringOutput, StudentScoringInput } from "../../../../../packages/shared/src/scoring/types";
+import { getParentBriefCoachSummary } from "../coach/workspace";
 
 const repo = new ParentBriefRepository();
 
@@ -18,6 +19,7 @@ export async function generateAndPersistParentBrief(input: {
   scoringInput?: StudentScoringInput;
 }) {
   const ctx = await aggregateStudentContext(input.studentProfileId);
+  const coachSummary = await getParentBriefCoachSummary(input.studentProfileId);
 
   const brief = await generateParentBrief({
     studentProfileId: input.studentProfileId,
@@ -29,12 +31,27 @@ export async function generateAndPersistParentBrief(input: {
     scoring: input.scoring,
     upcomingDeadlines: ctx.upcomingDeadlines,
     parentVisibleInsights: ctx.parentVisibleInsights,
+    coachSummary,
     truthNotes: [
       ...(input.scoringInput?.dataQualityNotes || []),
       ctx.targetGoalTruthStatus !== "direct"
         ? `The current student goal text is ${ctx.targetGoalTruthStatus} and was derived from ${ctx.targetGoalSource.replace(/_/g, " ")}.`
         : "",
     ].filter(Boolean),
+    evidenceSummary: {
+      assessmentMode: input.scoring.evidenceQuality.assessmentMode,
+      overallEvidenceLevel: input.scoring.evidenceQuality.overallEvidenceLevel,
+      strongestEvidenceCategories: (input.scoring.evidenceQuality.strongestEvidenceCategories || []).map((item) =>
+        item.replace(/_/g, " ")
+      ),
+      weakestEvidenceCategories: (input.scoring.evidenceQuality.weakestEvidenceCategories || []).map((item) =>
+        item.replace(/_/g, " ")
+      ),
+      blockedByMissingEvidence: (input.scoring.evidenceQuality.blockedByMissingEvidence || []).map((item) =>
+        item.replace(/_/g, " ")
+      ),
+      recommendedEvidenceActions: input.scoring.evidenceQuality.recommendedEvidenceActions || [],
+    },
   });
 
   await repo.insertBrief({

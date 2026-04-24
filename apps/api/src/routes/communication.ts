@@ -21,8 +21,6 @@ import {
 import { readJsonBody } from "../utils/body";
 import { badRequest, forbidden, json, unauthorized } from "../utils/http";
 
-const repo = new CommunicationRepository();
-
 const communicationChannels = ["email", "sms", "whatsapp"] as const;
 const parentCategories = [
   "career_concern",
@@ -55,6 +53,19 @@ const parentSendPreferences = ["review_before_send", "send_direct_if_allowed"] a
 function newId(): string {
   return crypto.randomUUID();
 }
+
+type RouteContext = Awaited<ReturnType<typeof resolveRequestContext>>;
+
+export const communicationRouteDeps = {
+  repo: new CommunicationRepository(),
+  resolveRequestContext,
+  buildStudentScoringInput,
+  aggregateStudentContext,
+  runScoring,
+  generateCommunicationTranslation,
+  getCommunicationProvider,
+  newId,
+};
 
 function requireParentLikeRole(role: string) {
   if (!canAccessParentCommunication(role)) {
@@ -181,13 +192,13 @@ export async function studentCommunicationPreferencesReadRoute(
   res: ServerResponse
 ) {
   try {
-    const ctx = await resolveRequestContext(req);
+    const ctx = await communicationRouteDeps.resolveRequestContext(req);
     requireStudentLikeRole(ctx.authenticatedRoleType);
     if (!ctx.studentProfileId) {
       return badRequest(res, "No student profile could be resolved for the authenticated user");
     }
 
-    const preferences = await repo.getStudentPreferences(ctx.studentProfileId);
+    const preferences = await communicationRouteDeps.repo.getStudentPreferences(ctx.studentProfileId);
     return json(res, 200, { ok: true, preferences });
   } catch (error: any) {
     if (error?.message === "UNAUTHENTICATED") return unauthorized(res);
@@ -204,7 +215,7 @@ export async function studentCommunicationPreferencesUpsertRoute(
     const body = await parseBody(req, studentPreferencesSchema, res);
     if (!body) return;
 
-    const ctx = await resolveRequestContext(req);
+    const ctx = await communicationRouteDeps.resolveRequestContext(req);
     requireStudentLikeRole(ctx.authenticatedRoleType);
     if (!ctx.studentProfileId) {
       return badRequest(res, "No student profile could be resolved for the authenticated user");
@@ -225,13 +236,13 @@ export async function studentCommunicationPreferencesUpsertRoute(
       notes: body.notes ?? null,
     };
 
-    await repo.upsertStudentPreferences({
-      preferenceId: newId(),
+    await communicationRouteDeps.repo.upsertStudentPreferences({
+      preferenceId: communicationRouteDeps.newId(),
       studentProfileId: ctx.studentProfileId,
       record,
     });
-    await repo.createAuditLog({
-      communicationAuditLogId: newId(),
+    await communicationRouteDeps.repo.createAuditLog({
+      communicationAuditLogId: communicationRouteDeps.newId(),
       studentProfileId: ctx.studentProfileId,
       householdId: ctx.householdId,
       actorUserId: ctx.authenticatedUserId,
@@ -254,13 +265,13 @@ export async function studentCommunicationPreferencesUpsertRoute(
 
 export async function studentCommunicationMessagesRoute(req: IncomingMessage, res: ServerResponse) {
   try {
-    const ctx = await resolveRequestContext(req);
+    const ctx = await communicationRouteDeps.resolveRequestContext(req);
     requireStudentLikeRole(ctx.authenticatedRoleType);
     if (!ctx.studentProfileId) {
       return badRequest(res, "No student profile could be resolved for the authenticated user");
     }
 
-    const messages = await repo.listStudentReceivedMessages(ctx.studentProfileId);
+    const messages = await communicationRouteDeps.repo.listStudentReceivedMessages(ctx.studentProfileId);
     return json(res, 200, {
       ok: true,
       count: messages.length,
@@ -275,13 +286,13 @@ export async function studentCommunicationMessagesRoute(req: IncomingMessage, re
 
 export async function parentCommunicationProfileReadRoute(req: IncomingMessage, res: ServerResponse) {
   try {
-    const ctx = await resolveRequestContext(req);
+    const ctx = await communicationRouteDeps.resolveRequestContext(req);
     requireParentLikeRole(ctx.authenticatedRoleType);
     if (!ctx.studentProfileId) {
       return badRequest(res, "No student profile could be resolved for the authenticated parent");
     }
 
-    const profile = await repo.getParentProfile(ctx.authenticatedUserId, ctx.studentProfileId);
+    const profile = await communicationRouteDeps.repo.getParentProfile(ctx.authenticatedUserId, ctx.studentProfileId);
     return json(res, 200, { ok: true, profile });
   } catch (error: any) {
     if (error?.message === "UNAUTHENTICATED") return unauthorized(res);
@@ -295,7 +306,7 @@ export async function parentCommunicationProfileUpsertRoute(req: IncomingMessage
     const body = await parseBody(req, parentProfileSchema, res);
     if (!body) return;
 
-    const ctx = await resolveRequestContext(req);
+    const ctx = await communicationRouteDeps.resolveRequestContext(req);
     requireParentLikeRole(ctx.authenticatedRoleType);
     if (!ctx.studentProfileId) {
       return badRequest(res, "No student profile could be resolved for the authenticated parent");
@@ -314,9 +325,12 @@ export async function parentCommunicationProfileUpsertRoute(req: IncomingMessage
       consentAcknowledged: body.consentAcknowledged,
     };
 
-    await repo.upsertParentProfile({ profileId: newId(), record });
-    await repo.createAuditLog({
-      communicationAuditLogId: newId(),
+    await communicationRouteDeps.repo.upsertParentProfile({
+      profileId: communicationRouteDeps.newId(),
+      record,
+    });
+    await communicationRouteDeps.repo.createAuditLog({
+      communicationAuditLogId: communicationRouteDeps.newId(),
       studentProfileId: ctx.studentProfileId,
       householdId: ctx.householdId,
       actorUserId: ctx.authenticatedUserId,
@@ -339,13 +353,13 @@ export async function parentCommunicationProfileUpsertRoute(req: IncomingMessage
 
 export async function parentCommunicationEntriesListRoute(req: IncomingMessage, res: ServerResponse) {
   try {
-    const ctx = await resolveRequestContext(req);
+    const ctx = await communicationRouteDeps.resolveRequestContext(req);
     requireParentLikeRole(ctx.authenticatedRoleType);
     if (!ctx.studentProfileId) {
       return badRequest(res, "No student profile could be resolved for the authenticated parent");
     }
 
-    const entries = await repo.listEntries(ctx.authenticatedUserId, ctx.studentProfileId);
+    const entries = await communicationRouteDeps.repo.listEntries(ctx.authenticatedUserId, ctx.studentProfileId);
     return json(res, 200, { ok: true, count: entries.length, entries });
   } catch (error: any) {
     if (error?.message === "UNAUTHENTICATED") return unauthorized(res);
@@ -359,14 +373,14 @@ export async function parentCommunicationEntryCreateRoute(req: IncomingMessage, 
     const body = await parseBody(req, parentEntrySchema, res);
     if (!body) return;
 
-    const ctx = await resolveRequestContext(req);
+    const ctx = await communicationRouteDeps.resolveRequestContext(req);
     requireParentLikeRole(ctx.authenticatedRoleType);
     if (!ctx.studentProfileId) {
       return badRequest(res, "No student profile could be resolved for the authenticated parent");
     }
 
     const entry: ParentCommunicationEntryRecord = {
-      parentCommunicationEntryId: newId(),
+      parentCommunicationEntryId: communicationRouteDeps.newId(),
       parentUserId: ctx.authenticatedUserId,
       studentProfileId: ctx.studentProfileId,
       householdId: ctx.householdId,
@@ -384,9 +398,9 @@ export async function parentCommunicationEntryCreateRoute(req: IncomingMessage, 
       freeformContext: body.freeformContext ?? null,
     };
 
-    await repo.createEntry(entry);
-    await repo.createAuditLog({
-      communicationAuditLogId: newId(),
+    await communicationRouteDeps.repo.createEntry(entry);
+    await communicationRouteDeps.repo.createAuditLog({
+      communicationAuditLogId: communicationRouteDeps.newId(),
       parentCommunicationEntryId: entry.parentCommunicationEntryId,
       studentProfileId: ctx.studentProfileId,
       householdId: ctx.householdId,
@@ -418,13 +432,13 @@ export async function parentCommunicationEntryStatusRoute(req: IncomingMessage, 
     const body = await parseBody(req, entryStatusUpdateSchema, res);
     if (!body) return;
 
-    const ctx = await resolveRequestContext(req);
+    const ctx = await communicationRouteDeps.resolveRequestContext(req);
     requireParentLikeRole(ctx.authenticatedRoleType);
     if (!ctx.studentProfileId) {
       return badRequest(res, "No student profile could be resolved for the authenticated parent");
     }
 
-    const success = await repo.updateEntryStatus({
+    const success = await communicationRouteDeps.repo.updateEntryStatus({
       parentCommunicationEntryId: body.parentCommunicationEntryId,
       parentUserId: ctx.authenticatedUserId,
       studentProfileId: ctx.studentProfileId,
@@ -434,8 +448,8 @@ export async function parentCommunicationEntryStatusRoute(req: IncomingMessage, 
       return badRequest(res, "The selected entry does not belong to the authenticated parent context");
     }
 
-    await repo.createAuditLog({
-      communicationAuditLogId: newId(),
+    await communicationRouteDeps.repo.createAuditLog({
+      communicationAuditLogId: communicationRouteDeps.newId(),
       parentCommunicationEntryId: body.parentCommunicationEntryId,
       studentProfileId: ctx.studentProfileId,
       householdId: ctx.householdId,
@@ -459,32 +473,32 @@ export async function parentCommunicationTranslateRoute(req: IncomingMessage, re
     const body = await parseBody(req, translateSchema, res);
     if (!body) return;
 
-    const ctx = await resolveRequestContext(req);
+    const ctx = await communicationRouteDeps.resolveRequestContext(req);
     requireParentLikeRole(ctx.authenticatedRoleType);
     if (!ctx.studentProfileId) {
       return badRequest(res, "No student profile could be resolved for the authenticated parent");
     }
 
     const [entry, parentProfile, studentPreferences, aggregated] = await Promise.all([
-      repo.getEntry(body.parentCommunicationEntryId, ctx.authenticatedUserId, ctx.studentProfileId),
-      repo.getParentProfile(ctx.authenticatedUserId, ctx.studentProfileId),
-      repo.getStudentPreferences(ctx.studentProfileId),
-      aggregateStudentContext(ctx.studentProfileId),
+      communicationRouteDeps.repo.getEntry(body.parentCommunicationEntryId, ctx.authenticatedUserId, ctx.studentProfileId),
+      communicationRouteDeps.repo.getParentProfile(ctx.authenticatedUserId, ctx.studentProfileId),
+      communicationRouteDeps.repo.getStudentPreferences(ctx.studentProfileId),
+      communicationRouteDeps.aggregateStudentContext(ctx.studentProfileId),
     ]);
 
     if (!entry) {
       return badRequest(res, "The selected communication entry does not belong to the authenticated parent context");
     }
 
-    const scoringInput = await buildStudentScoringInput(ctx.studentProfileId);
-    const scoring = runScoring(scoringInput);
-    const history = await repo.listAuditLogs(ctx.studentProfileId, ctx.householdId);
+    const scoringInput = await communicationRouteDeps.buildStudentScoringInput(ctx.studentProfileId);
+    const scoring = communicationRouteDeps.runScoring(scoringInput);
+    const history = await communicationRouteDeps.repo.listAuditLogs(ctx.studentProfileId, ctx.householdId);
     const priorOutcomeNotes = history
       .filter((item) => item.eventType === "delivery_blocked" || item.eventType === "delivery_mocked")
       .slice(0, 5)
       .map((item) => item.eventSummary);
 
-    const result = await generateCommunicationTranslation({
+    const result = await communicationRouteDeps.generateCommunicationTranslation({
       studentProfileId: ctx.studentProfileId,
       householdId: ctx.householdId,
       parentUserId: ctx.authenticatedUserId,
@@ -498,19 +512,19 @@ export async function parentCommunicationTranslateRoute(req: IncomingMessage, re
       priorOutcomeNotes,
     });
 
-    const strategyId = newId();
-    await repo.createStrategy({
+    const strategyId = communicationRouteDeps.newId();
+    await communicationRouteDeps.repo.createStrategy({
       communicationStrategyId: strategyId,
       ...result.strategy,
     });
-    await repo.updateEntryStatus({
+    await communicationRouteDeps.repo.updateEntryStatus({
       parentCommunicationEntryId: entry.parentCommunicationEntryId,
       parentUserId: ctx.authenticatedUserId,
       studentProfileId: ctx.studentProfileId,
       status: result.strategy.withholdDelivery ? "saved_as_context" : "translated",
     });
-    await repo.createAuditLog({
-      communicationAuditLogId: newId(),
+    await communicationRouteDeps.repo.createAuditLog({
+      communicationAuditLogId: communicationRouteDeps.newId(),
       parentCommunicationEntryId: entry.parentCommunicationEntryId,
       communicationStrategyId: strategyId,
       studentProfileId: ctx.studentProfileId,
@@ -550,18 +564,18 @@ export async function parentCommunicationDraftSaveRoute(req: IncomingMessage, re
     const body = await parseBody(req, saveDraftSchema, res);
     if (!body) return;
 
-    const ctx = await resolveRequestContext(req);
+    const ctx = await communicationRouteDeps.resolveRequestContext(req);
     requireParentLikeRole(ctx.authenticatedRoleType);
     if (!ctx.studentProfileId) {
       return badRequest(res, "No student profile could be resolved for the authenticated parent");
     }
 
-    const strategy = await repo.getStrategy(body.communicationStrategyId, ctx.authenticatedUserId, ctx.studentProfileId);
+    const strategy = await communicationRouteDeps.repo.getStrategy(body.communicationStrategyId, ctx.authenticatedUserId, ctx.studentProfileId);
     if (!strategy) {
       return badRequest(res, "The selected strategy does not belong to the authenticated parent context");
     }
 
-    const draftId = newId();
+    const draftId = communicationRouteDeps.newId();
     const draft: CommunicationMessageDraftRecord = {
       communicationMessageDraftId: draftId,
       communicationStrategyId: strategy.communicationStrategyId,
@@ -577,9 +591,9 @@ export async function parentCommunicationDraftSaveRoute(req: IncomingMessage, re
       approvedForDelivery: !strategy.withholdDelivery && !strategy.humanReviewRecommended,
     };
 
-    await repo.createMessageDraft(draft);
-    await repo.createAuditLog({
-      communicationAuditLogId: newId(),
+    await communicationRouteDeps.repo.createMessageDraft(draft);
+    await communicationRouteDeps.repo.createAuditLog({
+      communicationAuditLogId: communicationRouteDeps.newId(),
       parentCommunicationEntryId: strategy.parentCommunicationEntryId,
       communicationStrategyId: strategy.communicationStrategyId,
       communicationMessageDraftId: draftId,
@@ -613,24 +627,24 @@ export async function parentCommunicationDraftSendMockRoute(req: IncomingMessage
     const body = await parseBody(req, sendDraftSchema, res);
     if (!body) return;
 
-    const ctx = await resolveRequestContext(req);
+    const ctx = await communicationRouteDeps.resolveRequestContext(req);
     requireParentLikeRole(ctx.authenticatedRoleType);
     if (!ctx.studentProfileId) {
       return badRequest(res, "No student profile could be resolved for the authenticated parent");
     }
 
-    const draft = await repo.getDraft(body.communicationMessageDraftId, ctx.authenticatedUserId, ctx.studentProfileId);
+    const draft = await communicationRouteDeps.repo.getDraft(body.communicationMessageDraftId, ctx.authenticatedUserId, ctx.studentProfileId);
     if (!draft) {
       return badRequest(res, "The selected draft does not belong to the authenticated parent context");
     }
 
-    const strategy = await repo.getStrategy(draft.communicationStrategyId, ctx.authenticatedUserId, ctx.studentProfileId);
+    const strategy = await communicationRouteDeps.repo.getStrategy(draft.communicationStrategyId, ctx.authenticatedUserId, ctx.studentProfileId);
     if (!strategy) {
       return badRequest(res, "The selected strategy does not belong to the authenticated parent context");
     }
 
-    await repo.createAuditLog({
-      communicationAuditLogId: newId(),
+    await communicationRouteDeps.repo.createAuditLog({
+      communicationAuditLogId: communicationRouteDeps.newId(),
       parentCommunicationEntryId: draft.parentCommunicationEntryId,
       communicationStrategyId: draft.communicationStrategyId,
       communicationMessageDraftId: draft.communicationMessageDraftId,
@@ -644,14 +658,14 @@ export async function parentCommunicationDraftSendMockRoute(req: IncomingMessage
     });
 
     if (strategy.withholdDelivery || strategy.consentState !== "granted") {
-      await repo.updateDraftStatus({
+      await communicationRouteDeps.repo.updateDraftStatus({
         communicationMessageDraftId: draft.communicationMessageDraftId,
         status: "withheld",
         providerMode: "not_sent",
         approvedForDelivery: false,
       });
-      await repo.createAuditLog({
-        communicationAuditLogId: newId(),
+      await communicationRouteDeps.repo.createAuditLog({
+        communicationAuditLogId: communicationRouteDeps.newId(),
         parentCommunicationEntryId: draft.parentCommunicationEntryId,
         communicationStrategyId: draft.communicationStrategyId,
         communicationMessageDraftId: draft.communicationMessageDraftId,
@@ -673,7 +687,7 @@ export async function parentCommunicationDraftSendMockRoute(req: IncomingMessage
       });
     }
 
-    const provider = getCommunicationProvider();
+    const provider = communicationRouteDeps.getCommunicationProvider();
     const sendResult = await provider.send({
       channel: draft.selectedChannel as CommunicationChannel,
       messageBody: draft.messageBody,
@@ -682,14 +696,14 @@ export async function parentCommunicationDraftSendMockRoute(req: IncomingMessage
     });
 
     if (!sendResult.ok) {
-      await repo.updateDraftStatus({
+      await communicationRouteDeps.repo.updateDraftStatus({
         communicationMessageDraftId: draft.communicationMessageDraftId,
         status: "review_required",
         providerMode: sendResult.providerMode,
         approvedForDelivery: false,
       });
-      await repo.createAuditLog({
-        communicationAuditLogId: newId(),
+      await communicationRouteDeps.repo.createAuditLog({
+        communicationAuditLogId: communicationRouteDeps.newId(),
         parentCommunicationEntryId: draft.parentCommunicationEntryId,
         communicationStrategyId: draft.communicationStrategyId,
         communicationMessageDraftId: draft.communicationMessageDraftId,
@@ -705,25 +719,25 @@ export async function parentCommunicationDraftSendMockRoute(req: IncomingMessage
     }
 
     const deliveredAt = new Date().toISOString();
-    await repo.updateDraftStatus({
+    await communicationRouteDeps.repo.updateDraftStatus({
       communicationMessageDraftId: draft.communicationMessageDraftId,
       status: "delivered",
       providerMode: sendResult.providerMode,
       approvedForDelivery: true,
       deliveredAt,
     });
-    await repo.updateStrategyStatus({
+    await communicationRouteDeps.repo.updateStrategyStatus({
       communicationStrategyId: draft.communicationStrategyId,
       status: "delivered",
     });
-    await repo.updateEntryStatus({
+    await communicationRouteDeps.repo.updateEntryStatus({
       parentCommunicationEntryId: draft.parentCommunicationEntryId,
       parentUserId: ctx.authenticatedUserId,
       studentProfileId: ctx.studentProfileId,
       status: "delivered",
     });
-    await repo.createAuditLog({
-      communicationAuditLogId: newId(),
+    await communicationRouteDeps.repo.createAuditLog({
+      communicationAuditLogId: communicationRouteDeps.newId(),
       parentCommunicationEntryId: draft.parentCommunicationEntryId,
       communicationStrategyId: draft.communicationStrategyId,
       communicationMessageDraftId: draft.communicationMessageDraftId,
@@ -755,17 +769,17 @@ export async function parentCommunicationDraftSendMockRoute(req: IncomingMessage
 
 export async function parentCommunicationHistoryRoute(req: IncomingMessage, res: ServerResponse) {
   try {
-    const ctx = await resolveRequestContext(req);
+    const ctx = await communicationRouteDeps.resolveRequestContext(req);
     requireParentLikeRole(ctx.authenticatedRoleType);
     if (!ctx.studentProfileId) {
       return badRequest(res, "No student profile could be resolved for the authenticated parent");
     }
 
     const [entries, strategies, drafts, audit] = await Promise.all([
-      repo.listEntries(ctx.authenticatedUserId, ctx.studentProfileId),
-      repo.listStrategies(ctx.authenticatedUserId, ctx.studentProfileId),
-      repo.listDrafts(ctx.authenticatedUserId, ctx.studentProfileId),
-      repo.listAuditLogs(ctx.studentProfileId, ctx.householdId),
+      communicationRouteDeps.repo.listEntries(ctx.authenticatedUserId, ctx.studentProfileId),
+      communicationRouteDeps.repo.listStrategies(ctx.authenticatedUserId, ctx.studentProfileId),
+      communicationRouteDeps.repo.listDrafts(ctx.authenticatedUserId, ctx.studentProfileId),
+      communicationRouteDeps.repo.listAuditLogs(ctx.studentProfileId, ctx.householdId),
     ]);
 
     return json(res, 200, {

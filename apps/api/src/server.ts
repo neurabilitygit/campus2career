@@ -121,6 +121,36 @@ export async function router(req: IncomingMessage, res: ServerResponse) {
     return;
   }
 
+  if (url === "/students/me/outcomes" && req.method === "GET") {
+    const { studentOutcomesListRoute } = await import("./routes/outcomes");
+    await studentOutcomesListRoute(req, res);
+    return;
+  }
+
+  if (url === "/students/me/outcomes" && req.method === "POST") {
+    const { studentOutcomesCreateRoute } = await import("./routes/outcomes");
+    await studentOutcomesCreateRoute(req, res);
+    return;
+  }
+
+  if (url === "/students/me/outcomes" && req.method === "PATCH") {
+    const { studentOutcomesUpdateRoute } = await import("./routes/outcomes");
+    await studentOutcomesUpdateRoute(req, res);
+    return;
+  }
+
+  if (url === "/students/me/outcomes/archive" && req.method === "POST") {
+    const { studentOutcomesArchiveRoute } = await import("./routes/outcomes");
+    await studentOutcomesArchiveRoute(req, res);
+    return;
+  }
+
+  if (url === "/students/me/outcomes/summary" && req.method === "GET") {
+    const { studentOutcomesSummaryRoute } = await import("./routes/outcomes");
+    await studentOutcomesSummaryRoute(req, res);
+    return;
+  }
+
   if (url === "/students/me/communication-preferences" && req.method === "GET") {
     const { studentCommunicationPreferencesReadRoute } = await import("./routes/communication");
     await studentCommunicationPreferencesReadRoute(req, res);
@@ -136,6 +166,12 @@ export async function router(req: IncomingMessage, res: ServerResponse) {
   if (url === "/students/me/communication-messages" && req.method === "GET") {
     const { studentCommunicationMessagesRoute } = await import("./routes/communication");
     await studentCommunicationMessagesRoute(req, res);
+    return;
+  }
+
+  if (url === "/students/me/coach-feed" && req.method === "GET") {
+    const { studentCoachFeedRoute } = await import("./routes/coach");
+    await studentCoachFeedRoute(req, res);
     return;
   }
 
@@ -293,6 +329,120 @@ export async function router(req: IncomingMessage, res: ServerResponse) {
   if (url === "/parents/me/communication-history" && req.method === "GET") {
     const { parentCommunicationHistoryRoute } = await import("./routes/communication");
     await parentCommunicationHistoryRoute(req, res);
+    return;
+  }
+
+  if (url === "/parents/me/outcomes" && req.method === "GET") {
+    const { parentOutcomesListRoute } = await import("./routes/outcomes");
+    await parentOutcomesListRoute(req, res);
+    return;
+  }
+
+  if (url === "/parents/me/outcomes" && req.method === "POST") {
+    const { parentOutcomesCreateRoute } = await import("./routes/outcomes");
+    await parentOutcomesCreateRoute(req, res);
+    return;
+  }
+
+  if (url === "/parents/me/outcomes" && req.method === "PATCH") {
+    const { parentOutcomesUpdateRoute } = await import("./routes/outcomes");
+    await parentOutcomesUpdateRoute(req, res);
+    return;
+  }
+
+  if (url === "/parents/me/outcomes/archive" && req.method === "POST") {
+    const { parentOutcomesArchiveRoute } = await import("./routes/outcomes");
+    await parentOutcomesArchiveRoute(req, res);
+    return;
+  }
+
+  if (url === "/parents/me/outcomes/summary" && req.method === "GET") {
+    const { parentOutcomesSummaryRoute } = await import("./routes/outcomes");
+    await parentOutcomesSummaryRoute(req, res);
+    return;
+  }
+
+  if (url === "/parents/me/coach-feed" && req.method === "GET") {
+    const { parentCoachFeedRoute } = await import("./routes/coach");
+    await parentCoachFeedRoute(req, res);
+    return;
+  }
+
+  if (url === "/coaches/me/outcomes" && req.method === "GET") {
+    const { coachOutcomesListRoute } = await import("./routes/outcomes");
+    await coachOutcomesListRoute(req, res);
+    return;
+  }
+
+  if (url === "/coaches/me/outcomes" && req.method === "POST") {
+    const { coachOutcomesCreateRoute } = await import("./routes/outcomes");
+    await coachOutcomesCreateRoute(req, res);
+    return;
+  }
+
+  if (url === "/coaches/me/outcomes/review" && req.method === "POST") {
+    const { coachOutcomesReviewRoute } = await import("./routes/outcomes");
+    await coachOutcomesReviewRoute(req, res);
+    return;
+  }
+
+  if (url === "/coaches/me/outcomes/summary" && req.method === "GET") {
+    const { coachOutcomesSummaryRoute } = await import("./routes/outcomes");
+    await coachOutcomesSummaryRoute(req, res);
+    return;
+  }
+
+  if (url === "/coaches/me/roster" && req.method === "GET") {
+    const { coachRosterRoute } = await import("./routes/coach");
+    await coachRosterRoute(req, res);
+    return;
+  }
+
+  if (url === "/coaches/me/workspace" && req.method === "GET") {
+    const { coachWorkspaceRoute } = await import("./routes/coach");
+    await coachWorkspaceRoute(req, res);
+    return;
+  }
+
+  if (url === "/coaches/me/notes" && req.method === "POST") {
+    const { coachNoteCreateRoute } = await import("./routes/coach");
+    await coachNoteCreateRoute(req, res);
+    return;
+  }
+
+  if (url === "/coaches/me/findings" && req.method === "POST") {
+    const { coachFindingCreateRoute } = await import("./routes/coach");
+    await coachFindingCreateRoute(req, res);
+    return;
+  }
+
+  if (url === "/coaches/me/recommendations" && req.method === "POST") {
+    const { coachRecommendationCreateRoute } = await import("./routes/coach");
+    await coachRecommendationCreateRoute(req, res);
+    return;
+  }
+
+  if (url === "/coaches/me/action-items" && req.method === "POST") {
+    const { coachActionItemCreateRoute } = await import("./routes/coach");
+    await coachActionItemCreateRoute(req, res);
+    return;
+  }
+
+  if (url === "/coaches/me/flags" && req.method === "POST") {
+    const { coachFlagCreateRoute } = await import("./routes/coach");
+    await coachFlagCreateRoute(req, res);
+    return;
+  }
+
+  if (url === "/coaches/me/outbound-messages/draft" && req.method === "POST") {
+    const { coachOutboundDraftSaveRoute } = await import("./routes/coach");
+    await coachOutboundDraftSaveRoute(req, res);
+    return;
+  }
+
+  if (url === "/coaches/me/outbound-messages/send-mock" && req.method === "POST") {
+    const { coachOutboundSendMockRoute } = await import("./routes/coach");
+    await coachOutboundSendMockRoute(req, res);
     return;
   }
 

@@ -6,8 +6,11 @@ import { AppShell } from "../layout/AppShell";
 import { SectionCard } from "../layout/SectionCard";
 import { KeyValueList } from "../layout/KeyValueList";
 import { RequireRole } from "../RequireRole";
+import { FieldInfoLabel } from "../forms/FieldInfoLabel";
 import { useApiData, useApiJsonPost } from "../../hooks/useApiData";
 import { apiFetch } from "../../lib/apiClient";
+import { OutcomeTrackingSection } from "../outcomes/OutcomeTrackingSection";
+import { VisibleCoachFeedSection } from "../coach/VisibleCoachFeedSection";
 import { listTargetRoleOptions } from "../../../../../packages/shared/src/market/targetRoleSeeds";
 import type { JobTargetNormalizationResult, StudentJobTargetRecord } from "../../../../../packages/shared/src/contracts/career";
 
@@ -50,12 +53,26 @@ type ScoringPayload = {
   }>;
   evidenceQuality?: {
     assessmentMode?: "measured" | "provisional";
+    overallEvidenceLevel?: "strong" | "moderate" | "weak" | "missing";
     confidenceLabel?: string;
     knownEvidence?: string[];
     weakEvidence?: string[];
     missingEvidence?: string[];
     provisionalReasons?: string[];
+    strongestEvidenceCategories?: string[];
+    weakestEvidenceCategories?: string[];
+    blockedByMissingEvidence?: string[];
+    recommendedEvidenceActions?: string[];
   };
+  subScoreDetails?: Record<
+    string,
+    {
+      evidenceLevel?: "strong" | "moderate" | "weak" | "missing";
+      confidenceLabel?: string;
+      explanation?: string;
+      recommendedEvidence?: string[];
+    }
+  >;
 };
 
 type ScoringInputPayload = {
@@ -230,6 +247,11 @@ function scoreLabel(score: number | undefined): string {
   return "Weak";
 }
 
+function evidenceLabel(value: string | undefined): string {
+  if (!value) return "Unknown";
+  return titleCase(value);
+}
+
 function confidenceLabel(value: number | null | undefined): string {
   if (typeof value !== "number") return "Unknown";
   if (value >= 0.85) return "High";
@@ -255,6 +277,14 @@ function academicBindingLabel(
   return "Not bound";
 }
 
+const summaryTileStyle: React.CSSProperties = {
+  borderRadius: 18,
+  padding: 18,
+  background: "rgba(255, 255, 255, 0.9)",
+  border: "1px solid rgba(148, 163, 184, 0.18)",
+  boxShadow: "0 12px 28px rgba(15, 23, 42, 0.05)",
+};
+
 const roleOptions = listTargetRoleOptions();
 const studentSectionItems = [
   {
@@ -274,6 +304,12 @@ const studentSectionItems = [
     href: "/student?section=guidance",
     label: "Next steps",
     description: "Risks, actions, and practical guidance",
+  },
+  {
+    key: "outcomes",
+    href: "/student?section=outcomes",
+    label: "Outcome tracking",
+    description: "Applications, interviews, offers, and accepted roles",
   },
 ] as const;
 
@@ -377,7 +413,11 @@ export default function StudentDashboardView() {
   const primaryJobTarget = savedJobTargets.find((jobTarget) => jobTarget.isPrimary) || null;
   const requestedSection = searchParams.get("section");
   const activeSection: StudentSectionKey =
-    requestedSection === "evidence" || requestedSection === "guidance" ? requestedSection : "strategy";
+    requestedSection === "evidence" ||
+    requestedSection === "guidance" ||
+    requestedSection === "outcomes"
+      ? requestedSection
+      : "strategy";
 
   async function handleSaveJobTarget() {
     const title = jobTargetDraft.title.trim();
@@ -497,7 +537,7 @@ export default function StudentDashboardView() {
                     gap: 14,
                   }}
                 >
-                  <div style={{ borderRadius: 18, padding: 18, background: "#ffffff", border: "1px solid rgba(73, 102, 149, 0.12)" }}>
+                  <div style={summaryTileStyle}>
                     <div style={{ color: "#5f728a", fontSize: 12, fontWeight: 800, textTransform: "uppercase", letterSpacing: 0.05 }}>
                       Current status
                     </div>
@@ -505,14 +545,17 @@ export default function StudentDashboardView() {
                     <div style={{ marginTop: 6, color: "#52657d", lineHeight: 1.55 }}>
                       {scoring.data?.scoring?.overallScore ?? "?"}/100 for {targetRoleLabel} in {targetSectorLabel}
                     </div>
+                    <div style={{ marginTop: 8, color: "#22456f", fontWeight: 700 }}>
+                      Evidence: {evidenceLabel(scoring.data?.scoring?.evidenceQuality?.overallEvidenceLevel)}
+                    </div>
                   </div>
-                  <div style={{ borderRadius: 18, padding: 18, background: "#ffffff", border: "1px solid rgba(73, 102, 149, 0.12)" }}>
+                  <div style={summaryTileStyle}>
                     <div style={{ color: "#5f728a", fontSize: 12, fontWeight: 800, textTransform: "uppercase", letterSpacing: 0.05 }}>
                       Main risk
                     </div>
                     <div style={{ marginTop: 8, lineHeight: 1.55 }}>{primaryRisk || "No specific concern is showing yet."}</div>
                   </div>
-                  <div style={{ borderRadius: 18, padding: 18, background: "#ffffff", border: "1px solid rgba(73, 102, 149, 0.12)" }}>
+                  <div style={summaryTileStyle}>
                     <div style={{ color: "#5f728a", fontSize: 12, fontWeight: 800, textTransform: "uppercase", letterSpacing: 0.05 }}>
                       Best next move
                     </div>
@@ -520,7 +563,7 @@ export default function StudentDashboardView() {
                       {topRecommendation?.title || "Add more student information to unlock a clearer next step."}
                     </div>
                   </div>
-                  <div style={{ borderRadius: 18, padding: 18, background: "#ffffff", border: "1px solid rgba(73, 102, 149, 0.12)" }}>
+                  <div style={summaryTileStyle}>
                     <div style={{ color: "#5f728a", fontSize: 12, fontWeight: 800, textTransform: "uppercase", letterSpacing: 0.05 }}>
                       Evidence still missing
                     </div>
@@ -534,6 +577,8 @@ export default function StudentDashboardView() {
               ) : null}
             </SectionCard>
 
+            <VisibleCoachFeedSection mode="student" />
+
             <SectionCard
               title="What is helping and what is still missing"
               subtitle="This explains why the score looks the way it does before you make any changes to the target role."
@@ -546,7 +591,7 @@ export default function StudentDashboardView() {
                     style={{
                       borderRadius: 18,
                       padding: 18,
-                      background: "linear-gradient(135deg, rgba(21,94,239,0.08), rgba(34,197,94,0.08))",
+                      background: "linear-gradient(135deg, color-mix(in srgb, var(--role-soft, #eef3f8) 82%, white), rgba(255,255,255,0.98))",
                       border: "1px solid rgba(148,163,184,0.28)",
                       display: "grid",
                       gap: 10,
@@ -568,8 +613,8 @@ export default function StudentDashboardView() {
                         style={{
                           borderRadius: 999,
                           padding: "8px 12px",
-                          background: assessmentMode === "provisional" ? "#fff8e7" : "#eef6ff",
-                          color: assessmentMode === "provisional" ? "#7a5817" : "#22456f",
+                          background: assessmentMode === "provisional" ? "#fff8e7" : "color-mix(in srgb, var(--role-soft, #eef3f8) 88%, white)",
+                          color: assessmentMode === "provisional" ? "#7a5817" : "var(--role-accent, #22456f)",
                           fontWeight: 800,
                           fontSize: 13,
                         }}
@@ -648,12 +693,12 @@ export default function StudentDashboardView() {
                   {explanation.data.explanation.counterfactual ? (
                     <div
                       style={{
-                        border: "1px solid #dbe4f0",
-                        borderRadius: 16,
-                        padding: 16,
-                        background: "#f8fbff",
-                        display: "grid",
-                        gap: 10,
+                      border: "1px solid #dbe4f0",
+                      borderRadius: 16,
+                      padding: 16,
+                      background: "color-mix(in srgb, var(--role-soft, #eef3f8) 72%, white)",
+                      display: "grid",
+                      gap: 10,
                       }}
                     >
                       <strong>Comparison explanation: {titleCase(explanation.data.explanation.counterfactual.compareToRoleFamily)}</strong>
@@ -688,8 +733,22 @@ export default function StudentDashboardView() {
                       { label: "Current status", value: titleCase(scoring.data?.scoring?.trajectoryStatus) },
                       { label: "Overall score", value: scoring.data?.scoring?.overallScore ?? "Unknown" },
                       { label: "Read type", value: assessmentMode === "provisional" ? "Provisional" : "Measured" },
+                      {
+                        label: "Evidence strength",
+                        value: evidenceLabel(scoring.data?.scoring?.evidenceQuality?.overallEvidenceLevel),
+                      },
                     ]}
                   />
+                  {scoring.data?.scoring?.evidenceQuality?.recommendedEvidenceActions?.length ? (
+                    <div>
+                      <strong>Fastest ways to improve confidence</strong>
+                      <ul style={{ marginBottom: 0 }}>
+                        {scoring.data.scoring.evidenceQuality.recommendedEvidenceActions.slice(0, 4).map((item) => (
+                          <li key={item}>{item}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
                   {evidenceKnown.length ? (
                     <div>
                       <strong>Evidence already on file</strong>
@@ -737,8 +796,8 @@ export default function StudentDashboardView() {
                     style={{
                       borderRadius: 18,
                       padding: 18,
-                      background: "#ffffff",
-                      border: "1px solid rgba(73, 102, 149, 0.12)",
+                      background: "rgba(255, 255, 255, 0.9)",
+                      border: "1px solid rgba(148, 163, 184, 0.18)",
                       display: "grid",
                       gap: 10,
                     }}
@@ -764,8 +823,8 @@ export default function StudentDashboardView() {
                     style={{
                       borderRadius: 18,
                       padding: 18,
-                      background: "#f8fbff",
-                      border: "1px solid rgba(73, 102, 149, 0.12)",
+                      background: "color-mix(in srgb, var(--role-soft, #eef3f8) 70%, white)",
+                      border: "1px solid rgba(148, 163, 184, 0.18)",
                       color: "#475569",
                       lineHeight: 1.6,
                     }}
@@ -782,7 +841,11 @@ export default function StudentDashboardView() {
                   }}
                 >
                   <label style={{ display: "grid", gap: 6 }}>
-                    <span>Job title</span>
+                    <FieldInfoLabel
+                      label="Job title"
+                      info="Name the exact role you want the system to map and score."
+                      example="Corporate Finance Analyst"
+                    />
                     <input
                       value={jobTargetDraft.title}
                       onChange={(e) => setJobTargetDraft((current) => ({ ...current, title: e.target.value }))}
@@ -790,7 +853,11 @@ export default function StudentDashboardView() {
                     />
                   </label>
                   <label style={{ display: "grid", gap: 6 }}>
-                    <span>Employer</span>
+                    <FieldInfoLabel
+                      label="Employer"
+                      info="Add the company if you already have a specific target in mind."
+                      example="JPMorgan Chase"
+                    />
                     <input
                       value={jobTargetDraft.employer}
                       onChange={(e) => setJobTargetDraft((current) => ({ ...current, employer: e.target.value }))}
@@ -798,7 +865,11 @@ export default function StudentDashboardView() {
                     />
                   </label>
                   <label style={{ display: "grid", gap: 6 }}>
-                    <span>Location</span>
+                    <FieldInfoLabel
+                      label="Location"
+                      info="Add the city, region, or remote preference tied to this role."
+                      example="New York, NY"
+                    />
                     <input
                       value={jobTargetDraft.location}
                       onChange={(e) => setJobTargetDraft((current) => ({ ...current, location: e.target.value }))}
@@ -807,7 +878,11 @@ export default function StudentDashboardView() {
                   </label>
                 </div>
                 <label style={{ display: "grid", gap: 6 }}>
-                  <span>Job description or posting notes</span>
+                  <FieldInfoLabel
+                    label="Job description or posting notes"
+                    info="Paste responsibilities, skills, or details that make this target more specific."
+                    example="SQL, dashboards, stakeholder reporting, internship preferred"
+                  />
                   <textarea
                     value={jobTargetDraft.jobDescriptionText}
                     onChange={(e) => setJobTargetDraft((current) => ({ ...current, jobDescriptionText: e.target.value }))}
@@ -827,15 +902,7 @@ export default function StudentDashboardView() {
                   <button
                     type="button"
                     onClick={handleSaveJobTarget}
-                    style={{
-                      width: "fit-content",
-                      border: "none",
-                      borderRadius: 999,
-                      padding: "13px 18px",
-                      background: "linear-gradient(135deg, #155eef, #16a3ff)",
-                      color: "#ffffff",
-                      fontWeight: 800,
-                    }}
+                    className="ui-button ui-button--primary"
                   >
                     {jobTargetAction.saving ? "Saving target..." : "Save exact target job"}
                   </button>
@@ -888,14 +955,7 @@ export default function StudentDashboardView() {
                         <button
                           type="button"
                           onClick={() => handleSetPrimaryJobTarget(jobTarget.jobTargetId)}
-                          style={{
-                            borderRadius: 999,
-                            border: "1px solid rgba(21, 94, 239, 0.22)",
-                            background: "#ffffff",
-                            color: "#155eef",
-                            fontWeight: 700,
-                            padding: "10px 14px",
-                          }}
+                          className="ui-button ui-button--secondary"
                         >
                           {jobTargetAction.settingPrimary === jobTarget.jobTargetId ? "Updating..." : "Use for scoring"}
                         </button>
@@ -919,7 +979,11 @@ export default function StudentDashboardView() {
                   }}
                 >
                   <label style={{ display: "grid", gap: 6 }}>
-                    <span>Temporary score override</span>
+                    <FieldInfoLabel
+                      label="Temporary score override"
+                      info="Preview scoring against a different role without changing your saved target."
+                      example="Data Analyst"
+                    />
                     <select value={selectedRole} onChange={(e) => setSelectedRole(e.target.value)}>
                       <option value="">Use saved exact target or inferred default</option>
                       {roleOptions.map((option) => (
@@ -930,7 +994,11 @@ export default function StudentDashboardView() {
                     </select>
                   </label>
                   <label style={{ display: "grid", gap: 6 }}>
-                    <span>Compare against</span>
+                    <FieldInfoLabel
+                      label="Compare against"
+                      info="See how the score changes when you line your current path up with another role."
+                      example="Clinical Research Coordinator"
+                    />
                     <select value={compareRole} onChange={(e) => setCompareRole(e.target.value)}>
                       <option value="">No comparison</option>
                       {roleOptions
@@ -1168,6 +1236,13 @@ export default function StudentDashboardView() {
                     <div style={{ fontWeight: 800, color: "#0f172a", marginBottom: 8 }}>{titleCase(key)}</div>
                     <div style={{ fontSize: 28, fontWeight: 800 }}>{value}</div>
                     <div style={{ color: "#475569" }}>{scoreLabel(value)}</div>
+                    <div style={{ color: "#22456f", marginTop: 8, fontWeight: 700, fontSize: 14 }}>
+                      Evidence: {evidenceLabel(scoring.data?.scoring?.subScoreDetails?.[key]?.evidenceLevel)}
+                    </div>
+                    <div style={{ color: "#52657d", marginTop: 6, lineHeight: 1.5, fontSize: 14 }}>
+                      {scoring.data?.scoring?.subScoreDetails?.[key]?.explanation ||
+                        "This area will become more reliable as more evidence is added."}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -1201,11 +1276,18 @@ export default function StudentDashboardView() {
                       ? `on ${new Date(communicationMessages.data.messages[0].deliveredAt as string).toLocaleString()}`
                       : ""}
                   </small>
+                  <div>
+                    <a href="/student/messages">Open full message history</a>
+                  </div>
                 </div>
               ) : null}
               <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 16 }}>
             <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              <span>What do you want help thinking through?</span>
+              <FieldInfoLabel
+                label="What do you want help thinking through?"
+                info="Ask about a real decision, obstacle, or next step."
+                example="Should I focus on one analytics project or networking first?"
+              />
               <textarea
                 value={draftQuestion}
                 onChange={(e) => setDraftQuestion(e.target.value)}
@@ -1222,7 +1304,11 @@ export default function StudentDashboardView() {
               />
             </label>
             <label style={{ display: "flex", flexDirection: "column", gap: 4, maxWidth: 280 }}>
-              <span>How should the response feel?</span>
+              <FieldInfoLabel
+                label="How should the response feel?"
+                info="Choose the style that would be easiest for you to use right now."
+                example="Direct"
+              />
               <select
                 value={draftStyle}
                 onChange={(e) => setDraftStyle(e.target.value)}
@@ -1247,15 +1333,7 @@ export default function StudentDashboardView() {
                 });
                 setRequestedScenario(true);
               }}
-              style={{
-                width: "fit-content",
-                border: "none",
-                borderRadius: 999,
-                padding: "13px 18px",
-                background: "linear-gradient(135deg, #155eef, #16a3ff)",
-                color: "#ffffff",
-                fontWeight: 800,
-              }}
+              className="ui-button ui-button--primary"
             >
               {scenario.loading ? "Processing…" : "Get guidance"}
             </button>
@@ -1334,6 +1412,8 @@ export default function StudentDashboardView() {
             </SectionCard>
           </>
         ) : null}
+
+        {activeSection === "outcomes" ? <OutcomeTrackingSection mode="student" /> : null}
       </RequireRole>
     </AppShell>
   );

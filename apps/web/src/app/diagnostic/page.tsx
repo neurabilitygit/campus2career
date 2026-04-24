@@ -35,15 +35,7 @@ export default function DiagnosticPage() {
         >
           <button
             onClick={generate}
-            style={{
-              width: "fit-content",
-              border: "none",
-              borderRadius: 999,
-              padding: "13px 18px",
-              background: "linear-gradient(135deg, #155eef, #16a3ff)",
-              color: "#ffffff",
-              fontWeight: 800,
-            }}
+            className="ui-button ui-button--primary"
           >
             Generate diagnostic
           </button>

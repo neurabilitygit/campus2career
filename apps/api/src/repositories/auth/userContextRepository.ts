@@ -5,6 +5,13 @@ export interface HouseholdStudentContext {
   studentProfileId: string | null;
   studentUserId: string | null;
   roleInHousehold: string | null;
+  studentFirstName?: string | null;
+  studentLastName?: string | null;
+}
+
+export interface UserBasicInfo {
+  firstName: string | null;
+  lastName: string | null;
 }
 
 export class UserContextRepository {
@@ -24,10 +31,13 @@ export class UserContextRepository {
         hm.household_id,
         sp.student_profile_id,
         sp.user_id as student_user_id,
-        hm.role_in_household
+        hm.role_in_household,
+        su.first_name as "studentFirstName",
+        su.last_name as "studentLastName"
       from household_membership hm
       left join households h on h.household_id = hm.household_id
       left join student_profiles sp on sp.user_id = h.primary_student_user_id
+      left join users su on su.user_id = sp.user_id
       limit 1
       `,
       [userId]
@@ -74,5 +84,21 @@ export class UserContextRepository {
       [userId]
     );
     return userRole.rows[0]?.role_type || null;
+  }
+
+  async resolveUserBasicInfo(userId: string): Promise<UserBasicInfo | null> {
+    const result = await query<UserBasicInfo>(
+      `
+      select
+        first_name as "firstName",
+        last_name as "lastName"
+      from users
+      where user_id = $1
+      limit 1
+      `,
+      [userId]
+    );
+
+    return result.rows[0] || null;
   }
 }

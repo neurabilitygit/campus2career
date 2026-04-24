@@ -5,6 +5,7 @@ import Link from "next/link";
 import { AppShell } from "../../../components/layout/AppShell";
 import { SectionCard } from "../../../components/layout/SectionCard";
 import { RequireRole } from "../../../components/RequireRole";
+import { FieldInfoLabel } from "../../../components/forms/FieldInfoLabel";
 import { apiFetch } from "../../../lib/apiClient";
 import { useApiData } from "../../../hooks/useApiData";
 import { useSession } from "../../../hooks/useSession";
@@ -803,7 +804,11 @@ export default function OnboardingProfilePage() {
         >
           <div style={{ display: "grid", gap: 16 }}>
             <label style={labelStyle}>
-              Search for your college or university
+              <FieldInfoLabel
+                label="Search for your college or university"
+                info="Find the school first so the system can use the right catalog when available."
+                example="Harvard University"
+              />
               <input
                 style={inputStyle}
                 placeholder="Start typing a school name"
@@ -944,7 +949,11 @@ export default function OnboardingProfilePage() {
 
                 {directoryOptions?.catalogs.length ? (
                   <label style={labelStyle}>
-                    Catalog year
+                    <FieldInfoLabel
+                      label="Catalog year"
+                      info="Choose the catalog edition that matches the student’s degree requirements."
+                      example="2026-2027"
+                    />
                     <select
                       style={selectStyle}
                       value={selectedCatalogLabel}
@@ -983,7 +992,11 @@ export default function OnboardingProfilePage() {
 
                 {directoryOptions?.degreePrograms.length ? (
                   <label style={labelStyle}>
-                    Degree program
+                    <FieldInfoLabel
+                      label="Degree program"
+                      info="Pick the broader degree track tied to the selected catalog."
+                      example="Undergraduate · Columbia College majors"
+                    />
                     <select
                       style={selectStyle}
                       value={selectedDegreeKey}
@@ -1018,7 +1031,11 @@ export default function OnboardingProfilePage() {
 
                 {directoryOptions?.majors.length ? (
                   <label style={labelStyle}>
-                    Major
+                    <FieldInfoLabel
+                      label="Major"
+                      info="Choose the primary field of study the student is following."
+                      example="Philosophy"
+                    />
                     <select
                       style={selectStyle}
                       value={selectedMajorCanonicalName}
@@ -1039,7 +1056,11 @@ export default function OnboardingProfilePage() {
 
                 {directoryOptions?.minors.length ? (
                   <label style={labelStyle}>
-                    Minor (optional)
+                    <FieldInfoLabel
+                      label="Minor (optional)"
+                      info="Add a minor only if the student is formally pursuing one."
+                      example="Economics"
+                    />
                     <select
                       style={selectStyle}
                       value={selectedMinorCanonicalName}
@@ -1057,7 +1078,11 @@ export default function OnboardingProfilePage() {
 
                 {directoryOptions?.concentrations.length ? (
                   <label style={labelStyle}>
-                    Concentration (optional)
+                    <FieldInfoLabel
+                      label="Concentration (optional)"
+                      info="Use this if the school tracks a concentration within the major."
+                      example="Ethics and Political Philosophy"
+                    />
                     <select
                       style={selectStyle}
                       value={selectedConcentrationCanonicalName}
@@ -1198,7 +1223,11 @@ export default function OnboardingProfilePage() {
             ) : (
               <>
                 <label style={labelStyle}>
-                  School name
+                  <FieldInfoLabel
+                    label="School name"
+                    info="Enter the college or university if it was not selected above."
+                    example="University at Buffalo"
+                  />
                   <input
                     style={inputStyle}
                     placeholder="School name"
@@ -1208,7 +1237,11 @@ export default function OnboardingProfilePage() {
                 </label>
 
                 <label style={labelStyle}>
-                  Primary major or academic path
+                  <FieldInfoLabel
+                    label="Primary major or academic path"
+                    info="Enter the main course of study if the structured picker is not available."
+                    example="Anthropology"
+                  />
                   <input
                     style={inputStyle}
                     placeholder="Primary major"
@@ -1218,7 +1251,11 @@ export default function OnboardingProfilePage() {
                 </label>
 
                 <label style={labelStyle}>
-                  Secondary major, minor, or academic path
+                  <FieldInfoLabel
+                    label="Secondary major, minor, or academic path"
+                    info="Use this for a second major, minor, or adjacent academic track."
+                    example="Data Science minor"
+                  />
                   <input
                     style={inputStyle}
                     placeholder="Secondary major or minor"
@@ -1230,7 +1267,11 @@ export default function OnboardingProfilePage() {
             )}
 
             <label style={labelStyle}>
-              Expected graduation date
+              <FieldInfoLabel
+                label="Expected graduation date"
+                info="Use the best estimate for when the student expects to finish."
+                example="2027-05-15"
+              />
               <input
                 style={inputStyle}
                 type="date"
@@ -1241,7 +1282,11 @@ export default function OnboardingProfilePage() {
             </label>
 
             <label style={labelStyle}>
-              Preferred geographies
+              <FieldInfoLabel
+                label="Preferred geographies"
+                info="List where the student would realistically consider working."
+                example="New York, Boston, remote"
+              />
               <input
                 style={inputStyle}
                 placeholder="For example: New York, Boston, remote"
@@ -1251,7 +1296,11 @@ export default function OnboardingProfilePage() {
             </label>
 
             <label style={labelStyle}>
-              Career goal summary
+              <FieldInfoLabel
+                label="Career goal summary"
+                info="Describe the path the student is leaning toward right now."
+                example="Data analyst role in healthcare or biotech"
+              />
               <textarea
                 style={{ ...inputStyle, minHeight: 120, resize: "vertical" }}
                 placeholder="What kind of role or trajectory are you aiming for?"
@@ -1262,7 +1311,11 @@ export default function OnboardingProfilePage() {
             </label>
 
             <label style={labelStyle}>
-              Academic notes
+              <FieldInfoLabel
+                label="Academic notes"
+                info="Add context the catalog does not capture, such as transfers or advisor guidance."
+                example="Considering a pre-law path and two transfer credits may apply"
+              />
               <textarea
                 style={{ ...inputStyle, minHeight: 110, resize: "vertical" }}
                 placeholder="Add context that the structured catalog does not capture, such as unofficial plans, transfer details, pre-professional tracks, or advisor guidance."
@@ -1288,7 +1341,11 @@ export default function OnboardingProfilePage() {
               </p>
 
               <div style={{ display: "grid", gap: 8 }}>
-                <strong>Preferred channels</strong>
+                <FieldInfoLabel
+                  label="Preferred channels"
+                  info="Choose the ways guidance is most comfortable to receive."
+                  example="Email and SMS"
+                />
                 <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                   {(["email", "sms", "whatsapp"] as const).map((channel) => (
                     <label key={channel} style={{ display: "flex", gap: 8, alignItems: "center" }}>
@@ -1304,7 +1361,11 @@ export default function OnboardingProfilePage() {
               </div>
 
               <div style={{ display: "grid", gap: 8 }}>
-                <strong>Channels to avoid when possible</strong>
+                <FieldInfoLabel
+                  label="Channels to avoid when possible"
+                  info="Flag formats that tend to feel intrusive or easy to ignore."
+                  example="WhatsApp"
+                />
                 <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                   {(["email", "sms", "whatsapp"] as const).map((channel) => (
                     <label key={channel} style={{ display: "flex", gap: 8, alignItems: "center" }}>
@@ -1321,7 +1382,11 @@ export default function OnboardingProfilePage() {
 
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
                 <label style={labelStyle}>
-                  Preferred tone
+                  <FieldInfoLabel
+                    label="Preferred tone"
+                    info="Choose the tone that makes advice easiest to hear."
+                    example="Direct"
+                  />
                   <select
                     style={selectStyle}
                     value={communicationForm.preferredTone}
@@ -1343,7 +1408,11 @@ export default function OnboardingProfilePage() {
                 </label>
 
                 <label style={labelStyle}>
-                  Preferred frequency
+                  <FieldInfoLabel
+                    label="Preferred frequency"
+                    info="Show how often you want guidance to show up."
+                    example="Weekly"
+                  />
                   <select
                     style={selectStyle}
                     value={communicationForm.preferredFrequency}
@@ -1363,7 +1432,11 @@ export default function OnboardingProfilePage() {
                 </label>
 
                 <label style={labelStyle}>
-                  Best time of day
+                  <FieldInfoLabel
+                    label="Best time of day"
+                    info="Pick the time when advice is most likely to land well."
+                    example="Evening"
+                  />
                   <select
                     style={selectStyle}
                     value={communicationForm.bestTimeOfDay}
@@ -1386,7 +1459,11 @@ export default function OnboardingProfilePage() {
               </div>
 
               <div style={{ display: "grid", gap: 8 }}>
-                <strong>Guidance formats that work best</strong>
+                <FieldInfoLabel
+                  label="Guidance formats that work best"
+                  info="Choose the kinds of guidance that feel most useful."
+                  example="Choices and summaries"
+                />
                 <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                   {([
                     ["direct_instructions", "Direct instructions"],
@@ -1408,7 +1485,11 @@ export default function OnboardingProfilePage() {
               </div>
 
               <label style={labelStyle}>
-                Topics that feel sensitive
+                <FieldInfoLabel
+                  label="Topics that feel sensitive"
+                  info="List subjects that should be handled with extra care."
+                  example="Money, grades, uncertainty"
+                />
                 <input
                   style={inputStyle}
                   placeholder="Money, uncertainty, grades"
@@ -1423,7 +1504,11 @@ export default function OnboardingProfilePage() {
               </label>
 
               <label style={labelStyle}>
-                Notes about how advice lands best
+                <FieldInfoLabel
+                  label="Notes about how advice lands best"
+                  info="Add anything else that makes guidance easier to accept."
+                  example="Short messages work better than long explanations"
+                />
                 <textarea
                   style={{ ...inputStyle, minHeight: 100, resize: "vertical" }}
                   value={communicationForm.notes}
@@ -1449,7 +1534,13 @@ export default function OnboardingProfilePage() {
                   }
                   style={{ marginTop: 4 }}
                 />
-                <span>If a translated parent-originated message is shown to me, identify it as coming from my parent.</span>
+                <span>
+                  <FieldInfoLabel
+                    label="If a translated parent-originated message is shown to me, identify it as coming from my parent."
+                    info="Keep the source transparent if a parent-related message is ever shown to you."
+                    example="The message clearly says it was based on parent input"
+                  />
+                </span>
               </label>
 
               <label style={{ display: "flex", gap: 10, alignItems: "flex-start", lineHeight: 1.6 }}>
@@ -1464,7 +1555,13 @@ export default function OnboardingProfilePage() {
                   }
                   style={{ marginTop: 4 }}
                 />
-                <span>The system may rephrase a parent concern for tone and clarity before showing it to me.</span>
+                <span>
+                  <FieldInfoLabel
+                    label="The system may rephrase a parent concern for tone and clarity before showing it to me."
+                    info="Allow the system to soften or clarify wording without hiding that it came from a parent."
+                    example="Turn a tense message into a shorter and calmer version"
+                  />
+                </span>
               </label>
 
               <label style={{ display: "flex", gap: 10, alignItems: "flex-start", lineHeight: 1.6 }}>
@@ -1479,7 +1576,13 @@ export default function OnboardingProfilePage() {
                   }
                   style={{ marginTop: 4 }}
                 />
-                <span>I consent to receiving translated parent-originated messages when they are handled respectfully and transparently.</span>
+                <span>
+                  <FieldInfoLabel
+                    label="I consent to receiving translated parent-originated messages when they are handled respectfully and transparently."
+                    info="This controls whether parent-originated translated messages may be delivered to you."
+                    example="Unchecked means parent input stays as coaching context only"
+                  />
+                </span>
               </label>
             </div>
 

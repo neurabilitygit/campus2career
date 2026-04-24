@@ -58,7 +58,7 @@ function baseInput(overrides: Partial<StudentScoringInput> = {}): StudentScoring
   };
 }
 
-test("runScoring marks thin evidence as provisional instead of treating defaults as firm truth", () => {
+test("runScoring marks weak evidence as provisional instead of treating defaults as firm truth", () => {
   const scoring = runScoring(baseInput());
 
   assert.equal(scoring.evidenceQuality.assessmentMode, "provisional");
@@ -183,7 +183,88 @@ test("runScoring dampens role certainty when targeting and skill maps rely on fa
     })
   );
 
-  assert.equal(scoring.subScoreDetails.roleAlignment.evidenceLevel, "thin");
+  assert.equal(scoring.subScoreDetails.roleAlignment.evidenceLevel, "weak");
   assert.equal(scoring.subScoreDetails.roleAlignment.confidenceLabel, "low");
   assert.ok(scoring.subScores.roleAlignment <= 70);
+});
+
+test("missing transcript does not automatically look like academic failure", () => {
+  const scoring = runScoring(
+    baseInput({
+      requirementProgress: {
+        boundToCatalog: false,
+        totalRequirementItems: 0,
+        satisfiedRequirementItems: 0,
+        totalRequirementGroups: 0,
+        satisfiedRequirementGroups: 0,
+        creditsApplied: 0,
+        completionPercent: 0,
+        missingRequiredCourses: [],
+        inferredConfidence: "low",
+        truthStatus: "unresolved",
+        manualRequirementItemCount: 0,
+        nonCourseRequirementItemCount: 0,
+        excludedRequirementGroupCount: 0,
+        coverageNotes: [],
+      },
+    })
+  );
+
+  assert.ok(scoring.subScores.academicReadiness >= 48);
+  assert.equal(scoring.subScoreDetails.academicReadiness.evidenceLevel, "missing");
+  assert.match(
+    scoring.subScoreDetails.academicReadiness.explanation || "",
+    /cannot be evaluated reliably|partially assessable/i
+  );
+  assert.ok(
+    (scoring.subScoreDetails.academicReadiness.recommendedEvidence || []).includes("Upload transcript")
+  );
+});
+
+test("missing resume and experience do not automatically imply poor experience performance", () => {
+  const scoring = runScoring(baseInput());
+
+  assert.ok(scoring.subScores.experienceStrength >= 45);
+  assert.equal(scoring.subScoreDetails.experienceStrength.evidenceLevel, "missing");
+  assert.match(
+    scoring.subScoreDetails.experienceStrength.explanation || "",
+    /cannot be evaluated confidently/i
+  );
+});
+
+test("placeholder evidence is not treated as strong proof of work", () => {
+  const scoring = runScoring(
+    baseInput({
+      artifacts: [
+        {
+          artifactId: "artifact-1",
+          artifactType: "resume",
+          extractedSummary: "Summary only",
+          parseTruthStatus: "placeholder",
+          parseConfidenceLabel: "low",
+          parseNotes: "summary-only parse",
+        },
+      ],
+    })
+  );
+
+  const portfolioAssessment = scoring.evidenceQuality.categoryAssessments?.find(
+    (item) => item.category === "resume"
+  );
+  assert.equal(portfolioAssessment?.strength, "weak");
+  assert.ok(portfolioAssessment?.placeholderEvidence.includes("resume"));
+});
+
+test("score payload exposes evidence integrity fields for dashboards", () => {
+  const scoring = runScoring(baseInput());
+
+  assert.ok(scoring.evidenceQuality.categoryAssessments?.length);
+  assert.ok(scoring.evidenceQuality.recommendedEvidenceActions?.length);
+  assert.ok(scoring.subScoreDetails.academicReadiness.requiredEvidence?.includes("transcript"));
+  assert.ok(scoring.subScoreDetails.executionMomentum.requiredEvidence?.includes("execution_activity"));
+  assert.ok(
+    scoring.evidenceQuality.categoryAssessments?.some(
+      (item) => item.category === "application_outcome_activity"
+    )
+  );
 });

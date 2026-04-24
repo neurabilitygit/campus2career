@@ -106,7 +106,7 @@ function buildScoring(overrides: Partial<ScoringOutput> = {}): ScoringOutput {
       roleAlignment: {
         score: 0,
         status: "weak",
-        evidenceLevel: "thin",
+        evidenceLevel: "weak",
         confidenceLabel: "low",
         interpretation: "Role alignment is directional only.",
         knownSignals: ["Target resolved"],
@@ -160,7 +160,7 @@ function buildScoring(overrides: Partial<ScoringOutput> = {}): ScoringOutput {
       executionMomentum: {
         score: 80,
         status: "strong",
-        evidenceLevel: "thin",
+        evidenceLevel: "weak",
         confidenceLabel: "low",
         interpretation: "Execution is provisional.",
         knownSignals: [],
@@ -168,13 +168,13 @@ function buildScoring(overrides: Partial<ScoringOutput> = {}): ScoringOutput {
       },
     },
     evidenceQuality: {
-      overallEvidenceLevel: "thin",
+      overallEvidenceLevel: "weak",
       confidenceLabel: "low",
       assessmentMode: "provisional",
       knownEvidence: ["Parsed transcript"],
       weakEvidence: ["roleAlignment: Role alignment is directional only."],
       missingEvidence: ["networkStrength: Contacts"],
-      provisionalReasons: ["Evidence is thin."],
+      provisionalReasons: ["Evidence is weak."],
     },
     topStrengths: [],
     topRisks: ["Transcript and degree progress are not yet strongly supporting the stated target"],

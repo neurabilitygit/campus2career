@@ -61,31 +61,9 @@ export default function OnboardingPage() {
               <Link
                 key={step.href}
                 href={step.href}
-                style={{
-                  textDecoration: "none",
-                  color: "#132238",
-                  borderRadius: 22,
-                  padding: "18px 18px 20px",
-                  background: "rgba(255,255,255,0.82)",
-                  border: "1px solid rgba(73, 102, 149, 0.12)",
-                  boxShadow: "0 14px 30px rgba(15, 23, 42, 0.06)",
-                  display: "grid",
-                  gap: 10,
-                }}
+                className="ui-feature-link-card"
               >
-                <div
-                  style={{
-                    display: "inline-flex",
-                    width: "fit-content",
-                    padding: "6px 10px",
-                    borderRadius: 999,
-                    background: "rgba(21, 94, 239, 0.08)",
-                    color: "#155eef",
-                    fontSize: 12,
-                    fontWeight: 800,
-                    textTransform: "uppercase",
-                  }}
-                >
+                <div className="ui-pill">
                   Step {index + 1}
                 </div>
                 <strong style={{ fontSize: 20 }}>{step.title}</strong>

@@ -1,5 +1,6 @@
 import { StudentReadRepository } from "../../repositories/student/studentReadRepository";
 import { JobTargetRepository } from "../../repositories/career/jobTargetRepository";
+import { OutcomeRepository } from "../../repositories/outcomes/outcomeRepository";
 import type { StudentScoringInput } from "../../../../../packages/shared/src/scoring/types";
 import {
   TARGET_ROLE_SEEDS,
@@ -25,6 +26,7 @@ export interface AggregatedStudentContext {
 
 const repo = new StudentReadRepository();
 const jobTargetRepo = new JobTargetRepository();
+const outcomeRepo = new OutcomeRepository();
 
 const sectorToRole = new Map(
   TARGET_ROLE_SEEDS.map((seed) => [seed.sectorCluster, { role: seed.canonicalName, sector: seed.sectorCluster }] as const)
@@ -318,6 +320,8 @@ export async function buildStudentScoringInput(
     outreach,
     deadlines,
     academicEvidence,
+    outcomeSummary,
+    recentOutcomes,
   ] = await Promise.all([
     repo.getOccupationMetadataForCanonicalRole(targetRoleFamily),
     repo.getOccupationSkillsForCanonicalRole(targetRoleFamily),
@@ -329,6 +333,8 @@ export async function buildStudentScoringInput(
     repo.getOutreach(studentProfileId),
     repo.getUpcomingDeadlines(studentProfileId),
     buildAcademicScoringEvidence(studentProfileId),
+    outcomeRepo.getSummaryForStudent(studentProfileId),
+    outcomeRepo.listForStudent(studentProfileId),
   ] as const);
 
   const completedDeadlines = deadlines.filter((d) => d.completed).length;
@@ -462,6 +468,12 @@ export async function buildStudentScoringInput(
       interactionType: o.interaction_type,
       outcome: o.outcome || undefined,
     })),
+    outcomes: {
+      summary: outcomeSummary,
+      latestReportedByRole: recentOutcomes[0]?.reportedByRole || null,
+      latestVerificationStatus: recentOutcomes[0]?.verificationStatus || null,
+      latestUpdatedAt: recentOutcomes[0]?.updatedAt || null,
+    },
     deadlines: deadlines.map((d) => ({
       deadlineType: d.deadline_type,
       dueDate: d.due_date,

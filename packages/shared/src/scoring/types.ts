@@ -1,4 +1,5 @@
 import type { RequirementSetProvenanceMethod } from "../contracts/academic";
+import type { StudentOutcomeSummary } from "../contracts/outcomes";
 import type {
   ConfidenceLabel,
   EvidenceTruthSummary,
@@ -8,8 +9,62 @@ import type {
 export type TrajectoryStatus = "on_track" | "watch" | "at_risk";
 export type GapSeverity = "low" | "medium" | "high";
 export type ProficiencyBand = "none" | "basic" | "intermediate" | "advanced";
-export type EvidenceLevel = "strong" | "moderate" | "thin" | "missing";
+export type EvidenceLevel = "strong" | "moderate" | "weak" | "missing";
 export type AssessmentMode = "measured" | "provisional";
+export type EvidenceAssessmentStatus = "supported" | "partial" | "missing" | "uncertain";
+export type EvidenceCategory =
+  | "transcript"
+  | "academic_requirements"
+  | "resume"
+  | "experience_history"
+  | "project_proof_of_work"
+  | "target_role"
+  | "market_signals"
+  | "network_activity"
+  | "execution_activity"
+  | "application_outcome_activity"
+  | "student_profile"
+  | "parent_coach_context";
+export type EvidenceFlag =
+  | "unresolved"
+  | "inferred"
+  | "self_reported"
+  | "placeholder"
+  | "stale";
+
+export interface EvidenceSourceMetadata {
+  category: EvidenceCategory;
+  sourceType: string;
+  sourceId?: string | null;
+  sourceLabel: string;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+  reportedBy?: "student" | "parent" | "coach" | "admin" | "system" | null;
+  verificationState?: string | null;
+  confidenceLabel?: ConfidenceLabel | null;
+  truthStatus?: TruthStatus | null;
+  stale?: boolean;
+}
+
+export interface EvidenceAssessment {
+  category: EvidenceCategory;
+  strength: EvidenceLevel;
+  status: EvidenceAssessmentStatus;
+  confidenceLabel: ConfidenceLabel;
+  requiredEvidence: EvidenceCategory[];
+  availableEvidence: EvidenceCategory[];
+  missingEvidence: EvidenceCategory[];
+  weakEvidence: EvidenceCategory[];
+  inferredEvidence: EvidenceCategory[];
+  placeholderEvidence: EvidenceCategory[];
+  staleEvidence: EvidenceCategory[];
+  completenessPercent: number;
+  explanation: string;
+  evidenceNotes: string[];
+  recommendedEvidence: string[];
+  sourceMetadata: EvidenceSourceMetadata[];
+  sourceFlags: EvidenceFlag[];
+}
 
 export interface OccupationSkillRequirement {
   skillName: string;
@@ -69,6 +124,13 @@ export interface DeadlineEvidence {
   deadlineType: string;
   dueDate: string;
   completed?: boolean;
+}
+
+export interface OutcomeActivityEvidenceSummary {
+  summary: StudentOutcomeSummary;
+  latestReportedByRole?: "student" | "parent" | "coach" | "admin" | null;
+  latestVerificationStatus?: string | null;
+  latestUpdatedAt?: string | null;
 }
 
 export interface StudentSignals {
@@ -180,6 +242,7 @@ export interface StudentScoringInput {
   artifacts: ArtifactEvidence[];
   contacts: ContactEvidence[];
   outreach: OutreachEvidence[];
+  outcomes?: OutcomeActivityEvidenceSummary;
   deadlines?: DeadlineEvidence[];
   signals: StudentSignals;
 }
@@ -234,7 +297,16 @@ export interface SubScoreEvidenceDetail {
   score: number;
   status: "strong" | "developing" | "weak";
   evidenceLevel: EvidenceLevel;
+  evidenceStatus?: EvidenceAssessmentStatus;
   confidenceLabel: ConfidenceLabel;
+  requiredEvidence?: EvidenceCategory[];
+  availableEvidence?: EvidenceCategory[];
+  missingEvidence?: EvidenceCategory[];
+  weakEvidence?: EvidenceCategory[];
+  sourceFlags?: EvidenceFlag[];
+  evidenceNotes?: string[];
+  recommendedEvidence?: string[];
+  explanation?: string;
   interpretation: string;
   knownSignals: string[];
   missingSignals: string[];
@@ -244,6 +316,11 @@ export interface ScoringEvidenceQuality {
   overallEvidenceLevel: EvidenceLevel;
   confidenceLabel: ConfidenceLabel;
   assessmentMode: AssessmentMode;
+  categoryAssessments?: EvidenceAssessment[];
+  strongestEvidenceCategories?: EvidenceCategory[];
+  weakestEvidenceCategories?: EvidenceCategory[];
+  blockedByMissingEvidence?: EvidenceCategory[];
+  recommendedEvidenceActions?: string[];
   knownEvidence: string[];
   weakEvidence: string[];
   missingEvidence: string[];

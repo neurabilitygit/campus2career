@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { FieldInfoLabel } from "../forms/FieldInfoLabel";
 import { uploadFileViaSignedUrl } from "../../lib/storageUpload";
 
 export function FileUploadForm(props: {
@@ -44,17 +45,24 @@ export function FileUploadForm(props: {
   return (
     <div style={{ display: "grid", gap: 14 }}>
       <p style={{ margin: 0, color: "#52657d", lineHeight: 1.6 }}>{props.description}</p>
-      <input
-        type="file"
-        accept={props.accept}
-        onChange={(e) => setFile(e.target.files?.[0] || null)}
-        style={{
-          borderRadius: 16,
-          border: "1px solid rgba(73, 102, 149, 0.18)",
-          padding: "12px 14px",
-          background: "rgba(255,255,255,0.82)",
-        }}
-      />
+      <label style={{ display: "grid", gap: 6 }}>
+        <FieldInfoLabel
+          label="Choose document"
+          info="Pick the file you want the system to read and store."
+          example="Official transcript PDF"
+        />
+        <input
+          type="file"
+          accept={props.accept}
+          onChange={(e) => setFile(e.target.files?.[0] || null)}
+          style={{
+            borderRadius: 16,
+            border: "1px solid rgba(73, 102, 149, 0.18)",
+            padding: "12px 14px",
+            background: "rgba(255,255,255,0.82)",
+          }}
+        />
+      </label>
       {file ? (
         <div
           style={{
@@ -72,15 +80,7 @@ export function FileUploadForm(props: {
       ) : null}
       <button
         onClick={upload}
-        style={{
-          width: "fit-content",
-          border: "none",
-          borderRadius: 999,
-          padding: "13px 18px",
-          background: "linear-gradient(135deg, #155eef, #16a3ff)",
-          color: "#ffffff",
-          fontWeight: 800,
-        }}
+        className="ui-button ui-button--primary"
       >
         Upload document
       </button>

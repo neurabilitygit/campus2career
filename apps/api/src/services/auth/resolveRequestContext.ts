@@ -13,6 +13,10 @@ export interface RequestContext {
   studentProfileId: string | null;
   studentUserId: string | null;
   email?: string;
+  authenticatedFirstName?: string | null;
+  authenticatedLastName?: string | null;
+  studentFirstName?: string | null;
+  studentLastName?: string | null;
   testContextSwitchingEnabled?: boolean;
   testContextAllowedRoles?: Array<"student" | "parent" | "coach">;
   testContextOverrideRole?: "student" | "parent" | "coach" | null;
@@ -97,11 +101,13 @@ export async function resolveRequestContext(req: IncomingMessage): Promise<Reque
   // run shared lookup once
   const householdPromise = repo.resolveHouseholdStudentContextForUser(auth.userId);
   const studentProfilePromise = repo.resolveStudentProfileForStudentUser(auth.userId);
+  const authenticatedUserPromise = repo.resolveUserBasicInfo(auth.userId);
 
   if (resolvedRole === "student") {
-    let [student, household] = await Promise.all([
+    let [student, household, authenticatedUser] = await Promise.all([
       studentProfilePromise,
       householdPromise,
+      authenticatedUserPromise,
     ]);
 
     if (!student?.studentProfileId) {
@@ -125,15 +131,20 @@ export async function resolveRequestContext(req: IncomingMessage): Promise<Reque
         null,
       studentUserId: auth.userId,
       email: auth.email,
+      authenticatedFirstName: authenticatedUser?.firstName ?? null,
+      authenticatedLastName: authenticatedUser?.lastName ?? null,
+      studentFirstName: authenticatedUser?.firstName ?? household?.studentFirstName ?? null,
+      studentLastName: authenticatedUser?.lastName ?? household?.studentLastName ?? null,
       testContextSwitchingEnabled: testContextAllowed,
       testContextAllowedRoles: testContextAllowed ? ["student", "parent", "coach"] : [],
       testContextOverrideRole: requestedTestRole,
     };
   }
 
-  const [household, student] = await Promise.all([
+  const [household, student, authenticatedUser] = await Promise.all([
     householdPromise,
     studentProfilePromise,
+    authenticatedUserPromise,
   ]);
 
   return {
@@ -143,6 +154,10 @@ export async function resolveRequestContext(req: IncomingMessage): Promise<Reque
     studentProfileId: household?.studentProfileId ?? student?.studentProfileId ?? null,
     studentUserId: household?.studentUserId ?? auth.userId,
     email: auth.email,
+    authenticatedFirstName: authenticatedUser?.firstName ?? null,
+    authenticatedLastName: authenticatedUser?.lastName ?? null,
+    studentFirstName: household?.studentFirstName ?? null,
+    studentLastName: household?.studentLastName ?? null,
     testContextSwitchingEnabled: testContextAllowed,
     testContextAllowedRoles: testContextAllowed ? ["student", "parent", "coach"] : [],
     testContextOverrideRole: requestedTestRole,

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { AppShell } from "../../../components/layout/AppShell";
 import { SectionCard } from "../../../components/layout/SectionCard";
 import { RequireRole } from "../../../components/RequireRole";
+import { FieldInfoLabel } from "../../../components/forms/FieldInfoLabel";
 import { apiFetch } from "../../../lib/apiClient";
 
 const sectors = [
@@ -70,6 +71,13 @@ export default function OnboardingSectorsPage() {
           subtitle="Choose the areas that feel closest right now. You can refine this later after seeing the score and role options."
           tone="highlight"
         >
+          <div style={{ marginBottom: 14 }}>
+            <FieldInfoLabel
+              label="Career areas"
+              info="Choose the broad areas that feel closest right now."
+              example="Healthcare and Data & Analytics"
+            />
+          </div>
           <div
             style={{
               display: "grid",
@@ -106,15 +114,7 @@ export default function OnboardingSectorsPage() {
           <div style={{ marginTop: 18, display: "grid", gap: 10 }}>
             <button
               onClick={save}
-              style={{
-                width: "fit-content",
-                border: "none",
-                borderRadius: 999,
-                padding: "13px 18px",
-                background: "linear-gradient(135deg, #155eef, #16a3ff)",
-                color: "#ffffff",
-                fontWeight: 800,
-              }}
+              className="ui-button ui-button--primary"
             >
               Save and continue
             </button>

@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { AppShell } from "../../../components/layout/AppShell";
 import { SectionCard } from "../../../components/layout/SectionCard";
 import { RequireRole } from "../../../components/RequireRole";
+import { FieldInfoLabel } from "../../../components/forms/FieldInfoLabel";
 import { apiFetch } from "../../../lib/apiClient";
 import { uploadFileViaSignedUrl } from "../../../lib/storageUpload";
 import { useApiData } from "../../../hooks/useApiData";
@@ -235,7 +236,11 @@ function CatalogUploadPageInner() {
             </p>
 
             <label style={labelStyle}>
-              School
+              <FieldInfoLabel
+                label="School"
+                info="Use the institution this requirement document belongs to."
+                example="Harvard University"
+              />
               <input
                 style={inputStyle}
                 value={form.institutionDisplayName || form.institutionCanonicalName}
@@ -245,7 +250,11 @@ function CatalogUploadPageInner() {
             </label>
 
             <label style={labelStyle}>
-              Catalog label
+              <FieldInfoLabel
+                label="Catalog label"
+                info="Name the academic year or catalog edition for this document."
+                example="2026-2027"
+              />
               <input
                 style={inputStyle}
                 value={form.catalogLabel}
@@ -255,7 +264,11 @@ function CatalogUploadPageInner() {
             </label>
 
             <label style={labelStyle}>
-              Degree level
+              <FieldInfoLabel
+                label="Degree level"
+                info="Enter the level or degree type attached to this path."
+                example="Undergraduate"
+              />
               <input
                 style={inputStyle}
                 value={form.degreeType}
@@ -265,7 +278,11 @@ function CatalogUploadPageInner() {
             </label>
 
             <label style={labelStyle}>
-              Program group
+              <FieldInfoLabel
+                label="Program group"
+                info="Name the broader program grouping used by the school."
+                example="Undergraduate concentrations"
+              />
               <input
                 style={inputStyle}
                 value={form.programName}
@@ -275,7 +292,11 @@ function CatalogUploadPageInner() {
             </label>
 
             <label style={labelStyle}>
-              Requirement type
+              <FieldInfoLabel
+                label="Requirement type"
+                info="Tell the system whether the PDF describes a major or a minor."
+                example="Major"
+              />
               <select
                 style={inputStyle}
                 value={form.programKind}
@@ -289,7 +310,11 @@ function CatalogUploadPageInner() {
             </label>
 
             <label style={labelStyle}>
-              Major or minor name
+              <FieldInfoLabel
+                label="Major or minor name"
+                info="Use the exact academic path this PDF describes."
+                example="Philosophy"
+              />
               <input
                 style={inputStyle}
                 value={form.programDisplayName}
@@ -322,28 +347,27 @@ function CatalogUploadPageInner() {
           subtitle="Choose the official document that lists the courses or requirements for this path."
         >
           <div style={{ display: "grid", gap: 12 }}>
-            <input
-              type="file"
-              accept=".pdf,application/pdf"
-              onChange={(event) => setFile(event.target.files?.[0] || null)}
-              style={{
-                borderRadius: 16,
-                border: "1px solid rgba(73, 102, 149, 0.18)",
-                padding: "12px 14px",
-                background: "rgba(255,255,255,0.82)",
-              }}
-            />
+            <label style={{ display: "grid", gap: 6 }}>
+              <FieldInfoLabel
+                label="Requirement PDF"
+                info="Upload the official page or checklist that lists the courses or rules for this path."
+                example="Department requirement PDF for the philosophy major"
+              />
+              <input
+                type="file"
+                accept=".pdf,application/pdf"
+                onChange={(event) => setFile(event.target.files?.[0] || null)}
+                style={{
+                  borderRadius: 16,
+                  border: "1px solid rgba(73, 102, 149, 0.18)",
+                  padding: "12px 14px",
+                  background: "rgba(255,255,255,0.82)",
+                }}
+              />
+            </label>
             <button
               onClick={uploadAndExtract}
-              style={{
-                border: "none",
-                borderRadius: 14,
-                padding: "13px 18px",
-                background: "linear-gradient(135deg, #155eef, #16a3ff)",
-                color: "#ffffff",
-                fontWeight: 800,
-                cursor: "pointer",
-              }}
+              className="ui-button ui-button--primary"
             >
               Upload and extract
             </button>

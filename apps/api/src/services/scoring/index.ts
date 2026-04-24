@@ -7,11 +7,17 @@ import type {
   SkillGapItem,
   ProficiencyBand,
   SubScoreEvidenceDetail,
+  EvidenceCategory,
 } from "../../../../../packages/shared/src/scoring/types";
 import type { ConfidenceLabel } from "../../../../../packages/shared/src/contracts/truth";
 import { SKILL_LEXICON } from "../../../../../packages/shared/src/scoring/roleSkillLexicon";
 import { getRecommendationsForSkill } from "../../../../../packages/shared/src/scoring/recommendationCatalog";
 import { applyHeuristics } from "../heuristics";
+import {
+  buildEvidenceAssessments,
+  buildSubscoreEvidenceSummary,
+  summarizeOverallEvidence,
+} from "./evidenceIntegrity";
 
 const strengthToNumeric = {
   low: 0.35,
@@ -39,7 +45,7 @@ function scoreStatus(score: number): "strong" | "developing" | "weak" {
 function evidenceLevelRank(level: EvidenceLevel): number {
   if (level === "strong") return 4;
   if (level === "moderate") return 3;
-  if (level === "thin") return 2;
+  if (level === "weak") return 2;
   return 1;
 }
 
@@ -149,11 +155,11 @@ function roleAlignmentEvidenceLevel(input: StudentScoringInput): EvidenceLevel {
     input.targetResolution?.truthStatus === "fallback" ||
     input.occupationSkillTruth?.truthStatus === "fallback"
   ) {
-    return skillEvidenceSources >= 1 ? "thin" : "missing";
+    return skillEvidenceSources >= 1 ? "weak" : "missing";
   }
   if (skillEvidenceSources >= 4) return "strong";
   if (skillEvidenceSources >= 2) return "moderate";
-  if (skillEvidenceSources >= 1) return "thin";
+  if (skillEvidenceSources >= 1) return "weak";
   return "missing";
 }
 
@@ -190,7 +196,17 @@ function computeMarketDemand(input: StudentScoringInput): SubScoreEvidenceDetail
       score,
       status: scoreStatus(score),
       evidenceLevel: "missing",
+      evidenceStatus: "missing",
       confidenceLabel: "low",
+      requiredEvidence: ["market_signals", "target_role"],
+      availableEvidence: input.targetResolution ? ["target_role"] : [],
+      missingEvidence: ["market_signals"],
+      weakEvidence: [],
+      sourceFlags: [],
+      evidenceNotes: [],
+      recommendedEvidence: ["Load market signals for the target role", "Confirm target role"],
+      explanation:
+        "Market demand cannot be evaluated confidently because no persisted role-specific market signals are loaded.",
       interpretation: "No persisted market signals are loaded, so market demand is using a conservative baseline rather than role-specific evidence.",
       knownSignals: [],
       missingSignals: ["Role-specific labor market signals", "Recent demand or openings trend"],
@@ -241,18 +257,36 @@ function computeMarketDemand(input: StudentScoringInput): SubScoreEvidenceDetail
     (signals.some((signal) => signal.confidenceLevel === "high") ? "high" : "medium");
   const evidenceLevel =
     fallbackSignals
-      ? "thin"
+      ? "weak"
       : signals.length >= 3
         ? "strong"
         : signals.length >= 2
           ? "moderate"
-          : "thin";
+          : "weak";
 
   return {
     score: normalizedScore,
     status: scoreStatus(normalizedScore),
     evidenceLevel,
+    evidenceStatus:
+      evidenceLevel === "strong"
+        ? "supported"
+        : evidenceLevel === "moderate"
+          ? "partial"
+          : fallbackSignals
+            ? "uncertain"
+            : "partial",
     confidenceLabel,
+    requiredEvidence: ["market_signals", "target_role"],
+    availableEvidence: ["market_signals", "target_role"],
+    missingEvidence: fallbackSignals ? [] : [],
+    weakEvidence: evidenceLevel === "weak" ? ["market_signals"] : [],
+    sourceFlags: fallbackSignals ? ["placeholder"] : [],
+    evidenceNotes: fallbackSignals ? ["Available market inputs are seeded fallback signals."] : [],
+    recommendedEvidence: fallbackSignals ? ["Load market signals for the target role"] : [],
+    explanation: fallbackSignals
+      ? "Market demand is directionally useful, but the current market evidence is seeded fallback data rather than strong live signal coverage."
+      : `Market demand is supported by ${signals.length} imported signal${signals.length === 1 ? "" : "s"} for the target role.`,
     interpretation: fallbackSignals
       ? "Market demand is based on seeded or fallback signals, so this should be read as directional context rather than a firm market conclusion."
       : `Market demand reflects ${signals.length} imported signal${signals.length === 1 ? "" : "s"} for the target role.`,
@@ -266,23 +300,35 @@ function computeAcademicReadiness(input: StudentScoringInput): SubScoreEvidenceD
   const requirementProgress = input.requirementProgress;
 
   if (!transcript && !requirementProgress?.boundToCatalog) {
-    const score = 28;
+    const score = 50;
     return {
       score,
       status: scoreStatus(score),
       evidenceLevel: "missing",
+      evidenceStatus: "missing",
       confidenceLabel: "low",
+      requiredEvidence: ["transcript", "academic_requirements", "student_profile"],
+      availableEvidence: ["student_profile"],
+      missingEvidence: ["transcript", "academic_requirements"],
+      weakEvidence: [],
+      sourceFlags: ["unresolved"],
+      evidenceNotes: [],
+      recommendedEvidence: ["Upload transcript", "Confirm degree program"],
+      explanation:
+        "Academic readiness cannot be evaluated reliably because transcript and structured degree-requirement evidence are both missing.",
       interpretation: "Academic readiness is provisional because no parsed transcript and no structured requirement binding are available yet.",
       knownSignals: [],
       missingSignals: ["Parsed transcript", "Structured requirement binding"],
     };
   }
 
-  let score = 25;
-  let evidenceLevel: EvidenceLevel = "thin";
+  let score = 45;
+  let evidenceLevel: EvidenceLevel = "weak";
   let confidenceLabel: ConfidenceLabel = "low";
   const knownSignals: string[] = [];
   const missingSignals: string[] = [];
+  const sourceFlags: Array<"inferred" | "unresolved" | "placeholder" | "stale" | "self_reported"> = [];
+  const evidenceNotes: string[] = [];
 
   if (transcript) {
     score += 8;
@@ -303,8 +349,17 @@ function computeAcademicReadiness(input: StudentScoringInput): SubScoreEvidenceD
         ? "strong"
         : transcript.matchedCatalogCourseCount >= 3
           ? "moderate"
-          : "thin";
+          : "weak";
     confidenceLabel = transcript.extractionConfidenceLabel || confidenceLabel;
+    if (transcript.truthStatus === "inferred") {
+      sourceFlags.push("inferred");
+    }
+    if (transcript.institutionResolutionTruthStatus === "unresolved") {
+      sourceFlags.push("unresolved");
+    }
+    if (transcript.institutionResolutionNote) {
+      evidenceNotes.push(transcript.institutionResolutionNote);
+    }
   } else {
     missingSignals.push("Parsed transcript");
   }
@@ -327,17 +382,24 @@ function computeAcademicReadiness(input: StudentScoringInput): SubScoreEvidenceD
         ? "strong"
         : requirementProgress.truthStatus === "inferred"
           ? "moderate"
-          : requirementProgress.truthStatus === "fallback"
-            ? "thin"
+        : requirementProgress.truthStatus === "fallback"
+            ? "weak"
             : "missing"
     );
     confidenceLabel = minConfidence(confidenceLabel, requirementProgress.inferredConfidence);
+    if (requirementProgress.truthStatus === "inferred") {
+      sourceFlags.push("inferred");
+    }
+    if (requirementProgress.truthStatus === "fallback") {
+      sourceFlags.push("placeholder");
+    }
+    evidenceNotes.push(...(requirementProgress.coverageNotes || []));
   } else {
     missingSignals.push("Bound degree requirements");
   }
 
   if (!transcript || !requirementProgress?.boundToCatalog) {
-    score = Math.min(score, 58);
+    score = Math.max(Math.min(score, 62), 48);
   }
 
   const normalizedScore = clamp(Math.round(score));
@@ -345,7 +407,36 @@ function computeAcademicReadiness(input: StudentScoringInput): SubScoreEvidenceD
     score: normalizedScore,
     status: scoreStatus(normalizedScore),
     evidenceLevel,
+    evidenceStatus:
+      !transcript || !requirementProgress?.boundToCatalog
+        ? "uncertain"
+        : evidenceLevel === "strong"
+          ? "supported"
+          : evidenceLevel === "moderate"
+            ? "partial"
+            : "uncertain",
     confidenceLabel,
+    requiredEvidence: ["transcript", "academic_requirements", "student_profile"],
+    availableEvidence: [
+      ...(transcript ? ["transcript" as const] : []),
+      ...(requirementProgress?.boundToCatalog ? ["academic_requirements" as const] : []),
+      ...((input.preferredGeographies?.length || input.targetRoleFamily) ? ["student_profile" as const] : []),
+    ],
+    missingEvidence: [
+      ...(!transcript ? ["transcript" as const] : []),
+      ...(!requirementProgress?.boundToCatalog ? ["academic_requirements" as const] : []),
+    ],
+    weakEvidence: evidenceLevel === "weak" ? ["transcript", "academic_requirements"] : [],
+    sourceFlags: Array.from(new Set(sourceFlags)),
+    evidenceNotes: Array.from(new Set(evidenceNotes)).slice(0, 6),
+    recommendedEvidence: [
+      ...(!transcript ? ["Upload transcript"] : []),
+      ...(!requirementProgress?.boundToCatalog ? ["Confirm degree program"] : []),
+    ],
+    explanation:
+      !transcript || !requirementProgress?.boundToCatalog
+        ? "Academic readiness is only partially assessable because transcript and requirement evidence are incomplete."
+        : "Academic readiness is supported by transcript progress and structured degree requirements.",
     interpretation:
       !transcript || !requirementProgress?.boundToCatalog
         ? "Academic readiness is based on partial academic evidence and should be treated as provisional."
@@ -425,9 +516,9 @@ function computeSubScores(input: StudentScoringInput, gaps: SkillGapItem[]): {
         ? "medium"
         : "high";
   if (roleAlignmentEvidence === "missing") {
-    roleAlignment = Math.min(roleAlignment, 45);
-  } else if (roleAlignmentEvidence === "thin") {
-    roleAlignment = clamp(Math.round(50 + (roleAlignment - 50) * 0.65), 0, 70);
+    roleAlignment = Math.max(Math.min(roleAlignment, 58), 48);
+  } else if (roleAlignmentEvidence === "weak") {
+    roleAlignment = clamp(Math.round(52 + (roleAlignment - 52) * 0.65), 0, 72);
   }
   const experienceRoleRelevance = scoreExperienceRoleRelevance(input);
   const jobZoneAdjustment =
@@ -435,25 +526,34 @@ function computeSubScores(input: StudentScoringInput, gaps: SkillGapItem[]): {
     input.occupationMetadata?.jobZone === 4 ? -3 :
     input.occupationMetadata?.jobZone === 1 ? 3 : 0;
 
-  const experienceStrength = clamp(
-    (input.experiences.length * 18) +
-    input.experiences.reduce((a, e) => a + ((e.relevanceRating || 3) * 4), 0) +
-    (experienceRoleRelevance * 0.35) +
-    jobZoneAdjustment
-  );
+  const experienceStrength = input.experiences.length
+    ? clamp(
+        42 +
+          (input.experiences.length * 12) +
+          input.experiences.reduce((a, e) => a + ((e.relevanceRating || 3) * 3), 0) +
+          (experienceRoleRelevance * 0.25) +
+          jobZoneAdjustment
+      )
+    : 50;
 
-  const proofOfWorkStrength = clamp(
-    input.artifacts.length * 12 +
-    (input.signals.hasIndependentProjectBySeniorYear ? 25 : 0) +
-    (input.occupationMetadata?.jobZone === 5 ? -4 : 0)
-  );
+  const proofOfWorkStrength = input.artifacts.length
+    ? clamp(
+        40 +
+          input.artifacts.length * 10 +
+          (input.signals.hasIndependentProjectBySeniorYear ? 15 : 0) +
+          (input.occupationMetadata?.jobZone === 5 ? -4 : 0)
+      )
+    : 48;
 
-  const networkStrength = clamp(
-    (input.contacts.length * 6) +
-    (input.outreach.length * 4) +
-    (input.signals.hasFirstOrSecondDegreeProfessionalNetwork ? 20 : 0) +
-    (input.signals.hasCarefullyCultivatedMentors ? 20 : 0)
-  );
+  const networkStrength = input.contacts.length || input.outreach.length
+    ? clamp(
+        38 +
+          (input.contacts.length * 5) +
+          (input.outreach.length * 3) +
+          (input.signals.hasFirstOrSecondDegreeProfessionalNetwork ? 10 : 0) +
+          (input.signals.hasCarefullyCultivatedMentors ? 10 : 0)
+      )
+    : 48;
 
   const deadlineCount = input.deadlines?.length || 0;
   const completedDeadlineCount = (input.deadlines || []).filter((deadline) => deadline.completed).length;
@@ -470,15 +570,65 @@ function computeSubScores(input: StudentScoringInput, gaps: SkillGapItem[]): {
   const marketDemandDetail = computeMarketDemand(input);
   const marketDemand = marketDemandDetail.score;
 
+  const categoryAssessments = buildEvidenceAssessments(input);
+
+  function withEvidenceSummary(
+    detail: SubScoreEvidenceDetail,
+    requiredEvidence: EvidenceCategory[]
+  ): SubScoreEvidenceDetail {
+    const summary = buildSubscoreEvidenceSummary({
+      score: detail.score,
+      strength: detail.evidenceLevel,
+      confidenceLabel: detail.confidenceLabel,
+      requiredEvidence,
+      categoryAssessments,
+      defaultExplanation: detail.explanation || detail.interpretation,
+      knownSignals: detail.knownSignals,
+      missingSignals: detail.missingSignals,
+    });
+
+    return {
+      ...detail,
+      ...summary,
+      interpretation: summary.explanation || detail.explanation || detail.interpretation,
+    };
+  }
+
   const roleAlignmentDetail: SubScoreEvidenceDetail = {
     score: roleAlignment,
     status: scoreStatus(roleAlignment),
     evidenceLevel: roleAlignmentEvidence,
+    evidenceStatus:
+      roleAlignmentEvidence === "strong"
+        ? "supported"
+        : roleAlignmentEvidence === "moderate"
+          ? "partial"
+          : roleAlignmentEvidence === "weak"
+            ? "uncertain"
+            : "missing",
     confidenceLabel: roleAlignmentConfidence,
+    requiredEvidence: [],
+    availableEvidence: [],
+    missingEvidence: [],
+    weakEvidence: [],
+    sourceFlags:
+      roleAlignmentEvidence === "missing"
+        ? ["unresolved"]
+        : input.targetResolution?.truthStatus === "fallback" || input.occupationSkillTruth?.truthStatus === "fallback"
+          ? ["inferred"]
+          : [],
+    evidenceNotes: [],
+    recommendedEvidence: [],
+    explanation:
+      roleAlignmentEvidence === "missing"
+        ? "Role alignment cannot be evaluated reliably because the target role or role-skill map is not grounded strongly enough yet."
+        : roleAlignmentEvidence === "weak"
+          ? "Role alignment is directionally useful, but it still depends on inferred or fallback target evidence."
+          : "Role alignment reflects the current skill evidence against the resolved target role.",
     interpretation:
       roleAlignmentEvidence === "missing"
         ? "Role alignment is mostly unresolved because the target role or required skill map is still too weakly grounded."
-        : roleAlignmentEvidence === "thin"
+        : roleAlignmentEvidence === "weak"
           ? "Role alignment is directional only because the target or skill map still depends on fallback assumptions."
           : "Role alignment reflects the current skill evidence against the resolved target role.",
     knownSignals: [
@@ -493,10 +643,22 @@ function computeSubScores(input: StudentScoringInput, gaps: SkillGapItem[]): {
     status: scoreStatus(experienceStrength),
     evidenceLevel:
       input.experiences.length >= 3 ? "strong" : input.experiences.length >= 1 ? "moderate" : "missing",
+    evidenceStatus: input.experiences.length ? "supported" : "missing",
     confidenceLabel: input.experiences.length >= 2 ? "medium" : "low",
+    requiredEvidence: [],
+    availableEvidence: [],
+    missingEvidence: [],
+    weakEvidence: [],
+    sourceFlags: [],
+    evidenceNotes: [],
+    recommendedEvidence: [],
+    explanation:
+      input.experiences.length === 0
+        ? "Experience strength cannot be evaluated confidently because no structured experience history is stored yet."
+        : "Experience strength reflects stored experiences and how closely they map to top role skills.",
     interpretation:
       input.experiences.length === 0
-        ? "Experience strength is low because no structured experiences are stored yet."
+        ? "Experience strength is provisional because no structured experiences are stored yet."
         : "Experience strength reflects stored experiences and how closely they map to top role skills.",
     knownSignals: input.experiences.length ? [`${input.experiences.length} structured experience record(s)`] : [],
     missingSignals: input.experiences.length ? [] : ["Internship, job, research, or project experience records"],
@@ -507,15 +669,27 @@ function computeSubScores(input: StudentScoringInput, gaps: SkillGapItem[]): {
     status: scoreStatus(proofOfWorkStrength),
     evidenceLevel:
       input.artifacts.length >= 3 ? "strong" : input.artifacts.length >= 1 ? "moderate" : "missing",
+    evidenceStatus: input.artifacts.length ? "partial" : "missing",
     confidenceLabel:
       input.artifacts.some((artifact) => artifact.parseConfidenceLabel === "high")
         ? "medium"
         : input.artifacts.length
           ? "low"
           : "low",
+    requiredEvidence: [],
+    availableEvidence: [],
+    missingEvidence: [],
+    weakEvidence: [],
+    sourceFlags: input.artifacts.some((artifact) => artifact.parseTruthStatus === "placeholder") ? ["placeholder"] : [],
+    evidenceNotes: [],
+    recommendedEvidence: [],
+    explanation:
+      input.artifacts.length === 0
+        ? "Proof-of-work strength cannot be evaluated confidently because no portfolio or project evidence is stored yet."
+        : "Proof-of-work strength reflects visible uploaded artifacts, with lower confidence when parses are summary-only.",
     interpretation:
       input.artifacts.length === 0
-        ? "Proof-of-work strength is low because no portfolio or artifact evidence is stored yet."
+        ? "Proof-of-work strength is provisional because no portfolio or artifact evidence is stored yet."
         : "Proof-of-work strength reflects visible uploaded artifacts, with lower confidence when parses are summary-only.",
     knownSignals: input.artifacts.length ? [`${input.artifacts.length} artifact record(s)`] : [],
     missingSignals: input.artifacts.length ? [] : ["Portfolio, resume, project, or presentation artifacts"],
@@ -530,10 +704,22 @@ function computeSubScores(input: StudentScoringInput, gaps: SkillGapItem[]): {
         : input.contacts.length + input.outreach.length >= 1
           ? "moderate"
           : "missing",
+    evidenceStatus: input.contacts.length || input.outreach.length ? "partial" : "missing",
     confidenceLabel: input.contacts.length || input.outreach.length ? "medium" : "low",
+    requiredEvidence: [],
+    availableEvidence: [],
+    missingEvidence: [],
+    weakEvidence: [],
+    sourceFlags: [],
+    evidenceNotes: [],
+    recommendedEvidence: [],
+    explanation:
+      !input.contacts.length && !input.outreach.length
+        ? "Network strength cannot be evaluated confidently because no contact or outreach history is stored yet."
+        : "Network strength reflects stored contacts, mentorship warmth, and outreach activity.",
     interpretation:
       !input.contacts.length && !input.outreach.length
-        ? "Network strength is low because no contacts or outreach history are stored yet."
+        ? "Network strength is provisional because no contacts or outreach history are stored yet."
         : "Network strength reflects stored contacts, mentorship warmth, and outreach activity.",
     knownSignals: [
       ...(input.contacts.length ? [`${input.contacts.length} contact(s)`] : []),
@@ -546,7 +732,19 @@ function computeSubScores(input: StudentScoringInput, gaps: SkillGapItem[]): {
     score: executionMomentum,
     status: scoreStatus(executionMomentum),
     evidenceLevel: deadlineCount >= 4 ? "strong" : deadlineCount >= 1 ? "moderate" : "missing",
+    evidenceStatus: deadlineCount ? "partial" : "missing",
     confidenceLabel: deadlineCount >= 2 ? "medium" : "low",
+    requiredEvidence: [],
+    availableEvidence: [],
+    missingEvidence: [],
+    weakEvidence: [],
+    sourceFlags: [],
+    evidenceNotes: [],
+    recommendedEvidence: [],
+    explanation:
+      deadlineCount === 0
+        ? "Execution momentum is only partially assessable because no tracked deadlines are stored yet."
+        : "Execution momentum reflects deadline tracking and missed-deadline patterns rather than a generic optimistic default.",
     interpretation:
       deadlineCount === 0
         ? "Execution momentum is provisional because no tracked deadlines are stored yet."
@@ -566,13 +764,36 @@ function computeSubScores(input: StudentScoringInput, gaps: SkillGapItem[]): {
       executionMomentum,
     },
     subScoreDetails: {
-      roleAlignment: roleAlignmentDetail,
+      roleAlignment: withEvidenceSummary(roleAlignmentDetail, [
+        "target_role",
+        "student_profile",
+        "academic_requirements",
+        "transcript",
+        "experience_history",
+        "project_proof_of_work",
+      ]),
       marketDemand: marketDemandDetail,
-      academicReadiness: academicReadinessDetail,
-      experienceStrength: experienceDetail,
-      proofOfWorkStrength: proofOfWorkDetail,
-      networkStrength: networkDetail,
-      executionMomentum: executionDetail,
+      academicReadiness: withEvidenceSummary(academicReadinessDetail, [
+        "transcript",
+        "academic_requirements",
+        "student_profile",
+      ]),
+      experienceStrength: withEvidenceSummary(experienceDetail, [
+        "experience_history",
+        "resume",
+        "application_outcome_activity",
+        "target_role",
+      ]),
+      proofOfWorkStrength: withEvidenceSummary(proofOfWorkDetail, [
+        "project_proof_of_work",
+        "resume",
+        "target_role",
+      ]),
+      networkStrength: withEvidenceSummary(networkDetail, ["network_activity"]),
+      executionMomentum: withEvidenceSummary(executionDetail, [
+        "execution_activity",
+        "application_outcome_activity",
+      ]),
     },
   };
 }
@@ -605,6 +826,7 @@ export function runScoring(input: StudentScoringInput): ScoringOutput {
   const skillGaps = buildSkillGaps(input);
   const heuristicFlags = applyHeuristics(input, skillGaps);
   const { subScores, subScoreDetails } = computeSubScores(input, skillGaps);
+  const categoryAssessments = buildEvidenceAssessments(input);
   const criticalFlags = heuristicFlags.filter((f) => f.severity === "critical").length;
   const trajectoryStatus = deriveTrajectoryStatus(subScores, criticalFlags, input.signals, input);
 
@@ -626,10 +848,10 @@ export function runScoring(input: StudentScoringInput): ScoringOutput {
 
   const missingEvidence = Object.entries(subScoreDetails)
     .filter(([, detail]) => detail.evidenceLevel === "missing")
-    .map(([key, detail]) => `${key}: ${detail.missingSignals[0] || detail.interpretation}`);
+    .map(([key, detail]) => `${key}: ${detail.missingSignals[0] || detail.explanation || detail.interpretation}`);
   const weakEvidence = Object.entries(subScoreDetails)
-    .filter(([, detail]) => detail.evidenceLevel === "thin" || detail.evidenceLevel === "moderate")
-    .map(([key, detail]) => `${key}: ${detail.interpretation}`);
+    .filter(([, detail]) => detail.evidenceLevel === "weak" || detail.evidenceLevel === "moderate")
+    .map(([key, detail]) => `${key}: ${detail.explanation || detail.interpretation}`);
   const knownEvidence = Object.entries(subScoreDetails)
     .filter(([, detail]) => detail.knownSignals.length > 0)
     .map(([, detail]) => detail.knownSignals.join(", "));
@@ -639,13 +861,14 @@ export function runScoring(input: StudentScoringInput): ScoringOutput {
       : missingEvidence.length >= 2 ||
           (missingEvidence.length >= 1 && weakEvidence.length >= 4) ||
           (weakEvidence.length >= 6 && knownEvidence.length < 5)
-        ? "thin"
+        ? "weak"
         : weakEvidence.length >= 1 || missingEvidence.length >= 1
           ? "moderate"
           : "strong";
   const assessmentMode: AssessmentMode = overallEvidenceLevel === "strong" || overallEvidenceLevel === "moderate"
     ? "measured"
     : "provisional";
+  const evidenceSummary = summarizeOverallEvidence(categoryAssessments);
   const evidenceQuality = {
     overallEvidenceLevel,
     confidenceLabel:
@@ -655,6 +878,11 @@ export function runScoring(input: StudentScoringInput): ScoringOutput {
           ? "medium"
           : "low",
     assessmentMode,
+    categoryAssessments,
+    strongestEvidenceCategories: evidenceSummary.strongestEvidenceCategories,
+    weakestEvidenceCategories: evidenceSummary.weakestEvidenceCategories,
+    blockedByMissingEvidence: evidenceSummary.blockedByMissingEvidence,
+    recommendedEvidenceActions: evidenceSummary.recommendedEvidenceActions,
     knownEvidence: Array.from(new Set(knownEvidence)).slice(0, 8),
     weakEvidence: weakEvidence.slice(0, 8),
     missingEvidence: missingEvidence.slice(0, 8),
@@ -675,11 +903,19 @@ export function runScoring(input: StudentScoringInput): ScoringOutput {
   if (evidenceQuality.overallEvidenceLevel === "strong" || evidenceQuality.overallEvidenceLevel === "moderate") {
     topStrengths.push("The current score is grounded in a meaningful amount of stored evidence");
   }
+  if (evidenceQuality.strongestEvidenceCategories.length) {
+    topStrengths.push(
+      `Strongest evidence areas: ${evidenceQuality.strongestEvidenceCategories
+        .slice(0, 3)
+        .map((item) => item.replace(/_/g, " "))
+        .join(", ")}`
+    );
+  }
 
   const topRisks: string[] = [
-    ...(assessmentMode === "provisional"
-      ? ["The current score is provisional because several evidence areas are still thin or missing"]
-      : []),
+      ...(assessmentMode === "provisional"
+        ? ["The current score is provisional because several evidence areas are still weak or missing"]
+        : []),
     ...heuristicFlags
       .filter((f) => f.severity !== "info")
       .map((f) => f.title),
@@ -701,6 +937,14 @@ export function runScoring(input: StudentScoringInput): ScoringOutput {
   if (input.requirementProgress?.missingRequiredCourses.length) {
     topRisks.push(
       `Missing or unmapped core requirements include ${input.requirementProgress.missingRequiredCourses.slice(0, 3).join(", ")}`
+    );
+  }
+  if (evidenceQuality.blockedByMissingEvidence.length) {
+    topRisks.push(
+      `Missing evidence is limiting confidence in ${evidenceQuality.blockedByMissingEvidence
+        .slice(0, 2)
+        .map((item) => item.replace(/_/g, " "))
+        .join(" and ")}`
     );
   }
 

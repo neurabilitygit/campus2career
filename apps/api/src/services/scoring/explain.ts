@@ -32,6 +32,9 @@ export interface ScoreExplanationResult {
     weak: string[];
     missing: string[];
     assessmentMode: "measured" | "provisional";
+    strongestCategories?: string[];
+    weakestCategories?: string[];
+    recommendedEvidenceActions?: string[];
   };
   immediateActions: string[];
   counterfactual?: {
@@ -177,6 +180,13 @@ function buildEvidenceSummary(input: StudentScoringInput, scoring: ScoringOutput
     weak: scoring.evidenceQuality.weakEvidence,
     missing: scoring.evidenceQuality.missingEvidence,
     assessmentMode: scoring.evidenceQuality.assessmentMode,
+    strongestCategories: (scoring.evidenceQuality.strongestEvidenceCategories || []).map((item) =>
+      titleCase(item)
+    ),
+    weakestCategories: (scoring.evidenceQuality.weakestEvidenceCategories || []).map((item) =>
+      titleCase(item)
+    ),
+    recommendedEvidenceActions: scoring.evidenceQuality.recommendedEvidenceActions || [],
   };
 }
 
@@ -247,7 +257,7 @@ export function explainScore(input: {
   const summaryHeadline = `${titleCase(input.selectedScoring.targetRoleFamily)} is currently ${titleCase(input.selectedScoring.trajectoryStatus)} at ${input.selectedScoring.overallScore}/100`;
   const summaryText = [
     input.selectedScoring.evidenceQuality.assessmentMode === "provisional"
-      ? "This is a provisional readiness read because several evidence areas are still missing or thin."
+      ? "This is a provisional readiness read because several evidence areas are still missing or weak."
       : null,
     topStrength ? `${topStrength.label} is helping most right now.` : null,
     topGap ? `${topGap.label} is the biggest drag on the score.` : null,

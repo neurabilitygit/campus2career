@@ -12,6 +12,19 @@ export interface ParentBriefInput {
   upcomingDeadlines: string[];
   parentVisibleInsights: string[];
   truthNotes?: string[];
+  evidenceSummary?: {
+    assessmentMode: "measured" | "provisional";
+    overallEvidenceLevel: string;
+    strongestEvidenceCategories: string[];
+    weakestEvidenceCategories: string[];
+    blockedByMissingEvidence: string[];
+    recommendedEvidenceActions: string[];
+  };
+  coachSummary?: {
+    recommendationTitles: string[];
+    actionTitles: string[];
+    flagTitles: string[];
+  };
 }
 
 export interface ParentBriefGenerationResult {
@@ -22,7 +35,7 @@ export interface ParentBriefGenerationResult {
 
 const PARENT_BRIEF_PROVIDER_TIMEOUT_MS = 12000;
 
-function buildSystemPrompt(): string {
+export function buildSystemPrompt(): string {
   return [
     "You are the Rising Senior parent brief writer.",
     "Audience: a parent paying for a parent-first career intelligence platform.",
@@ -40,7 +53,7 @@ function buildSystemPrompt(): string {
   ].join("\n");
 }
 
-function buildUserPrompt(input: ParentBriefInput): string {
+export function buildUserPrompt(input: ParentBriefInput): string {
   return [
     `Student name: ${input.studentName}`,
     `Month: ${input.monthLabel}`,
@@ -55,7 +68,11 @@ function buildUserPrompt(input: ParentBriefInput): string {
     `Accomplishments this month: ${input.accomplishments.join("; ") || "None recorded"}`,
     `Upcoming deadlines: ${input.upcomingDeadlines.join("; ") || "None recorded"}`,
     `Parent-visible insights: ${input.parentVisibleInsights.join("; ") || "None recorded"}`,
+    `Visible coach recommendations: ${input.coachSummary?.recommendationTitles.join("; ") || "None recorded"}`,
+    `Visible coach action items: ${input.coachSummary?.actionTitles.join("; ") || "None recorded"}`,
+    `Visible coach flags: ${input.coachSummary?.flagTitles.join("; ") || "None recorded"}`,
     `Truth and confidence notes: ${input.truthNotes?.join("; ") || "None"}`,
+    `Evidence integrity: assessment mode ${input.evidenceSummary?.assessmentMode || "unknown"}; overall evidence ${input.evidenceSummary?.overallEvidenceLevel || "unknown"}; strongest evidence ${input.evidenceSummary?.strongestEvidenceCategories.join("; ") || "None"}; weak evidence ${input.evidenceSummary?.weakestEvidenceCategories.join("; ") || "None"}; blocked by missing evidence ${input.evidenceSummary?.blockedByMissingEvidence.join("; ") || "None"}; recommended evidence actions ${input.evidenceSummary?.recommendedEvidenceActions.join("; ") || "None"}`,
     "Write the monthly brief."
   ].join("\n");
 }
@@ -82,6 +99,8 @@ export async function generateParentBrief(input: ParentBriefInput): Promise<Pare
               topStrengths: input.scoring.topStrengths,
               recommendationTitles: input.scoring.recommendations.map((item) => item.title),
               truthNotes: input.truthNotes || [],
+              evidenceSummary: input.evidenceSummary || null,
+              coachSummary: input.coachSummary || null,
             },
           }
         : undefined,
@@ -99,6 +118,15 @@ export async function generateParentBrief(input: ParentBriefInput): Promise<Pare
         `Accomplishments: ${input.accomplishments.join("; ") || "No accomplishments recorded this month."}`,
         `Strengths: ${input.scoring.topStrengths.join("; ") || "No strengths have been surfaced clearly yet."}`,
         `Gaps and risks: ${input.scoring.topRisks.join("; ") || "No major risks listed."}`,
+        `Visible coach inputs: ${[
+          ...(input.coachSummary?.recommendationTitles || []),
+          ...(input.coachSummary?.actionTitles || []),
+          ...(input.coachSummary?.flagTitles || []),
+        ].join("; ") || "No visible coach inputs were recorded."}`,
+        `Evidence confidence: ${input.evidenceSummary?.assessmentMode || "unknown"} read with overall evidence ${input.evidenceSummary?.overallEvidenceLevel || "unknown"}. Missing or weak evidence areas: ${[
+          ...(input.evidenceSummary?.weakestEvidenceCategories || []),
+          ...(input.evidenceSummary?.blockedByMissingEvidence || []),
+        ].join("; ") || "None noted"}.`,
         `Recommended parent actions: ${input.scoring.recommendations.slice(0, 3).map((item) => item.title).join("; ") || "Review the current dashboard and clarify the student's top priority for the month."}`,
         `Upcoming deadlines and decision points: ${input.upcomingDeadlines.join("; ") || "No deadlines were recorded."}`,
         `Fallback note: AI-generated narrative was unavailable, so this brief was assembled from live scoring and stored student data. Provider detail: ${providerMessage}`,

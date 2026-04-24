@@ -90,7 +90,7 @@ function baseScoring(overrides: Partial<ScoringOutput> = {}): ScoringOutput {
       roleAlignment: {
         score: 42,
         status: "weak",
-        evidenceLevel: "thin",
+        evidenceLevel: "weak",
         confidenceLabel: "medium",
         interpretation: "Thin evidence for alignment.",
         knownSignals: [],
@@ -108,7 +108,7 @@ function baseScoring(overrides: Partial<ScoringOutput> = {}): ScoringOutput {
       academicReadiness: {
         score: 38,
         status: "weak",
-        evidenceLevel: "thin",
+        evidenceLevel: "weak",
         confidenceLabel: "medium",
         interpretation: "Academic support is still limited.",
         knownSignals: [],
@@ -117,7 +117,7 @@ function baseScoring(overrides: Partial<ScoringOutput> = {}): ScoringOutput {
       experienceStrength: {
         score: 28,
         status: "weak",
-        evidenceLevel: "thin",
+        evidenceLevel: "weak",
         confidenceLabel: "medium",
         interpretation: "Experience remains limited.",
         knownSignals: [],
@@ -126,7 +126,7 @@ function baseScoring(overrides: Partial<ScoringOutput> = {}): ScoringOutput {
       proofOfWorkStrength: {
         score: 20,
         status: "weak",
-        evidenceLevel: "thin",
+        evidenceLevel: "weak",
         confidenceLabel: "medium",
         interpretation: "Proof of work remains limited.",
         knownSignals: [],
@@ -135,7 +135,7 @@ function baseScoring(overrides: Partial<ScoringOutput> = {}): ScoringOutput {
       networkStrength: {
         score: 30,
         status: "weak",
-        evidenceLevel: "thin",
+        evidenceLevel: "weak",
         confidenceLabel: "medium",
         interpretation: "Network remains limited.",
         knownSignals: [],
@@ -166,7 +166,7 @@ function baseScoring(overrides: Partial<ScoringOutput> = {}): ScoringOutput {
       },
     ],
     evidenceQuality: {
-      overallEvidenceLevel: "thin",
+      overallEvidenceLevel: "weak",
       confidenceLabel: "medium",
       assessmentMode: "provisional",
       knownEvidence: [],

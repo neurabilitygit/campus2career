@@ -12,8 +12,8 @@ export function SectionCard(props: {
     props.tone === "highlight"
       ? {
           background:
-            "linear-gradient(180deg, rgba(248, 251, 255, 0.98), rgba(240, 247, 255, 0.96))",
-          border: "1px solid rgba(21, 94, 239, 0.16)",
+            "linear-gradient(180deg, color-mix(in srgb, var(--role-soft, #eef3f8) 82%, white), rgba(255, 255, 255, 0.98))",
+          border: "1px solid color-mix(in srgb, var(--role-accent, #155eef) 18%, white)",
         }
       : props.tone === "warm"
         ? {
@@ -59,8 +59,8 @@ export function SectionCard(props: {
                 width: "fit-content",
                 padding: "6px 10px",
                 borderRadius: 999,
-                background: "rgba(21, 94, 239, 0.08)",
-                color: "#155eef",
+                background: "color-mix(in srgb, var(--role-soft, #eef3f8) 90%, white)",
+                color: "var(--role-accent, #155eef)",
                 fontSize: 12,
                 fontWeight: 800,
                 textTransform: "uppercase",
