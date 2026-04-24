@@ -153,8 +153,9 @@ const topics: HelpTopic[] = [
     youNeed: "The school, major, and ideally a structured catalog or official requirement document.",
     howToUse: [
       "Start in Student profile and choose the institution when available.",
+      "The system now checks seeded data first, then tries school-site discovery, then LLM-assisted recovery, and finally manual entry or PDF upload when automation is still weak.",
       "If the system cannot find a reliable catalog path, upload an official program PDF.",
-      "Review Evidence later to confirm whether the requirement graph is bound and complete.",
+      "Review the Academic Evidence card and Degree Requirements Review card later to confirm whether the requirement graph is bound, complete, and visually verified.",
     ],
     output: "A more credible academic-progress read tied to real program requirements.",
     mistakes: [
@@ -171,7 +172,8 @@ const topics: HelpTopic[] = [
     whenToUse: "Use this when curriculum information appears on the dashboard or when the dashboard warns that requirements are missing or unverified.",
     youNeed: "A saved school path plus either discovered requirements or an uploaded degree-requirement PDF.",
     howToUse: [
-      "Open the Degree Requirements Review card from the dashboard.",
+      "Open the Academic Evidence card from the dashboard first to see which source produced the current curriculum path.",
+      "Then open the Degree Requirements Review card from the dashboard.",
       "Inspect the institution, program, major, catalog year, requirement groups, and parsing notes.",
       "If requirements are missing, ask the system to populate them or upload an official program PDF.",
       "Only check the verification box after the curriculum looks complete enough to use for scoring.",

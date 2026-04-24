@@ -13,6 +13,9 @@ Design goals:
 ## File layout
 
 - `scenario-matrix.v1.json` - 12 scenario cards in a single repo-ready payload
+- `academic-discovery-seed-ivy-suny.v1.json` - legacy controlled catalog seed set
+- `academic-discovery-smoke.v1.json` - smaller academic discovery smoke-test set
+- `academic-discovery-top50-manifest.v1.json` - curated top-50 university expansion manifest with official program/catalog URL hints
 
 ## Intended use
 
@@ -25,6 +28,23 @@ flows:
 - `transcript` -> structured transcript seed or transcript extraction input
 - `contacts`, `outreach`, `deadlines`, `experiences`, `artifacts` -> seed inputs
 - `expectedAssertions` -> golden checks for scoring, curriculum binding, and guidance
+
+The academic discovery manifests are intended for controlled expansion scripts:
+
+- `pnpm academic:discover:seed:ivy-suny`
+- `pnpm academic:discover:seed:top50`
+- `pnpm academic:review:top50`
+
+The top-50 runner defaults to a dry run. Use `-- --apply` to allow writes, and add
+`-- --include-requirements` only when you want the runner to attempt requirement discovery
+after offerings discovery.
+
+The top-50 review runner is read-only. It classifies each school into operational buckets such as:
+
+- `ready_to_seed`
+- `offerings_noisy`
+- `requirements_pdf_likely`
+- `manual_adapter_recommended`
 
 ## Important note
 

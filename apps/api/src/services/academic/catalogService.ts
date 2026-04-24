@@ -92,7 +92,16 @@ export async function upsertDegreeProgram(input: DegreeProgramInput) {
   return degreeProgramId;
 }
 
-export async function upsertMajor(input: MajorInput) {
+export async function upsertMajor(
+  input: MajorInput & {
+    provenanceMethod?: "direct_scrape" | "artifact_pdf" | "manual" | "llm_assisted" | "synthetic_seed";
+    sourceUrl?: string;
+    sourceNote?: string;
+    confidenceLabel?: "low" | "medium" | "high";
+    truthStatus?: "direct" | "inferred" | "placeholder" | "fallback" | "unresolved";
+    discoveredAt?: string;
+  }
+) {
   const institution = await repo.getInstitutionByCanonicalName(input.institutionCanonicalName);
   if (!institution) {
     throw new Error(`Institution not found: ${input.institutionCanonicalName}`);
@@ -125,6 +134,12 @@ export async function upsertMajor(input: MajorInput) {
     cipCode: input.cipCode ?? null,
     departmentName: input.departmentName ?? null,
     isActive: true,
+    provenanceMethod: input.provenanceMethod ?? "manual",
+    sourceUrl: input.sourceUrl ?? null,
+    sourceNote: input.sourceNote ?? null,
+    confidenceLabel: input.confidenceLabel ?? null,
+    truthStatus: input.truthStatus ?? "direct",
+    discoveredAt: input.discoveredAt ?? null,
   });
 
   return majorId;
@@ -138,6 +153,12 @@ export async function upsertMinor(input: {
   canonicalName: string;
   displayName: string;
   departmentName?: string;
+  provenanceMethod?: "direct_scrape" | "artifact_pdf" | "manual" | "llm_assisted" | "synthetic_seed";
+  sourceUrl?: string;
+  sourceNote?: string;
+  confidenceLabel?: "low" | "medium" | "high";
+  truthStatus?: "direct" | "inferred" | "placeholder" | "fallback" | "unresolved";
+  discoveredAt?: string;
 }) {
   const institution = await repo.getInstitutionByCanonicalName(input.institutionCanonicalName);
   if (!institution) {
@@ -170,9 +191,65 @@ export async function upsertMinor(input: {
     displayName: input.displayName,
     departmentName: input.departmentName ?? null,
     isActive: true,
+    provenanceMethod: input.provenanceMethod ?? "manual",
+    sourceUrl: input.sourceUrl ?? null,
+    sourceNote: input.sourceNote ?? null,
+    confidenceLabel: input.confidenceLabel ?? null,
+    truthStatus: input.truthStatus ?? "direct",
+    discoveredAt: input.discoveredAt ?? null,
   });
 
   return minorId;
+}
+
+export async function upsertConcentration(input: {
+  institutionCanonicalName: string;
+  catalogLabel: string;
+  degreeType: string;
+  programName: string;
+  majorCanonicalName: string;
+  canonicalName: string;
+  displayName: string;
+}) {
+  const institution = await repo.getInstitutionByCanonicalName(input.institutionCanonicalName);
+  if (!institution) {
+    throw new Error(`Institution not found: ${input.institutionCanonicalName}`);
+  }
+
+  const catalog = await repo.getAcademicCatalog(institution.institution_id, input.catalogLabel);
+  if (!catalog) {
+    throw new Error(`Academic catalog not found: ${input.catalogLabel}`);
+  }
+
+  const degreeProgram = await repo.getDegreeProgram(
+    catalog.academic_catalog_id,
+    input.degreeType,
+    input.programName
+  );
+  if (!degreeProgram) {
+    throw new Error(`Degree program not found: ${input.degreeType} ${input.programName}`);
+  }
+
+  const major = await repo.getMajor(degreeProgram.degree_program_id, input.majorCanonicalName);
+  if (!major) {
+    throw new Error(`Major not found: ${input.majorCanonicalName}`);
+  }
+
+  const concentrationId = stableId(
+    "concentration",
+    `${normalizeKeyPart(input.institutionCanonicalName)}:${normalizeKeyPart(input.catalogLabel)}:${normalizeKeyPart(input.degreeType)}:${normalizeKeyPart(input.programName)}:${normalizeKeyPart(input.majorCanonicalName)}:${normalizeKeyPart(input.canonicalName)}`
+  );
+
+  await repo.upsertConcentration({
+    concentrationId,
+    majorId: major.major_id,
+    canonicalName: input.canonicalName,
+    displayName: input.displayName,
+    provenanceMethod: "manual",
+    truthStatus: "direct",
+  });
+
+  return concentrationId;
 }
 
 export async function assignStudentCatalog(input: StudentCatalogAssignmentInput) {
@@ -250,6 +327,9 @@ export async function assignStudentCatalog(input: StudentCatalogAssignmentInput)
     concentrationId,
     assignmentSource: input.assignmentSource,
     isPrimary: input.isPrimary ?? true,
+    selectedByUserId: undefined,
+    selectedAt: new Date().toISOString(),
+    selectionStatus: input.assignmentSource === "student_selected" ? "selected" : "needs_review",
   });
 
   return assignmentId;
@@ -435,6 +515,10 @@ export async function upsertRequirementSet(input: RequirementSetInput) {
     provenanceMethod: input.provenanceMethod ?? null,
     sourceUrl: input.sourceUrl ?? null,
     sourceNote: input.sourceNote ?? null,
+    confidenceLabel: input.confidenceLabel ?? null,
+    truthStatus: input.truthStatus ?? "unresolved",
+    reasonablenessStatus: input.reasonablenessStatus ?? "needs_review",
+    reasonablenessNotes: input.reasonablenessNotes ?? null,
   });
 
   return requirementSetId;
@@ -631,6 +715,10 @@ export async function getRequirementSetGraphByMajor(input: {
     provenanceMethod: requirementSet.provenance_method,
     sourceUrl: requirementSet.source_url,
     sourceNote: requirementSet.source_note,
+    confidenceLabel: requirementSet.confidence_label,
+    truthStatus: requirementSet.truth_status,
+    reasonablenessStatus: requirementSet.reasonableness_status,
+    reasonablenessNotes: requirementSet.reasonableness_notes,
     groups: groupGraph,
   };
 }

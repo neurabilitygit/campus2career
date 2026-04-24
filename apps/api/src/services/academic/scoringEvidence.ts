@@ -206,6 +206,8 @@ export async function buildAcademicScoringEvidence(studentProfileId: string): Pr
         missingRequiredCourses: [],
         inferredConfidence: transcriptSummary ? "low" : "low",
         truthStatus: "unresolved",
+        reasonablenessStatus: null,
+        reasonablenessNotes: null,
         manualRequirementItemCount: 0,
         nonCourseRequirementItemCount: 0,
         excludedRequirementGroupCount: 0,
@@ -273,6 +275,12 @@ export async function buildAcademicScoringEvidence(studentProfileId: string): Pr
   if (requirementGraph.provenanceMethod === "llm_assisted") {
     coverageNotes.push("The requirement graph includes LLM-assisted extraction and should be reviewed against the source catalog.");
   }
+  if (requirementGraph.reasonablenessStatus && requirementGraph.reasonablenessStatus !== "succeeded") {
+    coverageNotes.push(
+      requirementGraph.reasonablenessNotes ||
+        "The requirement graph still needs review because the discovered curriculum source may be incomplete."
+    );
+  }
 
   return {
     transcript: transcriptSummary,
@@ -307,6 +315,8 @@ export async function buildAcademicScoringEvidence(studentProfileId: string): Pr
           : requirementGraph.provenanceMethod === "llm_assisted"
             ? "inferred"
             : "direct",
+      reasonablenessStatus: requirementGraph.reasonablenessStatus ?? null,
+      reasonablenessNotes: requirementGraph.reasonablenessNotes ?? null,
       manualRequirementItemCount,
       nonCourseRequirementItemCount,
       excludedRequirementGroupCount,

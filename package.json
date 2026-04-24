@@ -23,6 +23,8 @@
     "synthetic:run": "pnpm --dir apps/api synthetic:run",
     "academic:discover:smoke": "pnpm --dir apps/api academic:discover:smoke",
     "academic:discover:seed:ivy-suny": "pnpm --dir apps/api academic:discover:seed",
+    "academic:discover:seed:top50": "pnpm --dir apps/api academic:discover:top50",
+    "academic:review:top50": "pnpm --dir apps/api academic:review:top50",
     "verify:ci": "pnpm typecheck && pnpm db:migrate && pnpm db:seed:ci && pnpm synthetic:run"
   },
   "devDependencies": {

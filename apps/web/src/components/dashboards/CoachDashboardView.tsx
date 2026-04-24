@@ -9,6 +9,7 @@ import { KeyValueList } from "../layout/KeyValueList";
 import { RequireRole } from "../RequireRole";
 import { FieldInfoLabel } from "../forms/FieldInfoLabel";
 import { CurriculumVerificationSection } from "../academic/CurriculumVerificationSection";
+import { AcademicEvidenceSection } from "../academic/AcademicEvidenceSection";
 import { useApiData } from "../../hooks/useApiData";
 import { apiFetch } from "../../lib/apiClient";
 import { useSaveNavigation } from "../../lib/saveNavigation";
@@ -1011,6 +1012,13 @@ export default function CoachDashboardView() {
                 {actionState.success ? <p style={{ color: "#166534", margin: 0 }}>{actionState.success}</p> : null}
               </div>
         </SectionCard>
+
+        {workspaceData ? (
+          <AcademicEvidenceSection
+            mode="coach"
+            selectedStudentProfileId={selectedStudentProfileId}
+          />
+        ) : null}
 
         {workspaceData ? (
           <CurriculumVerificationSection

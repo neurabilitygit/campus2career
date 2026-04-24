@@ -395,6 +395,18 @@ function computeAcademicReadiness(input: StudentScoringInput): SubScoreEvidenceD
       sourceFlags.push("placeholder");
     }
     evidenceNotes.push(...(requirementProgress.coverageNotes || []));
+    if (
+      requirementProgress.reasonablenessStatus &&
+      requirementProgress.reasonablenessStatus !== "succeeded"
+    ) {
+      sourceFlags.push("unresolved");
+      missingSignals.push("Confirmed degree-requirement quality");
+      confidenceLabel = minConfidence(confidenceLabel, "low");
+      evidenceLevel = minEvidenceLevel(evidenceLevel, "weak");
+      if (requirementProgress.reasonablenessNotes) {
+        evidenceNotes.push(requirementProgress.reasonablenessNotes);
+      }
+    }
     if (!curriculumVerified) {
       sourceFlags.push("unresolved");
       missingSignals.push("Visual curriculum verification");

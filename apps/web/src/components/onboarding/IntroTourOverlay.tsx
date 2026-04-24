@@ -8,6 +8,59 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
 }
 
+function resolveConnector(
+  target: HTMLElement | null,
+  placement: IntroTourStepConfig["placement"],
+  panelPosition: { top: number; left: number; width: number }
+) {
+  if (!target || placement === "center") {
+    return null;
+  }
+
+  const estimatedPanelHeight = 260;
+  const rect = target.getBoundingClientRect();
+  const targetCenterX = rect.left + rect.width / 2;
+  const targetCenterY = rect.top + rect.height / 2;
+  const panelLeft = panelPosition.left;
+  const panelRight = panelPosition.left + panelPosition.width;
+  const panelTop = panelPosition.top;
+  const panelBottom = panelPosition.top + estimatedPanelHeight;
+  const panelCenterX = panelLeft + panelPosition.width / 2;
+  const panelCenterY = panelTop + estimatedPanelHeight / 2;
+
+  switch (placement) {
+    case "top":
+      return {
+        x1: clamp(targetCenterX, panelLeft + 24, panelRight - 24),
+        y1: panelBottom,
+        x2: targetCenterX,
+        y2: rect.top,
+      };
+    case "left":
+      return {
+        x1: panelRight,
+        y1: clamp(targetCenterY, panelTop + 28, panelBottom - 28),
+        x2: rect.left,
+        y2: targetCenterY,
+      };
+    case "right":
+      return {
+        x1: panelLeft,
+        y1: clamp(targetCenterY, panelTop + 28, panelBottom - 28),
+        x2: rect.right,
+        y2: targetCenterY,
+      };
+    case "bottom":
+    default:
+      return {
+        x1: clamp(targetCenterX, panelLeft + 24, panelRight - 24),
+        y1: panelTop,
+        x2: targetCenterX,
+        y2: rect.bottom,
+      };
+  }
+}
+
 function resolvePanelPosition(target: HTMLElement | null, placement: IntroTourStepConfig["placement"]) {
   const viewportWidth = window.innerWidth;
   const viewportHeight = window.innerHeight;
@@ -71,10 +124,18 @@ export function IntroTourOverlay(props: {
   const panelRef = useRef<HTMLDivElement | null>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
   const [position, setPosition] = useState({ top: 24, left: 24, width: 380 });
+  const [connector, setConnector] = useState<null | { x1: number; y1: number; x2: number; y2: number }>(null);
+  const [viewport, setViewport] = useState({ width: 1280, height: 800 });
 
   useEffect(() => {
     const update = () => {
-      setPosition(resolvePanelPosition(props.target, props.step.placement || "bottom"));
+      setViewport({
+        width: window.innerWidth,
+        height: window.innerHeight,
+      });
+      const nextPosition = resolvePanelPosition(props.target, props.step.placement || "bottom");
+      setPosition(nextPosition);
+      setConnector(resolveConnector(props.target, props.step.placement || "bottom", nextPosition));
     };
 
     update();
@@ -157,6 +218,33 @@ export function IntroTourOverlay(props: {
   return (
     <div className="intro-onboarding intro-onboarding--tour" role="dialog" aria-modal="true" aria-labelledby="intro-tour-title">
       <div className="intro-onboarding__scrim" aria-hidden="true" />
+      {connector ? (
+        <svg
+          className="intro-tour__connector"
+          aria-hidden="true"
+          viewBox={`0 0 ${viewport.width} ${viewport.height}`}
+        >
+          <defs>
+            <marker
+              id="intro-tour-arrowhead"
+              markerWidth="10"
+              markerHeight="10"
+              refX="8"
+              refY="5"
+              orient="auto"
+            >
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="rgba(32, 83, 160, 0.92)" />
+            </marker>
+          </defs>
+          <line
+            x1={connector.x1}
+            y1={connector.y1}
+            x2={connector.x2}
+            y2={connector.y2}
+            markerEnd="url(#intro-tour-arrowhead)"
+          />
+        </svg>
+      ) : null}
       <div
         ref={panelRef}
         className="intro-tour"

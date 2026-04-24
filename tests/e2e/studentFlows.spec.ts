@@ -104,6 +104,26 @@ test("student cannot open parent-only routes directly", async ({ page, openAs })
   await expect(page.getByText("This page is for a different account view")).toBeVisible();
 });
 
+test("school search is visible by default and can be reopened with Change college", async ({
+  page,
+  openAs,
+}) => {
+  await openAs("studentLeo", "/onboarding/profile");
+  await expect(page.getByRole("heading", { name: "Build your academic path" })).toBeVisible();
+
+  const schoolSearch = page.getByPlaceholder("Start typing a school name");
+  await expect(schoolSearch).toBeVisible();
+  await schoolSearch.fill("synthetic");
+  await page.getByRole("button", { name: "Synthetic State University" }).click();
+
+  await expect(page.getByText("Selected institution")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Change college" })).toBeVisible();
+  await expect(page.getByPlaceholder("Start typing a school name")).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Change college" }).click();
+  await expect(page.getByPlaceholder("Start typing a school name")).toBeVisible();
+});
+
 test("dashboard shows missing curriculum alert and allows a population request", async ({ page, openAs }) => {
   await openAs("studentLeo", "/student?section=evidence");
 
@@ -133,7 +153,9 @@ test("student can review curriculum details, save verification, and reach the PD
     .filter({ has: page.getByRole("heading", { name: "Degree Requirements Review" }) })
     .first();
 
-  await expect(curriculumSection.getByText("Needs review", { exact: false })).toBeVisible();
+  await expect(
+    curriculumSection.locator("strong").filter({ hasText: /^Needs review$/ }).first()
+  ).toBeVisible();
   await curriculumSection.getByRole("button", { name: "Review curriculum details" }).click();
   await expect(curriculumSection.getByText("Core courses")).toBeVisible();
   await expect(

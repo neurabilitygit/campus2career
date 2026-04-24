@@ -30,6 +30,12 @@ import {
   saveCurriculumPopulationRequest,
   saveCurriculumVerification,
 } from "../services/academic/curriculumReview";
+import {
+  discoverDegreeRequirementsForSelection,
+  discoverOfferingsForInstitution,
+  getAcademicEvidenceState,
+  saveManualOfferingInput,
+} from "../services/academic/academicEvidenceService";
 import { resolveCoachRelationshipOrThrow } from "../services/coach/workspace";
 import { extractCatalogRequirementsFromArtifact } from "../services/academic/catalogArtifactExtractionService";
 import {
@@ -216,6 +222,21 @@ const curriculumVerificationBodySchema = z.object({
 
 const curriculumUploadLinkBodySchema = z.object({
   academicArtifactId: z.string().trim().min(1),
+});
+
+const academicEvidenceDiscoverOfferingsBodySchema = z.object({
+  institutionCanonicalName: z.string().trim().min(1),
+});
+
+const academicEvidenceManualOfferingBodySchema = z.object({
+  institutionCanonicalName: z.string().trim().min(1),
+  institutionDisplayName: z.string().trim().min(1).optional(),
+  catalogLabel: z.string().trim().min(1).optional(),
+  degreeType: z.string().trim().min(1),
+  programName: z.string().trim().min(1),
+  majorDisplayName: z.string().trim().min(1),
+  minorDisplayName: z.string().trim().min(1).optional(),
+  concentrationDisplayName: z.string().trim().min(1).optional(),
 });
 
 function formatZodErrorMessage(error: z.ZodError): string {
@@ -628,6 +649,140 @@ export async function curriculumCoachReviewRoute(req: IncomingMessage, res: Serv
   } catch (error: any) {
     if (error?.message === "UNAUTHENTICATED") {
       return unauthorized(res);
+    }
+    throw error;
+  }
+}
+
+export async function academicEvidenceStateRoute(req: IncomingMessage, res: ServerResponse) {
+  try {
+    const { ctx, studentProfileId } = await resolveAcademicStudentScope(req);
+    if (!studentProfileId) {
+      return badRequest(res, "No student profile could be resolved for the authenticated user");
+    }
+
+    const state = await getAcademicEvidenceState({
+      studentProfileId,
+      role: ctx.authenticatedRoleType,
+    });
+
+    return json(res, 200, {
+      ok: true,
+      academicEvidence: state,
+    });
+  } catch (error: any) {
+    if (error?.message === "UNAUTHENTICATED") {
+      return unauthorized(res);
+    }
+    throw error;
+  }
+}
+
+export async function academicEvidenceDiscoverOfferingsRoute(req: IncomingMessage, res: ServerResponse) {
+  try {
+    let raw: unknown;
+    try {
+      raw = await readJsonBody(req);
+    } catch {
+      return badRequest(res, "Invalid JSON body");
+    }
+
+    const parsed = academicEvidenceDiscoverOfferingsBodySchema.safeParse(raw);
+    if (!parsed.success) {
+      return badRequest(res, formatZodErrorMessage(parsed.error));
+    }
+
+    const { ctx, studentProfileId } = await resolveAcademicStudentScope(req);
+    if (!studentProfileId) {
+      return badRequest(res, "No student profile could be resolved for the authenticated user");
+    }
+
+    const result = await discoverOfferingsForInstitution({
+      studentProfileId,
+      userId: ctx.authenticatedUserId,
+      institutionCanonicalName: parsed.data.institutionCanonicalName,
+    });
+
+    return json(res, 200, {
+      ok: true,
+      ...result,
+    });
+  } catch (error: any) {
+    if (error?.message === "UNAUTHENTICATED") {
+      return unauthorized(res);
+    }
+    if (typeof error?.message === "string" && error.message.includes("not found")) {
+      return badRequest(res, error.message);
+    }
+    throw error;
+  }
+}
+
+export async function academicEvidenceManualOfferingRoute(req: IncomingMessage, res: ServerResponse) {
+  try {
+    let raw: unknown;
+    try {
+      raw = await readJsonBody(req);
+    } catch {
+      return badRequest(res, "Invalid JSON body");
+    }
+
+    const parsed = academicEvidenceManualOfferingBodySchema.safeParse(raw);
+    if (!parsed.success) {
+      return badRequest(res, formatZodErrorMessage(parsed.error));
+    }
+
+    const { ctx, studentProfileId } = await resolveAcademicStudentScope(req);
+    if (!studentProfileId) {
+      return badRequest(res, "No student profile could be resolved for the authenticated user");
+    }
+
+    await saveManualOfferingInput({
+      studentProfileId,
+      userId: ctx.authenticatedUserId,
+      ...parsed.data,
+    });
+
+    return json(res, 200, {
+      ok: true,
+      message: "Manual academic path saved",
+    });
+  } catch (error: any) {
+    if (error?.message === "UNAUTHENTICATED") {
+      return unauthorized(res);
+    }
+    if (typeof error?.message === "string" && error.message.includes("not found")) {
+      return badRequest(res, error.message);
+    }
+    throw error;
+  }
+}
+
+export async function academicEvidenceDiscoverDegreeRequirementsRoute(
+  req: IncomingMessage,
+  res: ServerResponse
+) {
+  try {
+    const { ctx, studentProfileId } = await resolveAcademicStudentScope(req);
+    if (!studentProfileId) {
+      return badRequest(res, "No student profile could be resolved for the authenticated user");
+    }
+
+    const result = await discoverDegreeRequirementsForSelection({
+      studentProfileId,
+      userId: ctx.authenticatedUserId,
+    });
+
+    return json(res, 200, {
+      ok: true,
+      ...result,
+    });
+  } catch (error: any) {
+    if (error?.message === "UNAUTHENTICATED") {
+      return unauthorized(res);
+    }
+    if (typeof error?.message === "string" && error.message.includes("Academic path is incomplete")) {
+      return badRequest(res, error.message);
     }
     throw error;
   }

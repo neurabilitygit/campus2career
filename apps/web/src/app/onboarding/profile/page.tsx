@@ -109,14 +109,10 @@ type DirectoryOptionsResponse = {
 
 type CatalogDiscoveryResponse = {
   ok: boolean;
-  status: "existing_catalog" | "discovered_programs" | "upload_required";
+  status: "succeeded" | "needs_review";
+  sourceUsed: "seeded_database" | "scrape" | "llm_training_data" | "manual_input";
+  manualInputRequired: boolean;
   uploadRecommended: boolean;
-  websiteUrl?: string | null;
-  sourcePages: string[];
-  discoveredDegreeProgramCount: number;
-  discoveredMajorCount: number;
-  discoveredMinorCount: number;
-  catalogLabel?: string | null;
   message: string;
 };
 
@@ -218,6 +214,7 @@ export default function OnboardingProfilePage() {
   const [searchResults, setSearchResults] = useState<InstitutionSearchResult[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
+  const [isInstitutionPickerOpen, setIsInstitutionPickerOpen] = useState(true);
 
   const [selectedInstitutionCanonicalName, setSelectedInstitutionCanonicalName] = useState("");
   const [selectedInstitutionDisplayName, setSelectedInstitutionDisplayName] = useState("");
@@ -255,6 +252,14 @@ export default function OnboardingProfilePage() {
     consentParentTranslatedMessages: false,
     notes: "",
   });
+  const [manualProgramForm, setManualProgramForm] = useState({
+    catalogLabel: "",
+    degreeType: "Undergraduate",
+    programName: "",
+    majorDisplayName: "",
+    minorDisplayName: "",
+    concentrationDisplayName: "",
+  });
 
   function update(key: keyof typeof form, value: string) {
     setForm((current) => ({ ...current, [key]: value }));
@@ -281,6 +286,7 @@ export default function OnboardingProfilePage() {
     setSearchQuery(institution.displayName);
     setSearchResults([]);
     setSearchError(null);
+    setIsInstitutionPickerOpen(false);
     resetDirectorySelection();
     setForm((current) => ({
       ...current,
@@ -325,6 +331,9 @@ export default function OnboardingProfilePage() {
     setSelectedInstitutionCanonicalName(currentAssignment.institution_canonical_name || "");
     setSelectedInstitutionDisplayName(currentAssignment.institution_display_name || "");
     setSearchQuery(currentAssignment.institution_display_name || "");
+    if (currentAssignment.institution_canonical_name || currentAssignment.institution_display_name) {
+      setIsInstitutionPickerOpen(false);
+    }
     setSelectedCatalogLabel(currentAssignment.catalog_label || "");
     if (currentAssignment.degree_type && currentAssignment.program_name) {
       setSelectedDegreeKey(
@@ -520,7 +529,7 @@ export default function OnboardingProfilePage() {
     setCatalogDiscoveryError(null);
     setCatalogDiscoveryAttemptedFor(selectedInstitutionCanonicalName);
 
-    apiFetch("/students/me/academic/catalog-discovery", {
+    apiFetch("/students/me/academic-evidence/discover-offerings", {
       method: "POST",
       body: JSON.stringify({
         institutionCanonicalName: selectedInstitutionCanonicalName,
@@ -530,7 +539,7 @@ export default function OnboardingProfilePage() {
         if (!active) return;
         setCatalogDiscovery(result);
         setCatalogDiscoveryLoading(false);
-        if (result.status === "existing_catalog" || result.status === "discovered_programs") {
+        if (!result.manualInputRequired) {
           setDirectoryRefreshNonce((value) => value + 1);
         }
       })
@@ -763,22 +772,22 @@ export default function OnboardingProfilePage() {
           }),
         });
 
-        requirementDiscoveryResult = await apiFetch(
-          "/students/me/academic/program-requirements/discover",
-          {
-            method: "POST",
-            body: JSON.stringify({
-              institutionCanonicalName: selectedInstitutionCanonicalName,
-              catalogLabel: selectedCatalogLabel,
-              degreeType: selectedDegree.degreeType,
-              programName: selectedDegree.programName,
-              majorCanonicalName: selectedMajorCanonicalName,
-              minorCanonicalName: selectedMinorCanonicalName || undefined,
-            }),
-          }
-        );
+        requirementDiscoveryResult = await apiFetch("/students/me/academic-evidence/discover-degree-requirements", {
+          method: "POST",
+        });
         setProgramRequirementsDiscovery(
-          requirementDiscoveryResult as ProgramRequirementDiscoveryResponse
+          {
+            ok: true,
+            status:
+              (requirementDiscoveryResult as any).uploadRequired
+                ? "upload_required"
+                : "requirements_discovered",
+            uploadRecommended: Boolean((requirementDiscoveryResult as any).uploadRequired),
+            usedLlmAssistance: (requirementDiscoveryResult as any).sourceUsed === "llm_training_data",
+            uploadUrl: (requirementDiscoveryResult as any).uploadRequired ? catalogUploadHref : null,
+            message: (requirementDiscoveryResult as any).message || "Requirement discovery updated.",
+            diagnostics: (requirementDiscoveryResult as any).diagnostics || [],
+          } as ProgramRequirementDiscoveryResponse
         );
       }
 
@@ -786,6 +795,74 @@ export default function OnboardingProfilePage() {
     } catch (error: any) {
       setStatus("");
       setErrorMessage(error?.message || String(error));
+    }
+  }
+
+  async function saveManualAcademicPath() {
+    if (!selectedInstitutionCanonicalName || !selectedInstitutionDisplayName) {
+      setCatalogDiscoveryError("Choose a college or university before saving a manual academic path.");
+      return;
+    }
+
+    try {
+      setCatalogDiscoveryLoading(true);
+      setCatalogDiscoveryError(null);
+      await apiFetch("/students/me/academic-evidence/manual-offering", {
+        method: "POST",
+        body: JSON.stringify({
+          institutionCanonicalName: selectedInstitutionCanonicalName,
+          institutionDisplayName: selectedInstitutionDisplayName,
+          catalogLabel: manualProgramForm.catalogLabel || undefined,
+          degreeType: manualProgramForm.degreeType,
+          programName: manualProgramForm.programName,
+          majorDisplayName: manualProgramForm.majorDisplayName,
+          minorDisplayName: manualProgramForm.minorDisplayName || undefined,
+          concentrationDisplayName: manualProgramForm.concentrationDisplayName || undefined,
+        }),
+      });
+
+      const catalogLabel =
+        manualProgramForm.catalogLabel || `Manual ${new Date().getFullYear()}-${new Date().getFullYear() + 1}`;
+      const slugify = (value: string) =>
+        value
+          .trim()
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-+|-+$/g, "");
+
+      setSelectedCatalogLabel(catalogLabel);
+      setSelectedDegreeKey(
+        JSON.stringify({
+          degreeType: manualProgramForm.degreeType,
+          programName: manualProgramForm.programName,
+        })
+      );
+      setSelectedMajorCanonicalName(slugify(manualProgramForm.majorDisplayName));
+      setSelectedMinorCanonicalName(
+        manualProgramForm.minorDisplayName ? slugify(manualProgramForm.minorDisplayName) : ""
+      );
+      setSelectedConcentrationCanonicalName(
+        manualProgramForm.concentrationDisplayName ? slugify(manualProgramForm.concentrationDisplayName) : ""
+      );
+      setForm((current) => ({
+        ...current,
+        schoolName: selectedInstitutionDisplayName,
+        majorPrimary: manualProgramForm.majorDisplayName,
+        majorSecondary: manualProgramForm.minorDisplayName || current.majorSecondary,
+      }));
+      setCatalogDiscovery({
+        ok: true,
+        status: "needs_review",
+        sourceUsed: "manual_input",
+        manualInputRequired: false,
+        uploadRecommended: false,
+        message: "Manual academic path saved. Review the degree requirements once a source is available.",
+      });
+      setDirectoryRefreshNonce((value) => value + 1);
+      setCatalogDiscoveryLoading(false);
+    } catch (error: any) {
+      setCatalogDiscoveryLoading(false);
+      setCatalogDiscoveryError(error?.message || String(error));
     }
   }
 
@@ -801,19 +878,21 @@ export default function OnboardingProfilePage() {
           tone="highlight"
         >
           <div style={{ display: "grid", gap: 16 }}>
-            <label style={labelStyle}>
-              <FieldInfoLabel
-                label="Search for your college or university"
-                info="Find the school first so the system can use the right catalog when available."
-                example="Harvard University"
-              />
-              <input
-                style={inputStyle}
-                placeholder="Start typing a school name"
-                value={searchQuery}
-                onChange={(event) => setSearchQuery(event.target.value)}
-              />
-            </label>
+            {isInstitutionPickerOpen || !selectedInstitutionDisplayName ? (
+              <label style={labelStyle}>
+                <FieldInfoLabel
+                  label="Search for your college or university"
+                  info="Find the school first so the system can use the right catalog when available."
+                  example="Harvard University"
+                />
+                <input
+                  style={inputStyle}
+                  placeholder="Start typing a school name"
+                  value={searchQuery}
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                />
+              </label>
+            ) : null}
 
             {selectedInstitutionDisplayName ? (
               <div
@@ -839,6 +918,7 @@ export default function OnboardingProfilePage() {
                     setSelectedInstitutionDisplayName("");
                     setSearchQuery("");
                     setSearchResults([]);
+                    setIsInstitutionPickerOpen(true);
                     resetDirectorySelection();
                   }}
                   style={{
@@ -850,7 +930,7 @@ export default function OnboardingProfilePage() {
                     fontWeight: 700,
                   }}
                 >
-                  Clear selection
+                  Change college
                 </button>
               </div>
             ) : null}
@@ -923,16 +1003,21 @@ export default function OnboardingProfilePage() {
                     }}
                   >
                     <strong>
-                      {catalogDiscovery.uploadRecommended
-                        ? "We need one more source"
-                        : "We found school program data"}
+                      {catalogDiscovery.manualInputRequired
+                        ? "Manual academic path entry is ready"
+                        : catalogDiscovery.uploadRecommended
+                          ? "We need one more source"
+                          : "We found school program data"}
                     </strong>
                     <p style={{ margin: 0, lineHeight: 1.6 }}>{catalogDiscovery.message}</p>
-                    {!catalogDiscovery.uploadRecommended ? (
+                    {!catalogDiscovery.uploadRecommended && !catalogDiscovery.manualInputRequired ? (
                       <p style={{ margin: 0, fontSize: 14 }}>
-                        Degree programs: {catalogDiscovery.discoveredDegreeProgramCount}
-                        {" · "}Majors: {catalogDiscovery.discoveredMajorCount}
-                        {" · "}Minors: {catalogDiscovery.discoveredMinorCount}
+                        Source used:{" "}
+                        {catalogDiscovery.sourceUsed === "seeded_database"
+                          ? "Seeded database"
+                          : catalogDiscovery.sourceUsed === "scrape"
+                            ? "Scraped school website"
+                            : "LLM-assisted"}
                       </p>
                     ) : null}
                     {catalogDiscovery.uploadRecommended ? (
@@ -942,6 +1027,130 @@ export default function OnboardingProfilePage() {
                         <Link href={catalogUploadHref}>program PDF upload flow</Link>.
                       </p>
                     ) : null}
+                  </div>
+                ) : null}
+
+                {selectedInstitutionCanonicalName &&
+                (!directoryOptions?.majors.length || catalogDiscovery?.manualInputRequired) ? (
+                  <div
+                    style={{
+                      borderRadius: 14,
+                      border: "1px solid #d8e2f0",
+                      background: "#f8fbff",
+                      padding: "16px 18px",
+                      display: "grid",
+                      gap: 14,
+                    }}
+                  >
+                    <strong style={{ color: "#15355b" }}>Manual academic path entry</strong>
+                    <p style={{ margin: 0, color: "#4b5d79", lineHeight: 1.6 }}>
+                      If automated discovery still looks incomplete, enter the academic path manually here.
+                      This keeps the dashboard moving while you gather a stronger catalog or PDF source.
+                    </p>
+                    <label style={labelStyle}>
+                      <FieldInfoLabel
+                        label="Catalog label (optional)"
+                        info="Use the catalog edition if you know it. Otherwise the system will create a manual catalog label."
+                        example="2026-2027"
+                      />
+                      <input
+                        style={inputStyle}
+                        placeholder="2026-2027"
+                        value={manualProgramForm.catalogLabel}
+                        onChange={(event) =>
+                          setManualProgramForm((current) => ({ ...current, catalogLabel: event.target.value }))
+                        }
+                      />
+                    </label>
+                    <label style={labelStyle}>
+                      <FieldInfoLabel
+                        label="Degree type"
+                        info="Choose the broad degree type tied to the program."
+                        example="Undergraduate"
+                      />
+                      <select
+                        style={selectStyle}
+                        value={manualProgramForm.degreeType}
+                        onChange={(event) =>
+                          setManualProgramForm((current) => ({ ...current, degreeType: event.target.value }))
+                        }
+                      >
+                        <option value="Undergraduate">Undergraduate</option>
+                        <option value="Graduate">Graduate</option>
+                      </select>
+                    </label>
+                    <label style={labelStyle}>
+                      <FieldInfoLabel
+                        label="Program name"
+                        info="Use the broader school or degree-program bucket if the institution separates majors by college or school."
+                        example="Columbia College majors"
+                      />
+                      <input
+                        style={inputStyle}
+                        placeholder="Program name"
+                        value={manualProgramForm.programName}
+                        onChange={(event) =>
+                          setManualProgramForm((current) => ({ ...current, programName: event.target.value }))
+                        }
+                      />
+                    </label>
+                    <label style={labelStyle}>
+                      <FieldInfoLabel
+                        label="Major"
+                        info="Enter the main field of study exactly as the school describes it when possible."
+                        example="Economics"
+                      />
+                      <input
+                        style={inputStyle}
+                        placeholder="Major name"
+                        value={manualProgramForm.majorDisplayName}
+                        onChange={(event) =>
+                          setManualProgramForm((current) => ({ ...current, majorDisplayName: event.target.value }))
+                        }
+                      />
+                    </label>
+                    <label style={labelStyle}>
+                      <FieldInfoLabel
+                        label="Minor (optional)"
+                        info="Add a minor only if you are formally pursuing one."
+                        example="Data Science"
+                      />
+                      <input
+                        style={inputStyle}
+                        placeholder="Minor name"
+                        value={manualProgramForm.minorDisplayName}
+                        onChange={(event) =>
+                          setManualProgramForm((current) => ({ ...current, minorDisplayName: event.target.value }))
+                        }
+                      />
+                    </label>
+                    <label style={labelStyle}>
+                      <FieldInfoLabel
+                        label="Concentration (optional)"
+                        info="Use this if the school tracks a concentration within the major."
+                        example="Business analytics"
+                      />
+                      <input
+                        style={inputStyle}
+                        placeholder="Concentration name"
+                        value={manualProgramForm.concentrationDisplayName}
+                        onChange={(event) =>
+                          setManualProgramForm((current) => ({ ...current, concentrationDisplayName: event.target.value }))
+                        }
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      className="ui-button ui-button--secondary"
+                      onClick={saveManualAcademicPath}
+                      disabled={
+                        catalogDiscoveryLoading ||
+                        !manualProgramForm.programName.trim() ||
+                        !manualProgramForm.majorDisplayName.trim()
+                      }
+                    >
+                      {catalogDiscoveryLoading ? "Saving..." : "Save manual academic path"}
+                    </button>
                   </div>
                 ) : null}
 

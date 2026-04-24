@@ -241,6 +241,30 @@ export async function router(req: IncomingMessage, res: ServerResponse) {
     return;
   }
 
+  if (url === "/students/me/academic-evidence" && req.method === "GET") {
+    const { academicEvidenceStateRoute } = await import("./routes/academic");
+    await academicEvidenceStateRoute(req, res);
+    return;
+  }
+
+  if (url === "/students/me/academic-evidence/discover-offerings" && req.method === "POST") {
+    const { academicEvidenceDiscoverOfferingsRoute } = await import("./routes/academic");
+    await academicEvidenceDiscoverOfferingsRoute(req, res);
+    return;
+  }
+
+  if (url === "/students/me/academic-evidence/manual-offering" && req.method === "POST") {
+    const { academicEvidenceManualOfferingRoute } = await import("./routes/academic");
+    await academicEvidenceManualOfferingRoute(req, res);
+    return;
+  }
+
+  if (url === "/students/me/academic-evidence/discover-degree-requirements" && req.method === "POST") {
+    const { academicEvidenceDiscoverDegreeRequirementsRoute } = await import("./routes/academic");
+    await academicEvidenceDiscoverDegreeRequirementsRoute(req, res);
+    return;
+  }
+
   if (url === "/students/me/academic/transcript/latest" && req.method === "GET") {
     const { latestTranscriptGraphRoute } = await import("./routes/academic");
     await latestTranscriptGraphRoute(req, res);

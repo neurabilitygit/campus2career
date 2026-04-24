@@ -1,0 +1,846 @@
+{
+  "schemaVersion": "1.0",
+  "generatedAt": "2026-04-24T00:00:00.000Z",
+  "description": "Curated U.S. News top-50 national universities manifest for controlled academic catalog expansion. Entries use exact institution display names and official catalog/program URLs so discovery can avoid loose fuzzy matching.",
+  "sourceNotes": [
+    "Rank ordering is a curated top-50 national universities list aligned to the 2026 U.S. News cycle used during local product planning.",
+    "Official majors/programs and catalog URLs are guidance hints for deterministic discovery and manual review, not claims of completeness.",
+    "This manifest is intended for exact-match expansion runs and should be reviewed before bulk catalog writes."
+  ],
+  "schools": [
+    {
+      "usNewsRank": 1,
+      "institutionDisplayName": "Princeton University",
+      "queryAliases": [
+        "Princeton University"
+      ],
+      "websiteUrl": "https://www.princeton.edu/",
+      "officialProgramsUrl": "https://ua.princeton.edu/academic-units/undergraduate-majors",
+      "officialCatalogUrl": "https://ua.princeton.edu/academic-units/programs-study",
+      "tags": [
+        "top50",
+        "us-news",
+        "national-universities"
+      ],
+      "status": "pending_review"
+    },
+    {
+      "usNewsRank": 2,
+      "institutionDisplayName": "Massachusetts Institute of Technology",
+      "queryAliases": [
+        "Massachusetts Institute of Technology"
+      ],
+      "websiteUrl": "https://web.mit.edu/",
+      "officialProgramsUrl": "https://catalog.mit.edu/mit/undergraduate-education/academic-programs/majors/",
+      "officialCatalogUrl": "https://catalog.mit.edu/mit/undergraduate-education/academic-programs/minors/",
+      "tags": [
+        "top50",
+        "us-news",
+        "national-universities"
+      ],
+      "status": "pending_review"
+    },
+    {
+      "usNewsRank": 3,
+      "institutionDisplayName": "Harvard University",
+      "queryAliases": [
+        "Harvard University"
+      ],
+      "websiteUrl": "https://www.harvard.edu/",
+      "officialProgramsUrl": "https://college.harvard.edu/academics/programs-concentrations",
+      "officialCatalogUrl": "https://courses.my.harvard.edu/",
+      "tags": [
+        "top50",
+        "us-news",
+        "national-universities"
+      ],
+      "status": "pending_review"
+    },
+    {
+      "usNewsRank": 4,
+      "institutionDisplayName": "Stanford University",
+      "queryAliases": [
+        "Stanford University"
+      ],
+      "websiteUrl": "https://www.stanford.edu/",
+      "officialProgramsUrl": "https://majors.stanford.edu/",
+      "officialCatalogUrl": "https://bulletin.stanford.edu/programs",
+      "tags": [
+        "top50",
+        "us-news",
+        "national-universities"
+      ],
+      "status": "pending_review"
+    },
+    {
+      "usNewsRank": 5,
+      "institutionDisplayName": "Yale University",
+      "queryAliases": [
+        "Yale University"
+      ],
+      "websiteUrl": "https://www.yale.edu/",
+      "officialProgramsUrl": "https://catalog.yale.edu/ycps/subjects-of-instruction/",
+      "officialCatalogUrl": "https://catalog.yale.edu/ycps/majors-in-yale-college/",
+      "tags": [
+        "top50",
+        "us-news",
+        "national-universities"
+      ],
+      "status": "pending_review"
+    },
+    {
+      "usNewsRank": 6,
+      "institutionDisplayName": "University of Chicago",
+      "queryAliases": [
+        "University of Chicago"
+      ],
+      "websiteUrl": "https://www.uchicago.edu/",
+      "officialProgramsUrl": "https://collegecatalog.uchicago.edu/thecollege/programsofstudy/",
+      "officialCatalogUrl": "https://collegecatalog.uchicago.edu/thecollege/",
+      "tags": [
+        "top50",
+        "us-news",
+        "national-universities"
+      ],
+      "status": "pending_review"
+    },
+    {
+      "usNewsRank": 7,
+      "institutionDisplayName": "Duke University",
+      "queryAliases": [
+        "Duke University"
+      ],
+      "websiteUrl": "https://www.duke.edu/",
+      "officialProgramsUrl": "https://admissions.duke.edu/academic-possibilities/",
+      "officialCatalogUrl": "https://bulletins.duke.edu/undergraduate/",
+      "tags": [
+        "top50",
+        "us-news",
+        "national-universities"
+      ],
+      "status": "pending_review"
+    },
+    {
+      "usNewsRank": 8,
+      "institutionDisplayName": "Johns Hopkins University",
+      "queryAliases": [
+        "Johns Hopkins University"
+      ],
+      "websiteUrl": "https://www.jhu.edu/",
+      "officialProgramsUrl": "https://e-catalogue.jhu.edu/arts-sciences/full-time-residential-programs/degree-programs/",
+      "officialCatalogUrl": "https://e-catalogue.jhu.edu/",
+      "tags": [
+        "top50",
+        "us-news",
+        "national-universities"
+      ],
+      "status": "pending_review"
+    },
+    {
+      "usNewsRank": 9,
+      "institutionDisplayName": "Northwestern University",
+      "queryAliases": [
+        "Northwestern University"
+      ],
+      "websiteUrl": "https://www.northwestern.edu/",
+      "officialProgramsUrl": "https://admissions.northwestern.edu/academics/majors-minors/",
+      "officialCatalogUrl": "https://catalogs.northwestern.edu/undergraduate/",
+      "tags": [
+        "top50",
+        "us-news",
+        "national-universities"
+      ],
+      "status": "pending_review"
+    },
+    {
+      "usNewsRank": 10,
+      "institutionDisplayName": "University of Pennsylvania",
+      "queryAliases": [
+        "University of Pennsylvania"
+      ],
+      "websiteUrl": "https://www.upenn.edu/",
+      "officialProgramsUrl": "https://www.college.upenn.edu/majors-and-minors",
+      "officialCatalogUrl": "https://catalog.upenn.edu/",
+      "tags": [
+        "top50",
+        "us-news",
+        "national-universities"
+      ],
+      "status": "pending_review"
+    },
+    {
+      "usNewsRank": 11,
+      "institutionDisplayName": "California Institute of Technology",
+      "queryAliases": [
+        "California Institute of Technology"
+      ],
+      "websiteUrl": "https://www.caltech.edu/",
+      "officialProgramsUrl": "https://www.admissions.caltech.edu/why-caltech/academics/majors-minors",
+      "officialCatalogUrl": "https://catalog.caltech.edu/",
+      "tags": [
+        "top50",
+        "us-news",
+        "national-universities"
+      ],
+      "status": "pending_review"
+    },
+    {
+      "usNewsRank": 12,
+      "institutionDisplayName": "Cornell University",
+      "queryAliases": [
+        "Cornell University"
+      ],
+      "websiteUrl": "https://www.cornell.edu/",
+      "officialProgramsUrl": "https://admissions.cornell.edu/visit/explore-academics/fields-study",
+      "officialCatalogUrl": "https://courses.cornell.edu/",
+      "tags": [
+        "top50",
+        "us-news",
+        "national-universities"
+      ],
+      "status": "pending_review"
+    },
+    {
+      "usNewsRank": 13,
+      "institutionDisplayName": "Brown University",
+      "queryAliases": [
+        "Brown University"
+      ],
+      "websiteUrl": "https://www.brown.edu/",
+      "officialProgramsUrl": "https://college.brown.edu/design-your-education/concentrations-and-degrees",
+      "officialCatalogUrl": "https://bulletin.brown.edu/",
+      "tags": [
+        "top50",
+        "us-news",
+        "national-universities"
+      ],
+      "status": "pending_review"
+    },
+    {
+      "usNewsRank": 14,
+      "institutionDisplayName": "Dartmouth College",
+      "queryAliases": [
+        "Dartmouth College"
+      ],
+      "websiteUrl": "https://dartmouth.edu/",
+      "officialProgramsUrl": "https://home.dartmouth.edu/academics/programs-study",
+      "officialCatalogUrl": "https://dartmouth.smartcatalogiq.com/",
+      "tags": [
+        "top50",
+        "us-news",
+        "national-universities"
+      ],
+      "status": "pending_review"
+    },
+    {
+      "usNewsRank": 15,
+      "institutionDisplayName": "Columbia University",
+      "queryAliases": [
+        "Columbia University"
+      ],
+      "websiteUrl": "https://www.columbia.edu/",
+      "officialProgramsUrl": "https://bulletin.columbia.edu/columbia-college/programs-of-study/",
+      "officialCatalogUrl": "https://bulletin.columbia.edu/columbia-college/",
+      "tags": [
+        "top50",
+        "us-news",
+        "national-universities"
+      ],
+      "status": "pending_review"
+    },
+    {
+      "usNewsRank": 16,
+      "institutionDisplayName": "University of California, Berkeley",
+      "queryAliases": [
+        "University of California, Berkeley"
+      ],
+      "websiteUrl": "https://www.berkeley.edu/",
+      "officialProgramsUrl": "https://guide.berkeley.edu/undergraduate/degree-programs/",
+      "officialCatalogUrl": "https://guide.berkeley.edu/undergraduate/",
+      "tags": [
+        "top50",
+        "us-news",
+        "national-universities"
+      ],
+      "status": "pending_review"
+    },
+    {
+      "usNewsRank": 17,
+      "institutionDisplayName": "Rice University",
+      "queryAliases": [
+        "Rice University"
+      ],
+      "websiteUrl": "https://www.rice.edu/",
+      "officialProgramsUrl": "https://www.rice.edu/majors-minors-and-programs",
+      "officialCatalogUrl": "https://catalog.rice.edu/",
+      "tags": [
+        "top50",
+        "us-news",
+        "national-universities"
+      ],
+      "status": "pending_review"
+    },
+    {
+      "usNewsRank": 18,
+      "institutionDisplayName": "University of California, Los Angeles",
+      "queryAliases": [
+        "University of California, Los Angeles"
+      ],
+      "websiteUrl": "https://www.ucla.edu/",
+      "officialProgramsUrl": "https://admission.ucla.edu/academics/majors",
+      "officialCatalogUrl": "https://catalog.registrar.ucla.edu/",
+      "tags": [
+        "top50",
+        "us-news",
+        "national-universities"
+      ],
+      "status": "pending_review"
+    },
+    {
+      "usNewsRank": 19,
+      "institutionDisplayName": "Vanderbilt University",
+      "queryAliases": [
+        "Vanderbilt University"
+      ],
+      "websiteUrl": "https://www.vanderbilt.edu/",
+      "officialProgramsUrl": "https://www.vanderbilt.edu/academics/program-finder/?degrees=bachelors",
+      "officialCatalogUrl": "https://www.vanderbilt.edu/catalogs/kuali/undergraduate.php",
+      "tags": [
+        "top50",
+        "us-news",
+        "national-universities"
+      ],
+      "status": "pending_review"
+    },
+    {
+      "usNewsRank": 20,
+      "institutionDisplayName": "Carnegie Mellon University",
+      "queryAliases": [
+        "Carnegie Mellon University"
+      ],
+      "websiteUrl": "https://www.cmu.edu/",
+      "officialProgramsUrl": "https://www.cmu.edu/admission/academics/programs",
+      "officialCatalogUrl": "https://catalog.cmu.edu/",
+      "tags": [
+        "top50",
+        "us-news",
+        "national-universities"
+      ],
+      "status": "pending_review"
+    },
+    {
+      "usNewsRank": 21,
+      "institutionDisplayName": "University of Michigan",
+      "queryAliases": [
+        "University of Michigan"
+      ],
+      "websiteUrl": "https://umich.edu/",
+      "officialProgramsUrl": "https://lsa.umich.edu/lsa/academics/majors-minors.html",
+      "officialCatalogUrl": "https://bulletin.engin.umich.edu/",
+      "tags": [
+        "top50",
+        "us-news",
+        "national-universities"
+      ],
+      "status": "pending_review"
+    },
+    {
+      "usNewsRank": 22,
+      "institutionDisplayName": "University of Notre Dame",
+      "queryAliases": [
+        "University of Notre Dame"
+      ],
+      "websiteUrl": "https://www.nd.edu/",
+      "officialProgramsUrl": "https://www.nd.edu/academics/programs/",
+      "officialCatalogUrl": "https://catalog.nd.edu/",
+      "tags": [
+        "top50",
+        "us-news",
+        "national-universities"
+      ],
+      "status": "pending_review"
+    },
+    {
+      "usNewsRank": 23,
+      "institutionDisplayName": "Washington University in St. Louis",
+      "queryAliases": [
+        "Washington University in St. Louis"
+      ],
+      "websiteUrl": "https://www.washu.edu/",
+      "officialProgramsUrl": "https://bulletin.wustl.edu/undergrad/artsci/majors/",
+      "officialCatalogUrl": "https://bulletin.wustl.edu/",
+      "tags": [
+        "top50",
+        "us-news",
+        "national-universities"
+      ],
+      "status": "pending_review"
+    },
+    {
+      "usNewsRank": 24,
+      "institutionDisplayName": "Emory University",
+      "queryAliases": [
+        "Emory University"
+      ],
+      "websiteUrl": "https://www.emory.edu/",
+      "officialProgramsUrl": "https://apply.emory.edu/academics/majors-minors.html",
+      "officialCatalogUrl": "https://catalog.college.emory.edu/",
+      "tags": [
+        "top50",
+        "us-news",
+        "national-universities"
+      ],
+      "status": "pending_review"
+    },
+    {
+      "usNewsRank": 25,
+      "institutionDisplayName": "Georgetown University",
+      "queryAliases": [
+        "Georgetown University"
+      ],
+      "websiteUrl": "https://www.georgetown.edu/",
+      "officialProgramsUrl": "https://bulletin.georgetown.edu/schools-programs/college/",
+      "officialCatalogUrl": "https://bulletin.georgetown.edu/",
+      "tags": [
+        "top50",
+        "us-news",
+        "national-universities"
+      ],
+      "status": "pending_review"
+    },
+    {
+      "usNewsRank": 26,
+      "institutionDisplayName": "University of North Carolina at Chapel Hill",
+      "queryAliases": [
+        "University of North Carolina at Chapel Hill"
+      ],
+      "websiteUrl": "https://www.unc.edu/",
+      "officialProgramsUrl": "https://catalog.unc.edu/programs-study/",
+      "officialCatalogUrl": "https://catalog.unc.edu/",
+      "tags": [
+        "top50",
+        "us-news",
+        "national-universities"
+      ],
+      "status": "pending_review"
+    },
+    {
+      "usNewsRank": 27,
+      "institutionDisplayName": "University of Virginia",
+      "queryAliases": [
+        "University of Virginia"
+      ],
+      "websiteUrl": "https://www.virginia.edu/",
+      "officialProgramsUrl": "https://www.undergradcatalog.virginia.edu/",
+      "officialCatalogUrl": "https://records.ureg.virginia.edu/index.php",
+      "tags": [
+        "top50",
+        "us-news",
+        "national-universities"
+      ],
+      "status": "pending_review"
+    },
+    {
+      "usNewsRank": 28,
+      "institutionDisplayName": "University of Southern California",
+      "queryAliases": [
+        "University of Southern California"
+      ],
+      "websiteUrl": "https://www.usc.edu/",
+      "officialProgramsUrl": "https://admission.usc.edu/prospective-students/academics/",
+      "officialCatalogUrl": "https://catalogue.usc.edu/",
+      "tags": [
+        "top50",
+        "us-news",
+        "national-universities"
+      ],
+      "status": "pending_review"
+    },
+    {
+      "usNewsRank": 29,
+      "institutionDisplayName": "University of California, San Diego",
+      "queryAliases": [
+        "University of California, San Diego"
+      ],
+      "websiteUrl": "https://ucsd.edu/",
+      "officialProgramsUrl": "https://catalog.ucsd.edu/front/courses.html",
+      "officialCatalogUrl": "https://catalog.ucsd.edu/",
+      "tags": [
+        "top50",
+        "us-news",
+        "national-universities"
+      ],
+      "status": "pending_review"
+    },
+    {
+      "usNewsRank": 30,
+      "institutionDisplayName": "University of Florida",
+      "queryAliases": [
+        "University of Florida"
+      ],
+      "websiteUrl": "https://www.ufl.edu/",
+      "officialProgramsUrl": "https://catalog.ufl.edu/UGRD/programs/",
+      "officialCatalogUrl": "https://catalog.ufl.edu/UGRD/",
+      "tags": [
+        "top50",
+        "us-news",
+        "national-universities"
+      ],
+      "status": "pending_review"
+    },
+    {
+      "usNewsRank": 31,
+      "institutionDisplayName": "The University of Texas at Austin",
+      "queryAliases": [
+        "The University of Texas at Austin"
+      ],
+      "websiteUrl": "https://www.utexas.edu/",
+      "officialProgramsUrl": "https://catalog.utexas.edu/undergraduate/the-university/degree-programs/",
+      "officialCatalogUrl": "https://catalog.utexas.edu/undergraduate/",
+      "tags": [
+        "top50",
+        "us-news",
+        "national-universities"
+      ],
+      "status": "pending_review"
+    },
+    {
+      "usNewsRank": 32,
+      "institutionDisplayName": "Georgia Institute of Technology",
+      "queryAliases": [
+        "Georgia Institute of Technology"
+      ],
+      "websiteUrl": "https://www.gatech.edu/",
+      "officialProgramsUrl": "https://catalog.gatech.edu/programs/",
+      "officialCatalogUrl": "https://catalog.gatech.edu/",
+      "tags": [
+        "top50",
+        "us-news",
+        "national-universities"
+      ],
+      "status": "pending_review"
+    },
+    {
+      "usNewsRank": 33,
+      "institutionDisplayName": "New York University",
+      "queryAliases": [
+        "New York University"
+      ],
+      "websiteUrl": "https://www.nyu.edu/",
+      "officialProgramsUrl": "https://www.nyu.edu/admissions/undergraduate-admissions/academics.html",
+      "officialCatalogUrl": "https://bulletins.nyu.edu/",
+      "tags": [
+        "top50",
+        "us-news",
+        "national-universities"
+      ],
+      "status": "pending_review"
+    },
+    {
+      "usNewsRank": 34,
+      "institutionDisplayName": "University of California, Davis",
+      "queryAliases": [
+        "University of California, Davis"
+      ],
+      "websiteUrl": "https://www.ucdavis.edu/",
+      "officialProgramsUrl": "https://catalog.ucdavis.edu/academic-programs/",
+      "officialCatalogUrl": "https://catalog.ucdavis.edu/",
+      "tags": [
+        "top50",
+        "us-news",
+        "national-universities"
+      ],
+      "status": "pending_review"
+    },
+    {
+      "usNewsRank": 35,
+      "institutionDisplayName": "University of California, Irvine",
+      "queryAliases": [
+        "University of California, Irvine"
+      ],
+      "websiteUrl": "https://uci.edu/",
+      "officialProgramsUrl": "https://catalogue.uci.edu/undergraduate/",
+      "officialCatalogUrl": "https://catalogue.uci.edu/",
+      "tags": [
+        "top50",
+        "us-news",
+        "national-universities"
+      ],
+      "status": "pending_review"
+    },
+    {
+      "usNewsRank": 36,
+      "institutionDisplayName": "Boston College",
+      "queryAliases": [
+        "Boston College"
+      ],
+      "websiteUrl": "https://www.bc.edu/",
+      "officialProgramsUrl": "https://www.bc.edu/content/bc-web/admission/majors-minors.html",
+      "officialCatalogUrl": "https://www.bc.edu/content/bc-web/academics/sites/university-catalog.html",
+      "tags": [
+        "top50",
+        "us-news",
+        "national-universities"
+      ],
+      "status": "pending_review"
+    },
+    {
+      "usNewsRank": 37,
+      "institutionDisplayName": "Tufts University",
+      "queryAliases": [
+        "Tufts University"
+      ],
+      "websiteUrl": "https://www.tufts.edu/",
+      "officialProgramsUrl": "https://admissions.tufts.edu/discover-tufts/academics/majors-and-minors/",
+      "officialCatalogUrl": "https://bulletin.tufts.edu/",
+      "tags": [
+        "top50",
+        "us-news",
+        "national-universities"
+      ],
+      "status": "pending_review"
+    },
+    {
+      "usNewsRank": 38,
+      "institutionDisplayName": "University of Illinois Urbana-Champaign",
+      "queryAliases": [
+        "University of Illinois Urbana-Champaign"
+      ],
+      "websiteUrl": "https://illinois.edu/",
+      "officialProgramsUrl": "https://myillini.illinois.edu/Programs",
+      "officialCatalogUrl": "https://catalog.illinois.edu/",
+      "tags": [
+        "top50",
+        "us-news",
+        "national-universities"
+      ],
+      "status": "pending_review"
+    },
+    {
+      "usNewsRank": 39,
+      "institutionDisplayName": "University of Wisconsin-Madison",
+      "queryAliases": [
+        "University of Wisconsin-Madison"
+      ],
+      "websiteUrl": "https://www.wisc.edu/",
+      "officialProgramsUrl": "https://guide.wisc.edu/undergraduate/",
+      "officialCatalogUrl": "https://guide.wisc.edu/",
+      "tags": [
+        "top50",
+        "us-news",
+        "national-universities"
+      ],
+      "status": "pending_review"
+    },
+    {
+      "usNewsRank": 40,
+      "institutionDisplayName": "University of California, Santa Barbara",
+      "queryAliases": [
+        "University of California, Santa Barbara"
+      ],
+      "websiteUrl": "https://www.ucsb.edu/",
+      "officialProgramsUrl": "https://my.sa.ucsb.edu/catalog/Current/CollegesDepartments/ls-intro/ls-depts-and-majors",
+      "officialCatalogUrl": "https://my.sa.ucsb.edu/catalog/Current/",
+      "tags": [
+        "top50",
+        "us-news",
+        "national-universities"
+      ],
+      "status": "pending_review"
+    },
+    {
+      "usNewsRank": 41,
+      "institutionDisplayName": "The Ohio State University",
+      "queryAliases": [
+        "The Ohio State University"
+      ],
+      "websiteUrl": "https://www.osu.edu/",
+      "officialProgramsUrl": "https://undergrad.osu.edu/majors-and-academics/majors",
+      "officialCatalogUrl": "https://undergrad.osu.edu/majors-and-academics/majors",
+      "tags": [
+        "top50",
+        "us-news",
+        "national-universities"
+      ],
+      "status": "pending_review"
+    },
+    {
+      "usNewsRank": 42,
+      "institutionDisplayName": "Boston University",
+      "queryAliases": [
+        "Boston University"
+      ],
+      "websiteUrl": "https://www.bu.edu/",
+      "officialProgramsUrl": "https://www.bu.edu/academics/",
+      "officialCatalogUrl": "https://www.bu.edu/academics/",
+      "tags": [
+        "top50",
+        "us-news",
+        "national-universities"
+      ],
+      "status": "pending_review"
+    },
+    {
+      "usNewsRank": 43,
+      "institutionDisplayName": "Rutgers University-New Brunswick",
+      "queryAliases": [
+        "Rutgers University-New Brunswick"
+      ],
+      "websiteUrl": "https://newbrunswick.rutgers.edu/",
+      "officialProgramsUrl": "https://newbrunswick.rutgers.edu/academics/undergraduate/majors",
+      "officialCatalogUrl": "https://catalogs.rutgers.edu/generated/nb-ug_current/",
+      "tags": [
+        "top50",
+        "us-news",
+        "national-universities"
+      ],
+      "status": "pending_review"
+    },
+    {
+      "usNewsRank": 44,
+      "institutionDisplayName": "University of Maryland, College Park",
+      "queryAliases": [
+        "University of Maryland, College Park"
+      ],
+      "websiteUrl": "https://umd.edu/",
+      "officialProgramsUrl": "https://academiccatalog.umd.edu/undergraduate/fields-study/",
+      "officialCatalogUrl": "https://academiccatalog.umd.edu/",
+      "tags": [
+        "top50",
+        "us-news",
+        "national-universities"
+      ],
+      "status": "pending_review"
+    },
+    {
+      "usNewsRank": 45,
+      "institutionDisplayName": "University of Washington",
+      "queryAliases": [
+        "University of Washington"
+      ],
+      "websiteUrl": "https://www.washington.edu/",
+      "officialProgramsUrl": "https://admit.washington.edu/academics/majors/",
+      "officialCatalogUrl": "https://www.washington.edu/students/gencat/",
+      "tags": [
+        "top50",
+        "us-news",
+        "national-universities"
+      ],
+      "status": "pending_review"
+    },
+    {
+      "usNewsRank": 46,
+      "institutionDisplayName": "Lehigh University",
+      "queryAliases": [
+        "Lehigh University"
+      ],
+      "websiteUrl": "https://www.lehigh.edu/",
+      "officialProgramsUrl": "https://catalog.lehigh.edu/coursesprogramsandcurricula/",
+      "officialCatalogUrl": "https://catalog.lehigh.edu/",
+      "tags": [
+        "top50",
+        "us-news",
+        "national-universities"
+      ],
+      "status": "pending_review"
+    },
+    {
+      "usNewsRank": 47,
+      "institutionDisplayName": "Northeastern University",
+      "queryAliases": [
+        "Northeastern University"
+      ],
+      "websiteUrl": "https://www.northeastern.edu/",
+      "officialProgramsUrl": "https://admissions.northeastern.edu/academics/majors/",
+      "officialCatalogUrl": "https://catalog.northeastern.edu/",
+      "tags": [
+        "top50",
+        "us-news",
+        "national-universities"
+      ],
+      "status": "pending_review"
+    },
+    {
+      "usNewsRank": 48,
+      "institutionDisplayName": "Purdue University",
+      "queryAliases": [
+        "Purdue University"
+      ],
+      "websiteUrl": "https://www.purdue.edu/",
+      "officialProgramsUrl": "https://www.admissions.purdue.edu/majors/index.php",
+      "officialCatalogUrl": "https://catalog.purdue.edu/",
+      "tags": [
+        "top50",
+        "us-news",
+        "national-universities"
+      ],
+      "status": "pending_review"
+    },
+    {
+      "usNewsRank": 49,
+      "institutionDisplayName": "University of Georgia",
+      "queryAliases": [
+        "University of Georgia"
+      ],
+      "websiteUrl": "https://www.uga.edu/",
+      "officialProgramsUrl": "https://www.uga.edu/academics/programs/",
+      "officialCatalogUrl": "https://bulletin.uga.edu/",
+      "tags": [
+        "top50",
+        "us-news",
+        "national-universities"
+      ],
+      "status": "pending_review"
+    },
+    {
+      "usNewsRank": 50,
+      "institutionDisplayName": "University of Rochester",
+      "queryAliases": [
+        "University of Rochester"
+      ],
+      "websiteUrl": "https://www.rochester.edu/",
+      "officialProgramsUrl": "https://www.rochester.edu/academics/programs.html",
+      "officialCatalogUrl": "https://www.rochester.edu/college/ccas/handbook/",
+      "tags": [
+        "top50",
+        "us-news",
+        "national-universities"
+      ],
+      "status": "pending_review"
+    },
+    {
+      "usNewsRank": 51,
+      "institutionDisplayName": "The College of New Jersey",
+      "queryAliases": [
+        "The College of New Jersey",
+        "TCNJ"
+      ],
+      "websiteUrl": "https://www.tcnj.edu/",
+      "officialProgramsUrl": "https://admissions.tcnj.edu/about-tcnj/academics/",
+      "officialCatalogUrl": "https://bulletin.tcnj.edu/wp-content/uploads/sites/80/2025/07/Undergraduate-Degree-Programs-2025.pdf",
+      "tags": [
+        "batch-extension",
+        "new-jersey",
+        "regional-university"
+      ],
+      "status": "pending_review"
+    },
+    {
+      "usNewsRank": 52,
+      "institutionDisplayName": "Montclair State University",
+      "queryAliases": [
+        "Montclair State University",
+        "Montclair State"
+      ],
+      "websiteUrl": "https://www.montclair.edu/",
+      "officialProgramsUrl": "https://www.montclair.edu/academics/",
+      "officialCatalogUrl": "https://catalog.montclair.edu/undergraduate-graduate-degree-requirements/undergraduate-graduate-degree-requirements.pdf",
+      "tags": [
+        "batch-extension",
+        "new-jersey",
+        "regional-university"
+      ],
+      "status": "pending_review"
+    }
+  ]
+}

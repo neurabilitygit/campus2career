@@ -17,6 +17,11 @@ interface HtmlPage {
   html: string;
 }
 
+interface TcnjJsonLdItem {
+  name: string;
+  url: string;
+}
+
 interface AdapterDiscoveryResult {
   programs: InstitutionAdapterDiscoveredProgram[];
   sourcePages: string[];
@@ -575,6 +580,242 @@ function parseBreakSeparatedPrograms(fragmentHtml: string) {
     .filter(Boolean);
 }
 
+function extractTitle(html: string) {
+  const match = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+  return stripTags(match?.[1] || "");
+}
+
+function extractMetaDescription(html: string) {
+  const match = html.match(/<meta[^>]+name=(["'])description\1[^>]+content=(["'])([\s\S]*?)\2/i);
+  return stripTags(match?.[3] || "");
+}
+
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  concurrency: number,
+  worker: (item: T, index: number) => Promise<R>
+) {
+  const results: R[] = new Array(items.length);
+  let index = 0;
+
+  async function runNext() {
+    while (index < items.length) {
+      const currentIndex = index;
+      index += 1;
+      results[currentIndex] = await worker(items[currentIndex], currentIndex);
+    }
+  }
+
+  await Promise.all(Array.from({ length: Math.max(1, Math.min(concurrency, items.length || 1)) }, () => runNext()));
+  return results;
+}
+
+export function extractTcnjProgramsFromDirectoryHtml(baseUrl: string, html: string) {
+  const base = new URL(baseUrl);
+  const programs: InstitutionAdapterDiscoveredProgram[] = [];
+
+  for (const match of html.matchAll(
+    /<a[^>]*class="[^"]*\bprogram-link\b[^"]*"[^>]*href=(["'])(.*?)\1[^>]*>([\s\S]*?)<\/a>/gi
+  )) {
+    const href = match[2] || "";
+    const cardHtml = match[3] || "";
+    const headingMatch = cardHtml.match(/<h2[^>]*>([\s\S]*?)<\/h2>/i);
+    const label = cleanProgramLabel(stripTags(headingMatch?.[1] || ""));
+    if (!label) {
+      continue;
+    }
+
+    const badgeLabels = Array.from(cardHtml.matchAll(/<img[^>]+alt="([^"]+)"[^>]*>/gi))
+      .map((entry) => normalizeWhitespace(decodeHtmlEntities(entry[1] || "")))
+      .filter(Boolean);
+
+    const resolvedUrl = (() => {
+      try {
+        return new URL(href, base).toString();
+      } catch {
+        return base.toString();
+      }
+    })();
+
+    const hasMajorBadge = badgeLabels.some((badge) => /major\/specialization|teacher preparation|accelerated/i.test(badge));
+    const hasMinorBadge = badgeLabels.some((badge) => /\bminor\b/i.test(badge));
+
+    if (hasMajorBadge) {
+      const major = createProgram(label, resolvedUrl, "major");
+      if (major) {
+        programs.push(major);
+      }
+    }
+
+    if (hasMinorBadge) {
+      const minor = createProgram(label, resolvedUrl, "minor");
+      if (minor) {
+        programs.push(minor);
+      }
+    }
+  }
+
+  return uniquePrograms(programs);
+}
+
+export function extractTcnjProgramsFromJsonLdHtml(html: string): TcnjJsonLdItem[] {
+  const match = html.match(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/i);
+  if (!match?.[1]) {
+    return [];
+  }
+
+  let parsed: {
+    itemListElement?: Array<{
+      item?: {
+        name?: string;
+        url?: string;
+      };
+    }>;
+  };
+
+  try {
+    parsed = JSON.parse(match[1]);
+  } catch {
+    return [];
+  }
+
+  const deduped = new Map<string, TcnjJsonLdItem>();
+  for (const entry of parsed.itemListElement || []) {
+    const name = cleanProgramLabel(entry.item?.name || "");
+    const url = normalizeWhitespace(entry.item?.url || "");
+    if (!name || !url) {
+      continue;
+    }
+
+    deduped.set(`${name.toLowerCase()}::${url}`, { name, url });
+  }
+
+  return Array.from(deduped.values());
+}
+
+export function classifyTcnjProgramKindsFromDetailHtml(input: {
+  url: string;
+  html: string;
+  fallbackName: string;
+}) {
+  const title = extractTitle(input.html);
+  const description = extractMetaDescription(input.html);
+  const haystack = `${title}\n${description}\n${stripTags(input.html.slice(0, 6000))}`.toLowerCase();
+  const normalizedUrl = input.url.toLowerCase();
+  const titleHasProgramMarker = /\b(program|minor)\b/i.test(title);
+  const displayName = cleanProgramLabel(
+    title
+      .replace(/\s+Program\s*\|.*$/i, "")
+      .replace(/\s+Minor\s*\|.*$/i, "")
+      .replace(/\s+\|\s+TCNJ.*$/i, "")
+      .replace(/\s+\|\s+Department.*$/i, "")
+      .trim() || input.fallbackName
+  );
+
+  if (
+    /\b(prelaw|premed|pre-med|medicine|law)\b/i.test(displayName) &&
+    !titleHasProgramMarker
+  ) {
+    return { displayName, kinds: [] as ProgramKind[] };
+  }
+
+  if (/\b(concentration|specialization)\b/i.test(displayName) && !/\bmajor\b/i.test(haystack)) {
+    return { displayName, kinds: [] as ProgramKind[] };
+  }
+
+  const kinds = new Set<ProgramKind>();
+
+  if (
+    /\/minor\//i.test(normalizedUrl) ||
+    /\bminor\b\s*\|/i.test(title) ||
+    /\bminor\b/.test(description.toLowerCase())
+  ) {
+    kinds.add("minor");
+  }
+
+  if (
+    /\bprogram\b/i.test(title) ||
+    /\bmajor\/specialization\b/i.test(haystack) ||
+    /\bteacher preparation\b/i.test(haystack) ||
+    /\bmajor in\b/i.test(haystack) ||
+    /\bmajor\b/.test(description.toLowerCase())
+  ) {
+    kinds.add("major");
+  }
+
+  if (/\bmajor(?:s)? and minor(?:s)?\b/i.test(haystack) || /\bmajor and minor\b/i.test(haystack)) {
+    kinds.add("major");
+    kinds.add("minor");
+  }
+
+  if (!kinds.size && /\bminor\b/i.test(haystack) && !/\bprogram\b/i.test(title)) {
+    kinds.add("minor");
+  }
+
+  return {
+    displayName,
+    kinds: Array.from(kinds),
+  };
+}
+
+export function extractMontclairProgramsFromFinderHtml(baseUrl: string, html: string) {
+  const match = html.match(/window\.programList\s*=\s*(\{[\s\S]*?\})\s*;?\s*<\/script>/i);
+  if (!match?.[1]) {
+    return [];
+  }
+
+  let parsed: Record<
+    string,
+    {
+      title?: string;
+      url?: string;
+      program_level?: Array<{ name?: string }>;
+      program_type?: Array<{ name?: string }>;
+      degree_type?: Array<{ name?: string }>;
+    }
+  >;
+  try {
+    parsed = JSON.parse(match[1]);
+  } catch {
+    return [];
+  }
+
+  const programs: InstitutionAdapterDiscoveredProgram[] = [];
+  for (const entry of Object.values(parsed)) {
+    const levels = entry.program_level?.map((value) => normalizeWhitespace(value.name || "")).filter(Boolean) || [];
+    if (!levels.some((value) => /^undergraduate$/i.test(value))) {
+      continue;
+    }
+
+    const types = entry.program_type?.map((value) => normalizeWhitespace(value.name || "")).filter(Boolean) || [];
+    const degreeType = entry.degree_type?.map((value) => normalizeWhitespace(value.name || "")).find(Boolean) || DEFAULT_DEGREE_TYPE;
+    const sourceUrl = entry.url || baseUrl;
+    const label = entry.title || "";
+
+    if (types.some((value) => /^major$/i.test(value))) {
+      const major = createProgram(label, sourceUrl, "major", {
+        degreeType,
+        programName: "Auto-discovered Montclair undergraduate programs",
+      });
+      if (major) {
+        programs.push(major);
+      }
+    }
+
+    if (types.some((value) => /^minor$/i.test(value))) {
+      const minor = createProgram(label, sourceUrl, "minor", {
+        degreeType,
+        programName: "Auto-discovered Montclair undergraduate programs",
+      });
+      if (minor) {
+        programs.push(minor);
+      }
+    }
+  }
+
+  return uniquePrograms(programs);
+}
+
 function isChallengePage(html: string) {
   const lower = html.toLowerCase();
   return (
@@ -837,6 +1078,71 @@ const princetonAdapter: InstitutionCatalogAdapter = {
   },
 };
 
+const tcnjAdapter: InstitutionCatalogAdapter = {
+  name: "tcnj",
+  matches(input) {
+    return matchesCanonicalName(input, ["the-college-of-new-jersey"]);
+  },
+  async discover() {
+    const directoryUrl = "https://programs.tcnj.edu/";
+    const page = await fetchHtmlPage(directoryUrl);
+    if (!page) {
+      return null;
+    }
+
+    const cardPrograms = extractTcnjProgramsFromDirectoryHtml(page.url, page.html);
+    const jsonLdItems = extractTcnjProgramsFromJsonLdHtml(page.html);
+    const enrichedPrograms = (
+      await mapWithConcurrency(jsonLdItems, 8, async (item) => {
+        const detailPage = await fetchHtmlPage(item.url);
+        if (!detailPage) {
+          return [] as InstitutionAdapterDiscoveredProgram[];
+        }
+
+        const classification = classifyTcnjProgramKindsFromDetailHtml({
+          url: detailPage.url,
+          html: detailPage.html,
+          fallbackName: item.name,
+        });
+
+        return classification.kinds
+          .map((kind) => createProgram(classification.displayName, detailPage.url, kind))
+          .filter((entry): entry is InstitutionAdapterDiscoveredProgram => !!entry);
+      })
+    ).flat();
+
+    const programs = uniquePrograms([...cardPrograms, ...enrichedPrograms]);
+    return programs.length > 0
+      ? {
+          programs,
+          sourcePages: [page.url, ...jsonLdItems.slice(0, 12).map((item) => item.url)],
+        }
+      : null;
+  },
+};
+
+const montclairAdapter: InstitutionCatalogAdapter = {
+  name: "montclair",
+  matches(input) {
+    return matchesCanonicalName(input, ["montclair-state-university"]);
+  },
+  async discover() {
+    const finderUrl = "https://www.montclair.edu/academics/program-finder/";
+    const page = await fetchHtmlPage(finderUrl);
+    if (!page) {
+      return null;
+    }
+
+    const programs = extractMontclairProgramsFromFinderHtml(page.url, page.html);
+    return programs.length > 0
+      ? {
+          programs,
+          sourcePages: [page.url],
+        }
+      : null;
+  },
+};
+
 const purdueAdapter: InstitutionCatalogAdapter = {
   name: "purdue",
   matches(input) {
@@ -1074,6 +1380,8 @@ const ADAPTERS: InstitutionCatalogAdapter[] = [
   columbiaAdapter,
   harvardAdapter,
   princetonAdapter,
+  tcnjAdapter,
+  montclairAdapter,
   purdueAdapter,
   ohioStateAdapter,
   michiganAdapter,

@@ -40,6 +40,14 @@ export interface MajorRow {
   cip_code: string | null;
   department_name: string | null;
   is_active: boolean;
+  provenance_method: "direct_scrape" | "artifact_pdf" | "manual" | "llm_assisted" | "synthetic_seed" | null;
+  source_url: string | null;
+  source_note: string | null;
+  confidence_label: "low" | "medium" | "high" | null;
+  truth_status: "direct" | "inferred" | "placeholder" | "fallback" | "unresolved";
+  discovered_at: string | null;
+  reviewed_at: string | null;
+  reviewed_by_user_id: string | null;
 }
 
 export interface MinorRow {
@@ -49,6 +57,14 @@ export interface MinorRow {
   display_name: string;
   department_name: string | null;
   is_active: boolean;
+  provenance_method: "direct_scrape" | "artifact_pdf" | "manual" | "llm_assisted" | "synthetic_seed" | null;
+  source_url: string | null;
+  source_note: string | null;
+  confidence_label: "low" | "medium" | "high" | null;
+  truth_status: "direct" | "inferred" | "placeholder" | "fallback" | "unresolved";
+  discovered_at: string | null;
+  reviewed_at: string | null;
+  reviewed_by_user_id: string | null;
 }
 
 export interface ConcentrationRow {
@@ -56,6 +72,14 @@ export interface ConcentrationRow {
   major_id: string;
   canonical_name: string;
   display_name: string;
+  provenance_method: "direct_scrape" | "artifact_pdf" | "manual" | "llm_assisted" | "synthetic_seed" | null;
+  source_url: string | null;
+  source_note: string | null;
+  confidence_label: "low" | "medium" | "high" | null;
+  truth_status: "direct" | "inferred" | "placeholder" | "fallback" | "unresolved";
+  discovered_at: string | null;
+  reviewed_at: string | null;
+  reviewed_by_user_id: string | null;
 }
 
 export interface StudentCatalogAssignmentRow {
@@ -69,6 +93,27 @@ export interface StudentCatalogAssignmentRow {
   concentration_id: string | null;
   assignment_source: "student_selected" | "transcript_inferred" | "advisor_confirmed" | "system_inferred";
   is_primary: boolean;
+  selection_status: "not_started" | "selected" | "manual_entry" | "needs_review";
+  selected_by_user_id: string | null;
+  selected_at: string | null;
+  selection_notes: string | null;
+  degree_requirements_status:
+    | "not_started"
+    | "in_progress"
+    | "succeeded"
+    | "failed"
+    | "questionable"
+    | "needs_review"
+    | "upload_required";
+  degree_requirements_source:
+    | "seeded_database"
+    | "scrape"
+    | "llm_training_data"
+    | "manual_input"
+    | "pdf_upload"
+    | null;
+  degree_requirements_confidence_label: "low" | "medium" | "high" | null;
+  degree_requirements_truth_status: "direct" | "inferred" | "placeholder" | "fallback" | "unresolved";
 }
 
 export interface StudentCatalogContextRow {
@@ -118,6 +163,13 @@ export interface RequirementSetRow {
   provenance_method: "direct_scrape" | "artifact_pdf" | "manual" | "llm_assisted" | "synthetic_seed" | null;
   source_url: string | null;
   source_note: string | null;
+  confidence_label: "low" | "medium" | "high" | null;
+  truth_status: "direct" | "inferred" | "placeholder" | "fallback" | "unresolved";
+  reasonableness_status: "succeeded" | "questionable" | "failed" | "needs_review";
+  reasonableness_notes: string | null;
+  reviewed_by_user_id: string | null;
+  reviewed_at: string | null;
+  review_status: "not_reviewed" | "family_verified" | "coach_reviewed" | "admin_reviewed" | "needs_attention";
 }
 
 export interface RequirementGroupRow {
@@ -405,6 +457,12 @@ export class CatalogRepository {
     cipCode?: string | null;
     departmentName?: string | null;
     isActive?: boolean;
+    provenanceMethod?: "direct_scrape" | "artifact_pdf" | "manual" | "llm_assisted" | "synthetic_seed" | null;
+    sourceUrl?: string | null;
+    sourceNote?: string | null;
+    confidenceLabel?: "low" | "medium" | "high" | null;
+    truthStatus?: "direct" | "inferred" | "placeholder" | "fallback" | "unresolved";
+    discoveredAt?: string | null;
   }): Promise<void> {
     await query(
       `
@@ -415,13 +473,25 @@ export class CatalogRepository {
         display_name,
         cip_code,
         department_name,
-        is_active
-      ) values ($1,$2,$3,$4,$5,$6,$7)
+        is_active,
+        provenance_method,
+        source_url,
+        source_note,
+        confidence_label,
+        truth_status,
+        discovered_at
+      ) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
       on conflict (degree_program_id, canonical_name) do update set
         display_name = excluded.display_name,
         cip_code = excluded.cip_code,
         department_name = excluded.department_name,
-        is_active = excluded.is_active
+        is_active = excluded.is_active,
+        provenance_method = excluded.provenance_method,
+        source_url = excluded.source_url,
+        source_note = excluded.source_note,
+        confidence_label = excluded.confidence_label,
+        truth_status = excluded.truth_status,
+        discovered_at = excluded.discovered_at
       `,
       [
         input.majorId,
@@ -431,6 +501,12 @@ export class CatalogRepository {
         input.cipCode ?? null,
         input.departmentName ?? null,
         input.isActive ?? true,
+        input.provenanceMethod ?? null,
+        input.sourceUrl ?? null,
+        input.sourceNote ?? null,
+        input.confidenceLabel ?? null,
+        input.truthStatus ?? "unresolved",
+        input.discoveredAt ?? null,
       ]
     );
   }
@@ -497,6 +573,12 @@ export class CatalogRepository {
     displayName: string;
     departmentName?: string | null;
     isActive?: boolean;
+    provenanceMethod?: "direct_scrape" | "artifact_pdf" | "manual" | "llm_assisted" | "synthetic_seed" | null;
+    sourceUrl?: string | null;
+    sourceNote?: string | null;
+    confidenceLabel?: "low" | "medium" | "high" | null;
+    truthStatus?: "direct" | "inferred" | "placeholder" | "fallback" | "unresolved";
+    discoveredAt?: string | null;
   }): Promise<void> {
     await query(
       `
@@ -506,12 +588,24 @@ export class CatalogRepository {
         canonical_name,
         display_name,
         department_name,
-        is_active
-      ) values ($1,$2,$3,$4,$5,$6)
+        is_active,
+        provenance_method,
+        source_url,
+        source_note,
+        confidence_label,
+        truth_status,
+        discovered_at
+      ) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
       on conflict (degree_program_id, canonical_name) do update set
         display_name = excluded.display_name,
         department_name = excluded.department_name,
-        is_active = excluded.is_active
+        is_active = excluded.is_active,
+        provenance_method = excluded.provenance_method,
+        source_url = excluded.source_url,
+        source_note = excluded.source_note,
+        confidence_label = excluded.confidence_label,
+        truth_status = excluded.truth_status,
+        discovered_at = excluded.discovered_at
       `,
       [
         input.minorId,
@@ -520,6 +614,62 @@ export class CatalogRepository {
         input.displayName,
         input.departmentName ?? null,
         input.isActive ?? true,
+        input.provenanceMethod ?? null,
+        input.sourceUrl ?? null,
+        input.sourceNote ?? null,
+        input.confidenceLabel ?? null,
+        input.truthStatus ?? "unresolved",
+        input.discoveredAt ?? null,
+      ]
+    );
+  }
+
+  async upsertConcentration(input: {
+    concentrationId: string;
+    majorId: string;
+    canonicalName: string;
+    displayName: string;
+    provenanceMethod?: "direct_scrape" | "artifact_pdf" | "manual" | "llm_assisted" | "synthetic_seed" | null;
+    sourceUrl?: string | null;
+    sourceNote?: string | null;
+    confidenceLabel?: "low" | "medium" | "high" | null;
+    truthStatus?: "direct" | "inferred" | "placeholder" | "fallback" | "unresolved";
+    discoveredAt?: string | null;
+  }): Promise<void> {
+    await query(
+      `
+      insert into concentrations (
+        concentration_id,
+        major_id,
+        canonical_name,
+        display_name,
+        provenance_method,
+        source_url,
+        source_note,
+        confidence_label,
+        truth_status,
+        discovered_at
+      ) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+      on conflict (major_id, canonical_name) do update set
+        display_name = excluded.display_name,
+        provenance_method = excluded.provenance_method,
+        source_url = excluded.source_url,
+        source_note = excluded.source_note,
+        confidence_label = excluded.confidence_label,
+        truth_status = excluded.truth_status,
+        discovered_at = excluded.discovered_at
+      `,
+      [
+        input.concentrationId,
+        input.majorId,
+        input.canonicalName,
+        input.displayName,
+        input.provenanceMethod ?? null,
+        input.sourceUrl ?? null,
+        input.sourceNote ?? null,
+        input.confidenceLabel ?? null,
+        input.truthStatus ?? "unresolved",
+        input.discoveredAt ?? null,
       ]
     );
   }
@@ -729,6 +879,10 @@ export class CatalogRepository {
     provenanceMethod?: "direct_scrape" | "artifact_pdf" | "manual" | "llm_assisted" | "synthetic_seed" | null;
     sourceUrl?: string | null;
     sourceNote?: string | null;
+    confidenceLabel?: "low" | "medium" | "high" | null;
+    truthStatus?: "direct" | "inferred" | "placeholder" | "fallback" | "unresolved";
+    reasonablenessStatus?: "succeeded" | "questionable" | "failed" | "needs_review";
+    reasonablenessNotes?: string | null;
   }): Promise<void> {
     await query(
       `
@@ -742,8 +896,12 @@ export class CatalogRepository {
         total_credits_required,
         provenance_method,
         source_url,
-        source_note
-      ) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+        source_note,
+        confidence_label,
+        truth_status,
+        reasonableness_status,
+        reasonableness_notes
+      ) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
       on conflict (requirement_set_id) do update set
         major_id = excluded.major_id,
         minor_id = excluded.minor_id,
@@ -753,7 +911,11 @@ export class CatalogRepository {
         total_credits_required = excluded.total_credits_required,
         provenance_method = excluded.provenance_method,
         source_url = excluded.source_url,
-        source_note = excluded.source_note
+        source_note = excluded.source_note,
+        confidence_label = excluded.confidence_label,
+        truth_status = excluded.truth_status,
+        reasonableness_status = excluded.reasonableness_status,
+        reasonableness_notes = excluded.reasonableness_notes
       `,
       [
         input.requirementSetId,
@@ -766,6 +928,10 @@ export class CatalogRepository {
         input.provenanceMethod ?? null,
         input.sourceUrl ?? null,
         input.sourceNote ?? null,
+        input.confidenceLabel ?? null,
+        input.truthStatus ?? "unresolved",
+        input.reasonablenessStatus ?? "needs_review",
+        input.reasonablenessNotes ?? null,
       ]
     );
   }
@@ -907,6 +1073,27 @@ export class CatalogRepository {
     concentrationId?: string | null;
     assignmentSource: "student_selected" | "transcript_inferred" | "advisor_confirmed" | "system_inferred";
     isPrimary?: boolean;
+    selectionStatus?: "not_started" | "selected" | "manual_entry" | "needs_review";
+    selectedByUserId?: string | null;
+    selectedAt?: string | null;
+    selectionNotes?: string | null;
+    degreeRequirementsStatus?:
+      | "not_started"
+      | "in_progress"
+      | "succeeded"
+      | "failed"
+      | "questionable"
+      | "needs_review"
+      | "upload_required";
+    degreeRequirementsSource?:
+      | "seeded_database"
+      | "scrape"
+      | "llm_training_data"
+      | "manual_input"
+      | "pdf_upload"
+      | null;
+    degreeRequirementsConfidenceLabel?: "low" | "medium" | "high" | null;
+    degreeRequirementsTruthStatus?: "direct" | "inferred" | "placeholder" | "fallback" | "unresolved";
   }): Promise<void> {
     await query(
       `
@@ -921,9 +1108,17 @@ export class CatalogRepository {
         concentration_id,
         assignment_source,
         is_primary,
+        selection_status,
+        selected_by_user_id,
+        selected_at,
+        selection_notes,
+        degree_requirements_status,
+        degree_requirements_source,
+        degree_requirements_confidence_label,
+        degree_requirements_truth_status,
         created_at,
         updated_at
-      ) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,now(),now())
+      ) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,now(),now())
       on conflict (student_catalog_assignment_id) do update set
         institution_id = excluded.institution_id,
         academic_catalog_id = excluded.academic_catalog_id,
@@ -933,6 +1128,14 @@ export class CatalogRepository {
         concentration_id = excluded.concentration_id,
         assignment_source = excluded.assignment_source,
         is_primary = excluded.is_primary,
+        selection_status = excluded.selection_status,
+        selected_by_user_id = excluded.selected_by_user_id,
+        selected_at = excluded.selected_at,
+        selection_notes = excluded.selection_notes,
+        degree_requirements_status = excluded.degree_requirements_status,
+        degree_requirements_source = excluded.degree_requirements_source,
+        degree_requirements_confidence_label = excluded.degree_requirements_confidence_label,
+        degree_requirements_truth_status = excluded.degree_requirements_truth_status,
         updated_at = now()
       `,
       [
@@ -946,6 +1149,14 @@ export class CatalogRepository {
         input.concentrationId ?? null,
         input.assignmentSource,
         input.isPrimary ?? true,
+        input.selectionStatus ?? "selected",
+        input.selectedByUserId ?? null,
+        input.selectedAt ?? null,
+        input.selectionNotes ?? null,
+        input.degreeRequirementsStatus ?? "not_started",
+        input.degreeRequirementsSource ?? null,
+        input.degreeRequirementsConfidenceLabel ?? null,
+        input.degreeRequirementsTruthStatus ?? "unresolved",
       ]
     );
   }

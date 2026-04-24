@@ -38,6 +38,7 @@ const preferredMigrationOrder = [
   "027_role_profiles.sql",
   "028_curriculum_verification.sql",
   "029_intro_onboarding.sql",
+  "030_academic_evidence_workflow.sql",
 ];
 
 const migrationOrderIndex = new Map(

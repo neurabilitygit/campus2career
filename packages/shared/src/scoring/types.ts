@@ -1,4 +1,5 @@
 import type {
+  AcademicDiscoveryStatus,
   CurriculumVerificationStatus,
   RequirementSetProvenanceMethod,
 } from "../contracts/academic";
@@ -206,6 +207,8 @@ export interface RequirementProgressSummary {
   missingRequiredCourses: string[];
   inferredConfidence: "low" | "medium" | "high";
   truthStatus: TruthStatus;
+  reasonablenessStatus?: AcademicDiscoveryStatus | null;
+  reasonablenessNotes?: string | null;
   manualRequirementItemCount: number;
   nonCourseRequirementItemCount: number;
   excludedRequirementGroupCount: number;

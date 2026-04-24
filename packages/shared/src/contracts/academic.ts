@@ -7,6 +7,21 @@ export type RequirementSetProvenanceMethod =
   | "llm_assisted"
   | "synthetic_seed";
 
+export type AcademicDiscoverySource =
+  | "seeded_database"
+  | "scrape"
+  | "llm_training_data"
+  | "manual_input"
+  | "pdf_upload";
+
+export type AcademicDiscoveryStatus =
+  | "not_started"
+  | "in_progress"
+  | "succeeded"
+  | "failed"
+  | "questionable"
+  | "needs_review";
+
 export type CurriculumVerificationStatus =
   | "missing"
   | "present_unverified"
@@ -105,6 +120,10 @@ export interface RequirementSetInput {
   provenanceMethod?: RequirementSetProvenanceMethod;
   sourceUrl?: string;
   sourceNote?: string;
+  confidenceLabel?: ConfidenceLabel;
+  truthStatus?: TruthStatus;
+  reasonablenessStatus?: Exclude<AcademicDiscoveryStatus, "not_started" | "in_progress">;
+  reasonablenessNotes?: string;
 }
 
 export interface RequirementGroupInput {
@@ -244,5 +263,37 @@ export interface RequirementSetGraph {
   provenanceMethod?: RequirementSetProvenanceMethod | null;
   sourceUrl?: string | null;
   sourceNote?: string | null;
+  confidenceLabel?: ConfidenceLabel | null;
+  truthStatus?: TruthStatus | null;
+  reasonablenessStatus?: AcademicDiscoveryStatus | null;
+  reasonablenessNotes?: string | null;
   groups: RequirementGroupGraphNode[];
+}
+
+export interface AcademicDiscoveryAttemptRecord {
+  academicDiscoveryAttemptId: string;
+  studentProfileId: string;
+  institutionId?: string | null;
+  academicCatalogId?: string | null;
+  discoveryType: "offerings" | "degree_requirements";
+  requestedEntityType:
+    | "institution"
+    | "major"
+    | "minor"
+    | "concentration"
+    | "degree_core"
+    | "general_education";
+  requestedEntityName?: string | null;
+  sourceAttempted: AcademicDiscoverySource;
+  status: AcademicDiscoveryStatus;
+  confidenceLabel?: ConfidenceLabel | null;
+  truthStatus: TruthStatus;
+  sourceUrl?: string | null;
+  sourceNote?: string | null;
+  reasonablenessNotes?: string | null;
+  rawResultJson?: unknown;
+  normalizedResultJson?: unknown;
+  createdAt: string;
+  completedAt?: string | null;
+  requestedByUserId?: string | null;
 }

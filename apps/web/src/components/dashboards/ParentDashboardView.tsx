@@ -5,6 +5,7 @@ import Link from "next/link";
 import { AppShell } from "../layout/AppShell";
 import { SectionCard } from "../layout/SectionCard";
 import { CurriculumVerificationSection } from "../academic/CurriculumVerificationSection";
+import { AcademicEvidenceSection } from "../academic/AcademicEvidenceSection";
 import { RequireRole } from "../RequireRole";
 import { useApiData } from "../../hooks/useApiData";
 import { useAuthContext } from "../../hooks/useAuthContext";
@@ -316,6 +317,8 @@ export default function ParentDashboardView() {
         </div>
 
         <OutcomeTrackingSection mode="parent" subjectLabel={studentLabel} />
+
+        <AcademicEvidenceSection mode="parent" />
 
         <CurriculumVerificationSection
           title="Degree Requirements Review"

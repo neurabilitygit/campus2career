@@ -10,6 +10,7 @@ import {
 } from "./catalogService";
 import { discoverProgramsViaInstitutionAdapter } from "./catalogInstitutionAdapters";
 import { inferStructuredCourseworkFromOfficialText } from "../openai/responsesClient";
+import { extractDocumentText } from "./documentExtraction";
 
 const repo = new CatalogRepository();
 
@@ -68,10 +69,16 @@ interface ProgramRequirementDiscoveryResult {
   sourcePage: string | null;
   requirementSetId: string | null;
   message: string;
-  provenanceMethod?: "direct_scrape" | "llm_assisted";
+  provenanceMethod?: "direct_scrape" | "llm_assisted" | "artifact_pdf";
   sourceNote?: string | null;
   usedLlmAssistance?: boolean;
   diagnostics?: string[];
+}
+
+interface ProgramQualityAssessment {
+  accepted: boolean;
+  score: number;
+  reasons: string[];
 }
 
 function normalizeWhitespace(value: string): string {
@@ -270,6 +277,37 @@ async function fetchHtmlPage(url: string): Promise<HtmlPage | null> {
   }
 }
 
+async function fetchBinaryDocument(url: string): Promise<{ url: string; buffer: Buffer; contentType: string | null } | null> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 20000);
+
+  try {
+    const response = await fetch(url, {
+      headers: {
+        accept: "application/pdf,application/octet-stream,*/*",
+        "user-agent": DISCOVERY_FALLBACK_USER_AGENT,
+      },
+      redirect: "follow",
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const arrayBuffer = await response.arrayBuffer();
+    return {
+      url: response.url || url,
+      buffer: Buffer.from(arrayBuffer),
+      contentType: response.headers.get("content-type"),
+    };
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
 function buildCatalogSeedUrls(websiteUrl: string): string[] {
   let base: URL;
   try {
@@ -413,22 +451,27 @@ function inferDegreeBucket(label: string, sourceUrl: string): { degreeType: stri
   };
 }
 
-function cleanProgramDisplayName(value: string): string {
+export function cleanProgramDisplayName(value: string): string {
   return normalizeWhitespace(
     value
       .replace(/^\d{1,2}\/\d{1,2}\/\d{2,4}\s+/g, "")
       .replace(/^updated\s+\d{1,2}\/\d{1,2}\/\d{2,4}\s+/gi, "")
       .replace(/^["'`]+|["'`]+$/g, "")
+      .replace(/[<>]+/g, " ")
       .replace(/\s*\|\s*.*/g, "")
       .replace(/\s*-\s*(major|minor|b\.?a\.?|b\.?s\.?|bachelor.*)$/i, "")
       .replace(/^(major|minor)\s+in\s+/i, "")
       .replace(/\s+\((b\.?a\.?|b\.?s\.?|b\.?f\.?a\.?|bachelor.*?)\)$/i, "")
       .replace(/\s*,\s*(b\.?a\.?|b\.?s\.?|b\.?f\.?a\.?|b\.?b\.?a\.?)$/i, "")
       .replace(/\s+(b\.?a\.?|b\.?s\.?|b\.?f\.?a\.?|b\.?b\.?a\.?)$/i, "")
+      .replace(/\s+keyboard_arrow_right$/i, "")
+      .replace(/\s*\(link is external\)$/i, "")
+      .replace(/\s*\(opens in a new tab\)$/i, "")
+      .replace(/\s*(read more|learn more|view all|see all)$/i, "")
   );
 }
 
-function looksLikeProgramName(value: string): boolean {
+export function looksLikeProgramName(value: string): boolean {
   const normalized = normalizeWhitespace(value);
   if (!normalized || normalized.length < 2 || normalized.length > 80) {
     return false;
@@ -482,10 +525,18 @@ function looksLikeProgramName(value: string): boolean {
     return false;
   }
 
+  if (/^\d+\s+[A-Za-z]/.test(normalized)) {
+    return false;
+  }
+
+  if (/\b(keyboard_arrow_right|link is external|opens in a new tab)\b/i.test(normalized)) {
+    return false;
+  }
+
   return true;
 }
 
-function isClearlyNonProgramLabel(value: string): boolean {
+export function isClearlyNonProgramLabel(value: string): boolean {
   const normalized = cleanProgramDisplayName(value).toLowerCase();
   if (!normalized) {
     return true;
@@ -494,14 +545,18 @@ function isClearlyNonProgramLabel(value: string): boolean {
   const stopPhrases = new Set([
     "academics",
     "academic programs",
+    "academic policies",
     "academic support",
     "about",
+    "about us",
     "admissions",
+    "advice for applicants",
     "alumni",
     "apply",
     "a to z index",
     "a-z index",
     "a-z program list",
+    "a to z listing",
     "bulletin",
     "calendar",
     "campus life",
@@ -515,6 +570,8 @@ function isClearlyNonProgramLabel(value: string): boolean {
     "directory",
     "events",
     "explore majors",
+    "explore majors minors certificates",
+    "find your",
     "faculty",
     "faculty and staff",
     "financial aid",
@@ -544,9 +601,15 @@ function isClearlyNonProgramLabel(value: string): boolean {
     "undergraduate programs",
     "visit",
     "we have your",
+    "accessibility",
+    "activities and recreation",
   ]);
 
   if (stopPhrases.has(normalized)) {
+    return true;
+  }
+
+  if (/^\d+\s+[a-z]/i.test(normalized)) {
     return true;
   }
 
@@ -554,8 +617,140 @@ function isClearlyNonProgramLabel(value: string): boolean {
     /\b(admissions?|apply|calendar|campus|classroom|contact|course|courses|edition|events|faculty|financial aid|help|index|libraries|login|news|office|overview|records|research|scheduling|search|staff|student|visit)\b/i.test(
       normalized
     ) ||
-    /^(bachelor|master|doctor|doctoral|graduate|undergraduate|certificate)(\s|$)/i.test(normalized)
+    /^(bachelor|master|doctor|doctoral|graduate|undergraduate|certificate)(\s|$)/i.test(normalized) ||
+    /\b(address|campus map|directions|external|keyboard_arrow_right|click here|request information|applicants?)\b/i.test(normalized) ||
+    /\b(explore|majors?|minors?|certificates?|scholars? program|back|pathway|thesis|listing|policies)\b/i.test(normalized)
   );
+}
+
+export function assessDiscoveredProgramQuality(program: Pick<DiscoveredProgram, "displayName" | "sourceUrl" | "kind">): ProgramQualityAssessment {
+  const displayName = cleanProgramDisplayName(program.displayName);
+  const sourceUrl = program.sourceUrl.toLowerCase();
+  const reasons: string[] = [];
+  let score = 0;
+
+  if (!/[a-z]/i.test(displayName)) {
+    return {
+      accepted: false,
+      score: -100,
+      reasons: ["The label does not contain enough alphabetic content to represent a program."],
+    };
+  }
+
+  if (!looksLikeProgramName(displayName)) {
+    return {
+      accepted: false,
+      score: -90,
+      reasons: ["The label does not look like a plausible academic program name."],
+    };
+  }
+
+  if (isClearlyNonProgramLabel(displayName)) {
+    return {
+      accepted: false,
+      score: -80,
+      reasons: ["The label matches common navigation, marketing, or non-program wording."],
+    };
+  }
+
+  const wordCount = displayName.split(/\s+/).filter(Boolean).length;
+  if (wordCount <= 5) {
+    score += 8;
+  } else if (wordCount <= 7) {
+    score += 3;
+  } else {
+    score -= 8;
+    reasons.push("The label is unusually long for a major or minor.");
+  }
+
+  if (
+    sourceUrl.includes("catalog") ||
+    sourceUrl.includes("bulletin") ||
+    sourceUrl.includes("majors") ||
+    sourceUrl.includes("minors") ||
+    sourceUrl.includes("programs") ||
+    sourceUrl.includes("academics") ||
+    sourceUrl.includes("department") ||
+    sourceUrl.includes("study")
+  ) {
+    score += 14;
+  } else {
+    score -= 8;
+    reasons.push("The source URL does not look like an academic-program directory or catalog page.");
+  }
+
+  if (
+    sourceUrl.includes("student-life") ||
+    sourceUrl.includes("alumni") ||
+    sourceUrl.includes("community") ||
+    sourceUrl.includes("stories") ||
+    sourceUrl.includes("story") ||
+    sourceUrl.includes("profile") ||
+    sourceUrl.includes("chapter") ||
+    sourceUrl.includes("activities") ||
+    sourceUrl.includes("recreation")
+  ) {
+    score -= 20;
+    reasons.push("The source URL looks more like student-life, alumni, or marketing content than a catalog page.");
+  }
+
+  if (
+    /\b(eligibility|deadline|deadlines|procedure|procedures|double major|double majors|certificate|certificates|activities|recreation|story|stories|profile|pathway|thesis|policies|about us)\b/i.test(
+      displayName
+    )
+  ) {
+    score -= 24;
+    reasons.push("The label contains procedural, certificate, student-life, or storytelling wording rather than a program title.");
+  }
+
+  return {
+    accepted: score >= 8,
+    score,
+    reasons,
+  };
+}
+
+export function selectPersistablePrograms(programs: DiscoveredProgram[]) {
+  const preferred = new Map<string, { program: DiscoveredProgram; assessment: ProgramQualityAssessment }>();
+  const discarded: Array<{ displayName: string; sourceUrl: string; score: number; reasons: string[] }> = [];
+
+  for (const program of programs) {
+    const cleaned: DiscoveredProgram = {
+      ...program,
+      displayName: cleanProgramDisplayName(program.displayName),
+      canonicalName: slugify(cleanProgramDisplayName(program.displayName)),
+    };
+    const assessment = assessDiscoveredProgramQuality(cleaned);
+    const key = `${cleaned.kind}:${cleaned.degreeType}:${cleaned.programName}:${cleaned.canonicalName}`;
+    if (!assessment.accepted) {
+      discarded.push({
+        displayName: cleaned.displayName,
+        sourceUrl: cleaned.sourceUrl,
+        score: assessment.score,
+        reasons: assessment.reasons,
+      });
+      continue;
+    }
+
+    const existing = preferred.get(key);
+    if (!existing || assessment.score > existing.assessment.score) {
+      preferred.set(key, { program: cleaned, assessment });
+    }
+  }
+
+  const selectedPrograms = Array.from(preferred.values()).map((entry) => entry.program);
+  const selectedMajorCount = selectedPrograms.filter((program) => program.kind === "major").length;
+  const selectedMinorCount = selectedPrograms.filter((program) => program.kind === "minor").length;
+
+  return {
+    programs: selectedPrograms,
+    discarded,
+    isSufficient: selectedMajorCount >= 3 || (selectedMajorCount >= 2 && selectedMinorCount >= 1),
+  };
+}
+
+export function isLikelyUndergraduateDegreeType(value: string) {
+  return /^(undergraduate|ba|bs|bfa|bmus|bba|bsn|bse|be|bm|bphil)$/i.test(normalizeWhitespace(value));
 }
 
 function isProgramLikeHref(sourceUrl: string, programLabel: string): boolean {
@@ -755,6 +950,15 @@ function classifyProgramLabelFromPageContext(
   }
   if (/^[A-Za-z&,'/(). -]+$/.test(cleaned)) {
     score += 4;
+  }
+  if (
+    urlHaystack.includes("admissions") ||
+    urlHaystack.includes("enrolled-student-profile") ||
+    urlHaystack.includes("alumni") ||
+    urlHaystack.includes("community") ||
+    urlHaystack.includes("chapter")
+  ) {
+    score -= 20;
   }
   if (cleaned.split(/\s+/).length > 6) {
     score -= 8;
@@ -1065,9 +1269,24 @@ async function persistDiscoveredPrograms(input: {
   sourcePages: string[];
   discoveredPrograms: DiscoveredProgram[];
 }) {
-  const refreshedDiscoveredList = input.discoveredPrograms.filter(
-    (program) => program.degreeType === "Undergraduate"
+  const selection = selectPersistablePrograms(
+    input.discoveredPrograms.filter((program) => isLikelyUndergraduateDegreeType(program.degreeType))
   );
+  const refreshedDiscoveredList = selection.programs;
+  if (!selection.isSufficient) {
+    return {
+      status: "upload_required" as const,
+      uploadRecommended: true,
+      websiteUrl: input.institutionWebsiteUrl,
+      sourcePages: input.sourcePages,
+      discoveredDegreeProgramCount: 0,
+      discoveredMajorCount: refreshedDiscoveredList.filter((program) => program.kind === "major").length,
+      discoveredMinorCount: refreshedDiscoveredList.filter((program) => program.kind === "minor").length,
+      catalogLabel: null,
+      message:
+        "Program discovery returned too few trustworthy majors or minors after filtering out weak labels. A stronger source or manual review is required.",
+    };
+  }
   const catalogWindow = currentCatalogWindow();
 
   await upsertAcademicCatalog({
@@ -1152,6 +1371,12 @@ async function persistDiscoveredPrograms(input: {
         programName: program.programName,
         canonicalName: program.canonicalName,
         displayName: program.displayName,
+        provenanceMethod: "direct_scrape",
+        sourceUrl: program.sourceUrl,
+        sourceNote: `Discovered from ${program.sourceUrl}`,
+        confidenceLabel: "medium",
+        truthStatus: "direct",
+        discoveredAt: new Date().toISOString(),
       });
       discoveredMajorCount += 1;
     } else {
@@ -1162,6 +1387,12 @@ async function persistDiscoveredPrograms(input: {
         programName: program.programName,
         canonicalName: program.canonicalName,
         displayName: program.displayName,
+        provenanceMethod: "direct_scrape",
+        sourceUrl: program.sourceUrl,
+        sourceNote: `Discovered from ${program.sourceUrl}`,
+        confidenceLabel: "medium",
+        truthStatus: "direct",
+        discoveredAt: new Date().toISOString(),
       });
       discoveredMinorCount += 1;
     }
@@ -1406,8 +1637,95 @@ async function discoverSingleProgramRequirements(input: {
   programDisplayName: string;
   kind: ProgramKind;
   websiteUrl: string;
+  programSourceUrl?: string | null;
 }): Promise<ProgramRequirementDiscoveryResult> {
   const diagnostics: string[] = [];
+
+  if (input.institutionCanonicalName.includes("montclair-state-university") && input.programSourceUrl) {
+    const montclairProgramPage = await fetchHtmlPage(input.programSourceUrl);
+    const montclairCatalogLink = montclairProgramPage
+      ? extractLinks(montclairProgramPage.url, montclairProgramPage.html).find((link) =>
+          /catalog\.montclair\.edu\/programs\//i.test(link.href)
+        )?.href || null
+      : null;
+    const montclairCatalogPage = montclairCatalogLink ? await fetchHtmlPage(montclairCatalogLink) : null;
+    const montclairCatalogCourses = normalizeDiscoveredCourses(
+      montclairCatalogPage ? extractCoursesFromText(montclairCatalogPage.text) : []
+    );
+
+    if (montclairCatalogPage && montclairCatalogCourses.length >= 3) {
+      const requirementSetId = await persistRequirementCoursesFromPage({
+        institutionCanonicalName: input.institutionCanonicalName,
+        catalogLabel: input.catalogLabel,
+        degreeType: input.degreeType,
+        programName: input.programName,
+        kind: input.kind,
+        programCanonicalName: input.programCanonicalName,
+        programDisplayName: input.programDisplayName,
+        sourcePage: montclairCatalogPage.url,
+        courses: montclairCatalogCourses,
+        provenanceMethod: "direct_scrape",
+        sourceNote: "Parsed from Montclair catalog program page.",
+      });
+
+      return {
+        status: "requirements_discovered",
+        discoveredCourseCount: montclairCatalogCourses.length,
+        sourcePage: montclairCatalogPage.url,
+        requirementSetId,
+        message: `Discovered ${montclairCatalogCourses.length} courses for the ${input.kind} requirement set from the Montclair catalog page.`,
+        provenanceMethod: "direct_scrape",
+        sourceNote: "Parsed from Montclair catalog program page.",
+        diagnostics,
+      };
+    }
+
+    const montclairPdfLink =
+      montclairCatalogPage
+        ? extractLinks(montclairCatalogPage.url, montclairCatalogPage.html).find((link) => /\.pdf$/i.test(link.href))?.href || null
+        : null;
+    if (montclairPdfLink) {
+      const pdfDocument = await fetchBinaryDocument(montclairPdfLink);
+      if (pdfDocument) {
+        const extracted = extractDocumentText({
+          buffer: pdfDocument.buffer,
+          fileName: pdfDocument.url.split("/").pop() || "catalog.pdf",
+          contentType: pdfDocument.contentType || "application/pdf",
+        });
+        const pdfCourses = normalizeDiscoveredCourses(extractCoursesFromText(extracted.text));
+        if (pdfCourses.length >= 3) {
+          const requirementSetId = await persistRequirementCoursesFromPage({
+            institutionCanonicalName: input.institutionCanonicalName,
+            catalogLabel: input.catalogLabel,
+            degreeType: input.degreeType,
+            programName: input.programName,
+            kind: input.kind,
+            programCanonicalName: input.programCanonicalName,
+            programDisplayName: input.programDisplayName,
+            sourcePage: pdfDocument.url,
+            courses: pdfCourses,
+            provenanceMethod: "artifact_pdf",
+            sourceNote: "Parsed from Montclair catalog program PDF.",
+          });
+
+          return {
+            status: "requirements_discovered",
+            discoveredCourseCount: pdfCourses.length,
+            sourcePage: pdfDocument.url,
+            requirementSetId,
+            message: `Discovered ${pdfCourses.length} courses for the ${input.kind} requirement set from the Montclair program PDF.`,
+            provenanceMethod: "artifact_pdf",
+            sourceNote: "Parsed from Montclair catalog program PDF.",
+            diagnostics,
+          };
+        }
+
+        diagnostics.push(
+          `Montclair PDF fallback found ${pdfCourses.length} recognizable course rows, below the minimum threshold of 3.`
+        );
+      }
+    }
+  }
   const seedPages = (
     await Promise.all(buildCatalogSeedUrls(input.websiteUrl).map((url) => fetchHtmlPage(url)))
   ).filter((page): page is HtmlPage => !!page);
@@ -1660,6 +1978,71 @@ async function discoverSingleProgramRequirements(input: {
   };
 }
 
+async function persistRequirementCoursesFromPage(input: {
+  institutionCanonicalName: string;
+  catalogLabel: string;
+  degreeType: string;
+  programName: string;
+  kind: ProgramKind;
+  programCanonicalName: string;
+  programDisplayName: string;
+  sourcePage: string;
+  courses: DiscoveredCourse[];
+  provenanceMethod: "direct_scrape" | "artifact_pdf";
+  sourceNote: string;
+}) {
+  for (const course of input.courses) {
+    await upsertCatalogCourse({
+      institutionCanonicalName: input.institutionCanonicalName,
+      catalogLabel: input.catalogLabel,
+      courseCode: course.courseCode,
+      courseTitle: course.courseTitle,
+      creditsMin: course.creditsMin,
+      creditsMax: course.creditsMax,
+      description: `Auto-discovered from ${input.sourcePage}`,
+      levelHint: "mixed",
+    });
+  }
+
+  const requirementSetId = await upsertRequirementSet({
+    institutionCanonicalName: input.institutionCanonicalName,
+    catalogLabel: input.catalogLabel,
+    degreeType: input.degreeType,
+    programName: input.programName,
+    setType: input.kind,
+    displayName:
+      input.kind === "major"
+        ? `${input.programDisplayName} major requirements`
+        : `${input.programDisplayName} minor requirements`,
+    majorCanonicalName: input.kind === "major" ? input.programCanonicalName : undefined,
+    minorCanonicalName: input.kind === "minor" ? input.programCanonicalName : undefined,
+    provenanceMethod: input.provenanceMethod,
+    sourceUrl: input.sourcePage,
+    sourceNote: input.sourceNote,
+  });
+
+  await replaceResolvedRequirementGroups({
+    institutionCanonicalName: input.institutionCanonicalName,
+    catalogLabel: input.catalogLabel,
+    requirementSetId,
+    groups: [
+      {
+        groupName: "Auto-discovered required courses",
+        groupType: "all_of",
+        displayOrder: 0,
+        items: input.courses.slice(0, 60).map((course, index) => ({
+          itemType: "course",
+          courseCode: course.courseCode,
+          itemLabel: course.courseTitle,
+          displayOrder: index,
+        })),
+      },
+    ],
+  });
+
+  return requirementSetId;
+}
+
 export async function discoverProgramRequirements(input: {
   institutionCanonicalName: string;
   catalogLabel: string;
@@ -1712,6 +2095,7 @@ export async function discoverProgramRequirements(input: {
         programDisplayName: majorRow.display_name,
         kind: "major",
         websiteUrl: institution.website_url,
+        programSourceUrl: majorRow.source_url,
       });
     }
   }
@@ -1740,6 +2124,7 @@ export async function discoverProgramRequirements(input: {
         programDisplayName: minorRow.display_name,
         kind: "minor",
         websiteUrl: institution.website_url,
+        programSourceUrl: minorRow.source_url,
       });
     }
   }

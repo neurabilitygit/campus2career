@@ -8,6 +8,7 @@ import { KeyValueList } from "../layout/KeyValueList";
 import { RequireRole } from "../RequireRole";
 import { FieldInfoLabel } from "../forms/FieldInfoLabel";
 import { CurriculumVerificationSection } from "../academic/CurriculumVerificationSection";
+import { AcademicEvidenceSection } from "../academic/AcademicEvidenceSection";
 import { useAuthContext } from "../../hooks/useAuthContext";
 import { useApiData, useApiJsonPost } from "../../hooks/useApiData";
 import { apiFetch } from "../../lib/apiClient";
@@ -1160,6 +1161,8 @@ export default function StudentDashboardView() {
                 </div>
               ) : null}
             </SectionCard>
+
+            <AcademicEvidenceSection mode="student" />
 
             <CurriculumVerificationSection
               title="Degree Requirements Review"

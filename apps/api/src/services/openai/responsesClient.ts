@@ -48,6 +48,18 @@ const courseworkInferenceSchema = z.object({
 
 type CourseworkInference = z.infer<typeof courseworkInferenceSchema>;
 
+const academicOfferingsInferenceSchema = z.object({
+  sourceConfidence: z.enum(["low", "medium", "high"]),
+  catalogYear: z.string().trim().max(64).nullable().optional(),
+  uncertaintyNotes: z.array(z.string().trim().min(1).max(240)).max(12).default([]),
+  fieldsNeedingReview: z.array(z.string().trim().min(1).max(120)).max(12).default([]),
+  majors: z.array(z.string().trim().min(1).max(120)).max(120),
+  minors: z.array(z.string().trim().min(1).max(120)).max(120),
+  concentrations: z.array(z.string().trim().min(1).max(120)).max(120),
+});
+
+type AcademicOfferingsInference = z.infer<typeof academicOfferingsInferenceSchema>;
+
 const jobTargetNormalizationSchema = z.object({
   normalizedRoleFamily: z.string().trim().min(1).max(120).nullable(),
   confidenceLabel: z.enum(["low", "medium", "high"]),
@@ -85,14 +97,14 @@ function courseworkInferenceJsonSchema() {
   return {
     type: "object",
     additionalProperties: false,
-    required: ["confidence", "summary", "courses"],
+    required: ["confidence", "sourceUrl", "summary", "courses"],
     properties: {
       confidence: {
         type: "string",
         enum: ["low", "medium", "high"],
       },
       sourceUrl: {
-        anyOf: [{ type: "string", format: "uri" }, { type: "null" }],
+        anyOf: [{ type: "string" }, { type: "null" }],
       },
       summary: {
         type: "string",
@@ -112,6 +124,56 @@ function courseworkInferenceJsonSchema() {
             evidence: { type: "string" },
           },
         },
+      },
+    },
+  } as const;
+}
+
+function academicOfferingsInferenceJsonSchema() {
+  return {
+    type: "object",
+    additionalProperties: false,
+    required: [
+      "sourceConfidence",
+      "catalogYear",
+      "uncertaintyNotes",
+      "fieldsNeedingReview",
+      "majors",
+      "minors",
+      "concentrations",
+    ],
+    properties: {
+      sourceConfidence: {
+        type: "string",
+        enum: ["low", "medium", "high"],
+      },
+      catalogYear: {
+        anyOf: [{ type: "string" }, { type: "null" }],
+      },
+      uncertaintyNotes: {
+        type: "array",
+        maxItems: 12,
+        items: { type: "string" },
+      },
+      fieldsNeedingReview: {
+        type: "array",
+        maxItems: 12,
+        items: { type: "string" },
+      },
+      majors: {
+        type: "array",
+        maxItems: 120,
+        items: { type: "string" },
+      },
+      minors: {
+        type: "array",
+        maxItems: 120,
+        items: { type: "string" },
+      },
+      concentrations: {
+        type: "array",
+        maxItems: 120,
+        items: { type: "string" },
       },
     },
   } as const;
@@ -394,6 +456,80 @@ export async function inferStructuredCourseworkFromOfficialText(input: {
   const parsed = courseworkInferenceSchema.safeParse(decoded);
   if (!parsed.success) {
     return null;
+  }
+
+  return parsed.data;
+}
+
+export async function inferAcademicOfferingsFromInstitutionKnowledge(input: {
+  institutionDisplayName: string;
+  institutionWebsiteUrl?: string | null;
+} & OpenAiTelemetryOptions): Promise<AcademicOfferingsInference | null> {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    return null;
+  }
+
+  const model = process.env.OPENAI_MODEL || "gpt-5.4";
+  const { response } = await createLoggedResponse({
+    model,
+    telemetry: input.telemetry,
+    timeoutMs: input.timeoutMs ?? COURSEWORK_INFERENCE_TIMEOUT_MS,
+    requestBody: {
+      model,
+      text: {
+        format: {
+          type: "json_schema",
+          name: "academic_offerings_inference",
+          strict: true,
+          schema: academicOfferingsInferenceJsonSchema(),
+        },
+      },
+      input: [
+        {
+          role: "system",
+          content: [
+            {
+              type: "input_text",
+              text:
+                "You identify likely undergraduate majors, minors, and concentrations for a university. Return structured JSON only. Prefer caution over recall. If confidence is weak, return fewer items, lower sourceConfidence, and explain uncertainty. Do not invent catalog years.",
+            },
+          ],
+        },
+        {
+          role: "user",
+          content: [
+            {
+              type: "input_text",
+              text: [
+                `Institution: ${input.institutionDisplayName}`,
+                input.institutionWebsiteUrl ? `Website: ${input.institutionWebsiteUrl}` : "Website: unknown",
+                "Return likely undergraduate majors, minors, and concentrations for this institution.",
+                "Use broad institutional knowledge when needed, but mark uncertainty clearly.",
+                "Avoid generic labels like 'Programs' or 'Academics'.",
+              ].join("\n"),
+            },
+          ],
+        },
+      ],
+    },
+  });
+
+  const raw = response.output_text?.trim();
+  if (!raw) {
+    return null;
+  }
+
+  let decoded: unknown;
+  try {
+    decoded = JSON.parse(raw);
+  } catch {
+    throw new Error("Academic offerings inference response was not valid JSON");
+  }
+
+  const parsed = academicOfferingsInferenceSchema.safeParse(decoded);
+  if (!parsed.success) {
+    throw new Error("Academic offerings inference response did not match the required schema");
   }
 
   return parsed.data;
