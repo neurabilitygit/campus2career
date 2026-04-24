@@ -1,4 +1,5 @@
 import { getSupabaseBrowserClient } from "./supabaseClient";
+import { demoAuthHeaders, readStoredDemoAuth } from "./demoAuth";
 import { getStoredTestContextRole } from "./testContext";
 
 const API_BASE_URL =
@@ -26,6 +27,14 @@ export async function apiFetch(path: string, init: ApiRequestInit = {}) {
 
   if (token) {
     headers.set("authorization", `Bearer ${token}`);
+  }
+
+  const demoAuth = !token ? readStoredDemoAuth() : null;
+  if (demoAuth) {
+    const demoHeaders = demoAuthHeaders(demoAuth);
+    headers.set("x-demo-user-id", demoHeaders["x-demo-user-id"]);
+    headers.set("x-demo-role-type", demoHeaders["x-demo-role-type"]);
+    headers.set("x-demo-email", demoHeaders["x-demo-email"]);
   }
 
   const testContextRole = getStoredTestContextRole();

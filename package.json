@@ -6,6 +6,13 @@
   "scripts": {
     "typecheck": "pnpm -r typecheck",
     "test:api": "pnpm --dir apps/api test",
+    "test:unit": "pnpm exec tsx --test 'tests/unit/**/*.test.ts' && pnpm --dir apps/api exec node --import tsx/esm --test --test-concurrency=1 'src/services/**/*.test.ts'",
+    "test:integration": "pnpm test:e2e:seed && pnpm exec tsx --env-file apps/api/.env.local --test --test-concurrency=1 'tests/integration/**/*.test.ts' && pnpm --dir apps/api test:integration",
+    "test:e2e:seed": "pnpm --dir apps/api test:seed:e2e",
+    "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:debug": "playwright test --headed --debug",
+    "test:all": "pnpm test:unit && pnpm test:integration && pnpm test:e2e",
     "dev:web": "pnpm --dir apps/web dev",
     "dev:api": "pnpm --dir apps/api dev",
     "dev:worker": "pnpm --dir apps/worker dev",
@@ -17,5 +24,9 @@
     "academic:discover:smoke": "pnpm --dir apps/api academic:discover:smoke",
     "academic:discover:seed:ivy-suny": "pnpm --dir apps/api academic:discover:seed",
     "verify:ci": "pnpm typecheck && pnpm db:migrate && pnpm db:seed:ci && pnpm synthetic:run"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.54.2",
+    "tsx": "^4.20.6"
   }
 }

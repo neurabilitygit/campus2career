@@ -14,8 +14,10 @@ export type AuthContextResponse = {
     email?: string;
     authenticatedFirstName?: string | null;
     authenticatedLastName?: string | null;
+    authenticatedPreferredName?: string | null;
     studentFirstName?: string | null;
     studentLastName?: string | null;
+    studentPreferredName?: string | null;
     testContextSwitchingEnabled?: boolean;
     testContextAllowedRoles?: TestContextRole[];
     testContextOverrideRole?: TestContextRole | null;

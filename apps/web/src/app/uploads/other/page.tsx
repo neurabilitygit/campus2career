@@ -9,7 +9,7 @@ export default function OtherUploadPage() {
   return (
     <AppShell
       title="Add supporting evidence"
-      subtitle="Use this for projects, certifications, decks, portfolios, or any file that helps explain what the student has actually done."
+      subtitle="Use this for projects, certifications, decks, portfolios, or any file that helps explain what you have actually done."
     >
       <RequireRole expectedRoles={["student", "admin"]} fallbackTitle="Student sign-in required">
         <SectionCard

@@ -8,7 +8,7 @@ import { FieldInfoLabel } from "../../../components/forms/FieldInfoLabel";
 import { useAuthContext } from "../../../hooks/useAuthContext";
 import { useApiData } from "../../../hooks/useApiData";
 import { apiFetch } from "../../../lib/apiClient";
-import { formatStudentReference, normalizeFirstName } from "../../../lib/studentName";
+import { formatNamedReference } from "../../../lib/personalization";
 
 type ParentProfileResponse = {
   ok: boolean;
@@ -108,7 +108,14 @@ export default function ParentCommunicationPage() {
     () => sortedEntries.find((entry) => entry.parentCommunicationEntryId === activeEntryId) || null,
     [activeEntryId, sortedEntries]
   );
-  const studentFirstName = normalizeFirstName(auth.data?.context?.studentFirstName);
+  const studentLabel = formatNamedReference(
+    {
+      preferredName: auth.data?.context?.studentPreferredName,
+      firstName: auth.data?.context?.studentFirstName,
+      lastName: auth.data?.context?.studentLastName,
+    },
+    { fallback: "your student", preferPreferred: true }
+  );
 
   async function saveEntry() {
     setStatus("Saving communication context...");
@@ -202,9 +209,7 @@ export default function ParentCommunicationPage() {
   return (
     <AppShell
       title="Communication translator"
-      subtitle={`Translate a concern into something ${formatStudentReference(studentFirstName, {
-        fallback: "the student",
-      })} is more likely to receive constructively, while keeping consent and dignity intact.`}
+      subtitle={`Translate a concern into something ${studentLabel} is more likely to receive constructively, while keeping consent and dignity intact.`}
     >
       <RequireRole expectedRoles={["parent", "admin"]} fallbackTitle="Parent sign-in required">
         {!profile.data?.profile?.consentAcknowledged ? (

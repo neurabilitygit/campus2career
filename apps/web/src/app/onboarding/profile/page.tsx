@@ -793,8 +793,8 @@ export default function OnboardingProfilePage() {
 
   return (
     <AppShell
-      title="Build the student academic path"
-      subtitle="Choose the school and major first so the dashboard can explain fit, gaps, and next steps in the right context."
+      title="Build your academic path"
+      subtitle="Choose your school and major first so the dashboard can explain fit, gaps, and next steps in the right context."
     >
       <RequireRole expectedRoles={["student", "admin"]} fallbackTitle="Student sign-in required">
         <SectionCard
@@ -951,7 +951,7 @@ export default function OnboardingProfilePage() {
                   <label style={labelStyle}>
                     <FieldInfoLabel
                       label="Catalog year"
-                      info="Choose the catalog edition that matches the student’s degree requirements."
+                      info="Choose the catalog edition that matches your degree requirements."
                       example="2026-2027"
                     />
                     <select
@@ -1033,7 +1033,7 @@ export default function OnboardingProfilePage() {
                   <label style={labelStyle}>
                     <FieldInfoLabel
                       label="Major"
-                      info="Choose the primary field of study the student is following."
+                      info="Choose the primary field of study you are following."
                       example="Philosophy"
                     />
                     <select
@@ -1058,7 +1058,7 @@ export default function OnboardingProfilePage() {
                   <label style={labelStyle}>
                     <FieldInfoLabel
                       label="Minor (optional)"
-                      info="Add a minor only if the student is formally pursuing one."
+                      info="Add a minor only if you are formally pursuing one."
                       example="Economics"
                     />
                     <select
@@ -1269,7 +1269,7 @@ export default function OnboardingProfilePage() {
             <label style={labelStyle}>
               <FieldInfoLabel
                 label="Expected graduation date"
-                info="Use the best estimate for when the student expects to finish."
+                info="Use the best estimate for when you expect to finish."
                 example="2027-05-15"
               />
               <input
@@ -1284,7 +1284,7 @@ export default function OnboardingProfilePage() {
             <label style={labelStyle}>
               <FieldInfoLabel
                 label="Preferred geographies"
-                info="List where the student would realistically consider working."
+                info="List where you would realistically consider working."
                 example="New York, Boston, remote"
               />
               <input
@@ -1298,7 +1298,7 @@ export default function OnboardingProfilePage() {
             <label style={labelStyle}>
               <FieldInfoLabel
                 label="Career goal summary"
-                info="Describe the path the student is leaning toward right now."
+                info="Describe the path you are leaning toward right now."
                 example="Data analyst role in healthcare or biotech"
               />
               <textarea

@@ -35,6 +35,7 @@ const preferredMigrationOrder = [
   "024_parent_student_communication.sql",
   "025_outcome_tracking.sql",
   "026_coach_module.sql",
+  "027_role_profiles.sql",
 ];
 
 const migrationOrderIndex = new Map(

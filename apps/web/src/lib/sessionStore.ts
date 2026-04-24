@@ -5,6 +5,7 @@ import type {
   Session,
   SupabaseClient,
 } from "@supabase/supabase-js";
+import { readStoredDemoAuth } from "./demoAuth";
 import { getSupabaseBrowserClient } from "./supabaseClient";
 
 export type SessionState = {
@@ -32,6 +33,30 @@ let activeRefresh: Promise<void> | null = null;
 let activeRefreshStartedAt: number | null = null;
 let sessionInitialized = false;
 let latestRefreshId = 0;
+
+function getDemoSession(): Session | null {
+  const demoAuth = readStoredDemoAuth();
+  if (!demoAuth) {
+    return null;
+  }
+
+  return {
+    access_token: "demo-auth-token",
+    refresh_token: "demo-auth-refresh",
+    expires_in: 3600,
+    expires_at: Math.floor(Date.now() / 1000) + 3600,
+    token_type: "bearer",
+    user: {
+      id: demoAuth.userId,
+      email: demoAuth.email,
+      role: demoAuth.roleType,
+      aud: "authenticated",
+      app_metadata: { provider: "demo-auth" },
+      user_metadata: {},
+      created_at: new Date().toISOString(),
+    },
+  } as Session;
+}
 
 function emit(next: SessionState) {
   state = next;
@@ -102,6 +127,13 @@ export function subscribeToSession(listener: () => void) {
 }
 
 export function initializeSession() {
+  const demoSession = getDemoSession();
+  if (demoSession) {
+    sessionInitialized = true;
+    emitSession(demoSession, null);
+    return Promise.resolve();
+  }
+
   if (activeRefreshStartedAt !== null && Date.now() - activeRefreshStartedAt > STALE_REFRESH_MS) {
     activeRefresh = null;
     activeRefreshStartedAt = null;
@@ -124,6 +156,12 @@ export function initializeSession() {
 }
 
 export async function refreshSession(options?: { force?: boolean }) {
+  const demoSession = getDemoSession();
+  if (demoSession) {
+    emitSession(demoSession, null);
+    return;
+  }
+
   const supabase = ensureAuthListener();
 
   if (!supabase) {

@@ -73,6 +73,18 @@ export async function router(req: IncomingMessage, res: ServerResponse) {
     return;
   }
 
+  if (url === "/students/me/account-profile" && req.method === "GET") {
+    const { studentEditableProfileReadRoute } = await import("./routes/profiles");
+    await studentEditableProfileReadRoute(req, res);
+    return;
+  }
+
+  if (url === "/students/me/account-profile" && req.method === "POST") {
+    const { studentEditableProfileUpsertRoute } = await import("./routes/profiles");
+    await studentEditableProfileUpsertRoute(req, res);
+    return;
+  }
+
   if (url === "/students/me/deadlines" && req.method === "POST") {
     const { deadlineCreateRoute } = await import("./routes/studentWrite");
     await deadlineCreateRoute(req, res);
@@ -284,6 +296,18 @@ export async function router(req: IncomingMessage, res: ServerResponse) {
     return;
   }
 
+  if (url === "/parents/me/profile" && req.method === "GET") {
+    const { parentEditableProfileReadRoute } = await import("./routes/profiles");
+    await parentEditableProfileReadRoute(req, res);
+    return;
+  }
+
+  if (url === "/parents/me/profile" && req.method === "POST") {
+    const { parentEditableProfileUpsertRoute } = await import("./routes/profiles");
+    await parentEditableProfileUpsertRoute(req, res);
+    return;
+  }
+
   if (url === "/parents/me/communication-profile" && req.method === "POST") {
     const { parentCommunicationProfileUpsertRoute } = await import("./routes/communication");
     await parentCommunicationProfileUpsertRoute(req, res);
@@ -395,6 +419,18 @@ export async function router(req: IncomingMessage, res: ServerResponse) {
   if (url === "/coaches/me/roster" && req.method === "GET") {
     const { coachRosterRoute } = await import("./routes/coach");
     await coachRosterRoute(req, res);
+    return;
+  }
+
+  if (url === "/coaches/me/profile" && req.method === "GET") {
+    const { coachEditableProfileReadRoute } = await import("./routes/profiles");
+    await coachEditableProfileReadRoute(req, res);
+    return;
+  }
+
+  if (url === "/coaches/me/profile" && req.method === "POST") {
+    const { coachEditableProfileUpsertRoute } = await import("./routes/profiles");
+    await coachEditableProfileUpsertRoute(req, res);
     return;
   }
 

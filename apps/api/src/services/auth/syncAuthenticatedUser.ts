@@ -9,6 +9,9 @@ export async function syncAuthenticatedUser(user: AuthenticatedUser): Promise<vo
   await repo.upsertUserFromAuth({
     userId: user.userId,
     email: user.email,
+    firstName: user.firstName,
+    lastName: user.lastName,
+    preferredName: user.preferredName,
     roleType: user.roleType,
   });
 }

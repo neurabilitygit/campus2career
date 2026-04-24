@@ -7,7 +7,7 @@ import { SectionCard } from "../layout/SectionCard";
 import { RequireRole } from "../RequireRole";
 import { useApiData } from "../../hooks/useApiData";
 import { useAuthContext } from "../../hooks/useAuthContext";
-import { formatStudentReference, normalizeFirstName } from "../../lib/studentName";
+import { formatNamedReference } from "../../lib/personalization";
 import { apiFetch } from "../../lib/apiClient";
 import { OutcomeTrackingSection } from "../outcomes/OutcomeTrackingSection";
 import { VisibleCoachFeedSection } from "../coach/VisibleCoachFeedSection";
@@ -79,19 +79,19 @@ const statusTone: Record<TrajectoryStatus, { label: string; accent: string; back
     label: "On track",
     accent: "#047857",
     background: "linear-gradient(135deg, rgba(16,185,129,0.16), rgba(110,231,183,0.2))",
-    description: "The student is building credible momentum toward the current target role.",
+    description: "is building credible momentum toward the current target role.",
   },
   watch: {
     label: "Needs attention",
     accent: "#b45309",
     background: "linear-gradient(135deg, rgba(245,158,11,0.16), rgba(253,224,71,0.22))",
-    description: "The path is still recoverable, but several signals need active follow-through.",
+    description: "still has a recoverable path, but several signals need active follow-through.",
   },
   at_risk: {
     label: "At risk",
     accent: "#b91c1c",
     background: "linear-gradient(135deg, rgba(248,113,113,0.18), rgba(253,186,116,0.2))",
-    description: "The current evidence is weak for the target role, so parent support should focus on a few concrete corrective moves.",
+    description: "has weak current evidence for the target role, so parent support should focus on a few concrete corrective moves.",
   },
 };
 
@@ -128,20 +128,14 @@ function ParentNarrative(props: {
   scoring: ScoringResponse["scoring"];
   brief: BriefRecord | null | undefined;
   monthLabel: string;
-  studentFirstName: string | null;
+  studentLabel: string;
 }) {
   const targetRole = titleCase(props.scoring?.targetRoleFamily);
   const targetSector = titleCase(props.scoring?.targetSectorCluster);
   const status = props.scoring?.trajectoryStatus || props.brief?.trajectoryStatus || "watch";
   const statusCard = statusTone[status];
   const nextAction = props.scoring?.recommendations?.[0];
-  const studentLabel = formatStudentReference(props.studentFirstName, {
-    fallback: "the student",
-  });
-  const studentPossessive = formatStudentReference(props.studentFirstName, {
-    possessive: true,
-    fallback: "the student's",
-  });
+  const studentLabel = props.studentLabel;
   const topRisk =
     props.scoring?.topRisks?.[0] ||
     splitPipeList(props.brief?.topRisks)[0] ||
@@ -180,7 +174,7 @@ function ParentNarrative(props: {
           </h2>
           <p style={{ margin: 0, color: "#334155", lineHeight: 1.6 }}>
             Right now {studentLabel} is being tracked toward the <strong>{targetRole}</strong> path in{" "}
-            <strong>{targetSector}</strong>. {statusCard.description}
+            <strong>{targetSector}</strong>. {studentLabel} {statusCard.description}
           </p>
         </div>
 
@@ -256,14 +250,30 @@ export default function ParentDashboardView() {
   const risks = scoring.data?.scoring?.topRisks || splitPipeList(brief.data?.brief?.topRisks);
   const parentQuestions = splitPipeList(brief.data?.brief?.recommendedParentQuestions);
   const progressNotes = splitPipeList(brief.data?.brief?.progressSummary);
-  const studentFirstName = normalizeFirstName(auth.data?.context?.studentFirstName);
-  const studentPossessive = formatStudentReference(studentFirstName, {
-    possessive: true,
-    fallback: "the student's",
-  });
-  const studentObject = formatStudentReference(studentFirstName, {
-    fallback: "the student",
-  });
+  const studentLabel = formatNamedReference(
+    {
+      preferredName: auth.data?.context?.studentPreferredName,
+      firstName: auth.data?.context?.studentFirstName,
+      lastName: auth.data?.context?.studentLastName,
+    },
+    { fallback: "your student", preferPreferred: true }
+  );
+  const studentPossessive = formatNamedReference(
+    {
+      preferredName: auth.data?.context?.studentPreferredName,
+      firstName: auth.data?.context?.studentFirstName,
+      lastName: auth.data?.context?.studentLastName,
+    },
+    { possessive: true, fallback: "your student's", preferPreferred: true }
+  );
+  const studentObject = formatNamedReference(
+    {
+      preferredName: auth.data?.context?.studentPreferredName,
+      firstName: auth.data?.context?.studentFirstName,
+      lastName: auth.data?.context?.studentLastName,
+    },
+    { fallback: "your student", preferPreferred: true }
+  );
   const scoringBreakdown = scoring.data?.scoring?.subScores || {};
   const highPriorityGaps =
     scoring.data?.scoring?.skillGaps
@@ -299,10 +309,10 @@ export default function ParentDashboardView() {
           scoring={scoring.data?.scoring}
           brief={brief.data?.brief}
           monthLabel={brief.data?.monthLabel || "Current month"}
-          studentFirstName={studentFirstName}
+          studentLabel={studentLabel}
         />
 
-        <OutcomeTrackingSection mode="parent" />
+        <OutcomeTrackingSection mode="parent" subjectLabel={studentLabel} />
 
         <VisibleCoachFeedSection mode="parent" />
 
@@ -388,7 +398,7 @@ export default function ParentDashboardView() {
         <div style={twoColumnGridStyle}>
           <SectionCard
             title="How reliable this picture is"
-            subtitle={`This helps you tell the difference between a true readiness gap and an area where ${studentObject} still needs to add evidence.`}
+            subtitle={`This helps you tell the difference between a true readiness gap and an area where ${studentLabel} still needs to add evidence.`}
             tone="quiet"
           >
             <div style={{ display: "grid", gap: 12 }}>
@@ -400,8 +410,8 @@ export default function ParentDashboardView() {
               </div>
               <p style={{ margin: 0, color: "#475569", lineHeight: 1.6 }}>
                 {scoring.data?.scoring?.evidenceQuality?.assessmentMode === "provisional"
-                  ? `Some readiness areas are marked uncertain because ${studentFirstName || "the student"} has not provided enough evidence yet.`
-                  : `The current read is supported by a meaningful amount of stored evidence for ${studentFirstName || "the student"}.`}
+                  ? `Some readiness areas are marked uncertain because ${studentLabel} has not provided enough evidence yet.`
+                  : `The current read is supported by a meaningful amount of stored evidence for ${studentLabel}.`}
               </p>
               {scoring.data?.scoring?.evidenceQuality?.recommendedEvidenceActions?.length ? (
                 <BulletList
@@ -430,7 +440,7 @@ export default function ParentDashboardView() {
           >
             <BulletList
               items={strengths}
-              empty="No clear strengths have been surfaced yet. That usually means the student has not built enough visible evidence for the chosen role."
+              empty={`No clear strengths have been surfaced yet. That usually means ${studentLabel} has not built enough visible evidence for the chosen role.`}
             />
           </SectionCard>
         </div>
@@ -473,7 +483,7 @@ export default function ParentDashboardView() {
 
         <div style={twoColumnGridStyle}>
           <SectionCard
-            title={`Helpful questions to ask ${studentFirstName || "your student"}`}
+            title={`Helpful questions to ask ${studentLabel}`}
             subtitle="Use these as conversation starters, not a script."
             tone="quiet"
           >

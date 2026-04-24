@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { clearStoredDemoAuth } from "../../lib/demoAuth";
 import { getSupabaseBrowserClient, getSupabaseConfigError } from "../../lib/supabaseClient";
 import {
   getStoredTestContextRole,
@@ -24,14 +25,19 @@ const workspaceItems: WorkspaceItem[] = [
 ];
 
 function displayName(input: {
+  preferredName?: string | null;
   firstName?: string | null;
   lastName?: string | null;
   email?: string | null;
 }) {
+  const preferredName = input.preferredName?.trim() || null;
   const firstName = input.firstName?.trim() || null;
   const lastName = input.lastName?.trim() || null;
   const placeholderName =
     firstName?.toLowerCase() === "unknown" && lastName?.toLowerCase() === "user";
+  if (preferredName) {
+    return placeholderName ? preferredName : [preferredName, lastName].filter(Boolean).join(" ");
+  }
   const parts = placeholderName ? [] : [firstName, lastName].filter(Boolean);
   if (parts.length) {
     return parts.join(" ");
@@ -99,6 +105,7 @@ export function AccountMenu() {
   }, [allowedPreviewRoles, canPreview, currentRole]);
 
   const userLabel = displayName({
+    preferredName: context?.authenticatedPreferredName,
     firstName: context?.authenticatedFirstName,
     lastName: context?.authenticatedLastName,
     email: context?.email || null,
@@ -125,10 +132,12 @@ export function AccountMenu() {
   }
 
   async function signOut() {
-    if (!supabase) return;
     setBusyAction("sign_out");
     try {
-      await supabase.auth.signOut();
+      clearStoredDemoAuth();
+      if (supabase) {
+        await supabase.auth.signOut();
+      }
       setStoredTestContextRole(null);
       window.location.href = "/";
     } finally {
@@ -207,15 +216,15 @@ export function AccountMenu() {
               </div>
 
               <div className="account-menu__section">
-                <div className="account-menu__section-label">Settings</div>
-                <button
-                  type="button"
-                  className="account-menu__link account-menu__link--disabled"
-                  role="menuitem"
-                  aria-disabled="true"
-                >
-                  Settings coming soon
-                </button>
+                <div className="account-menu__section-label">Profile and tools</div>
+                <div className="account-menu__link-list">
+                  <Link href="/profile" className="account-menu__link" role="menuitem" onClick={() => setOpen(false)}>
+                    Profile
+                  </Link>
+                  <Link href="/communication" className="account-menu__link" role="menuitem" onClick={() => setOpen(false)}>
+                    Messages & chat
+                  </Link>
+                </div>
               </div>
 
               <div className="account-menu__section">

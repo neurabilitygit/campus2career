@@ -3,101 +3,14 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import { useAuthContext } from "../../hooks/useAuthContext";
 import { AccountMenu } from "./AccountMenu";
-
-type ShellNavItem = {
-  href: string;
-  label: string;
-  description?: string;
-  sectionKey?: string;
-  children?: ShellNavItem[];
-};
-
-type ShellNavGroup = {
-  key: string;
-  label: string;
-  items: ShellNavItem[];
-};
+import { buildNavigationGroups, type ShellNavGroup, type ShellNavItem } from "./navigation";
 
 const SIDEBAR_WIDTH_STORAGE_KEY = "rising-senior:sidebar-width";
 const DEFAULT_SIDEBAR_WIDTH = 272;
 const MIN_SIDEBAR_WIDTH = 224;
 const MAX_SIDEBAR_WIDTH = 360;
-
-const navGroups: ShellNavGroup[] = [
-  {
-    key: "start",
-    label: "Start",
-    items: [
-      { href: "/", label: "Home", description: "Overview and sign-in" },
-      { href: "/app", label: "Workspace", description: "Open the right dashboard" },
-    ],
-  },
-  {
-    key: "student",
-    label: "Student",
-    items: [
-      {
-        href: "/student?section=strategy",
-        label: "Student dashboard",
-        description: "Readiness, evidence, and next moves",
-        children: [
-          { href: "/student?section=strategy", label: "Strategy", sectionKey: "strategy" },
-          { href: "/student?section=evidence", label: "Evidence", sectionKey: "evidence" },
-          { href: "/student?section=guidance", label: "Career readiness", sectionKey: "guidance" },
-          { href: "/student?section=outcomes", label: "Outcome tracking", sectionKey: "outcomes" },
-          { href: "/student/messages", label: "Messages" },
-        ],
-      },
-      {
-        href: "/onboarding",
-        label: "Onboarding",
-        description: "Academic path and preferences",
-        children: [
-          { href: "/onboarding/profile", label: "Student profile" },
-          { href: "/onboarding/sectors", label: "Career interests" },
-          { href: "/onboarding/network", label: "Network baseline" },
-          { href: "/onboarding/deadlines", label: "Important dates" },
-        ],
-      },
-      {
-        href: "/uploads",
-        label: "Documents",
-        description: "Source material and evidence",
-        children: [
-          { href: "/uploads", label: "All documents" },
-          { href: "/uploads/transcript", label: "Transcript" },
-          { href: "/uploads/resume", label: "Resume" },
-          { href: "/uploads/catalog", label: "Program PDF" },
-          { href: "/uploads/other", label: "Supporting files" },
-        ],
-      },
-    ],
-  },
-  {
-    key: "parent",
-    label: "Parent",
-    items: [
-      { href: "/parent", label: "Parent dashboard", description: "Family-facing summary and actions" },
-      { href: "/parent/communication", label: "Communication translator", description: "Translate concerns into calmer guidance" },
-      { href: "/parent/history", label: "History", description: "Review prior messages and activity" },
-      { href: "/parent/onboarding", label: "Parent onboarding", description: "Set communication baseline" },
-    ],
-  },
-  {
-    key: "coach",
-    label: "Coach",
-    items: [
-      { href: "/coach", label: "Coach dashboard", description: "Diagnostics and intervention context" },
-      { href: "/diagnostic", label: "Diagnostics", description: "Detailed technical checks" },
-    ],
-  },
-  {
-    key: "system",
-    label: "System",
-    items: [{ href: "/help", label: "Help and documentation", description: "Guides, consent notes, and feature references" }],
-  },
-];
 
 function pathFromHref(href: string): string {
   return href.split("?")[0] || "/";
@@ -119,7 +32,10 @@ function clampWidth(value: number) {
   return Math.min(MAX_SIDEBAR_WIDTH, Math.max(MIN_SIDEBAR_WIDTH, value));
 }
 
-function resolveTheme(pathname: string): "student" | "parent" | "coach" | "system" {
+function resolveTheme(
+  pathname: string,
+  role?: "student" | "parent" | "coach" | "admin" | null
+): "student" | "parent" | "coach" | "system" {
   if (
     pathname.startsWith("/student") ||
     pathname.startsWith("/onboarding") ||
@@ -134,6 +50,12 @@ function resolveTheme(pathname: string): "student" | "parent" | "coach" | "syste
 
   if (pathname.startsWith("/coach") || pathname.startsWith("/diagnostic")) {
     return "coach";
+  }
+
+  if (pathname.startsWith("/profile") || pathname.startsWith("/communication")) {
+    if (role === "student") return "student";
+    if (role === "parent") return "parent";
+    if (role === "coach") return "coach";
   }
 
   return "system";
@@ -153,7 +75,13 @@ export function AppShell(props: {
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const theme = resolveTheme(pathname);
+  const auth = useAuthContext();
+  const currentRole = auth.data?.context?.authenticatedRoleType || null;
+  const theme = resolveTheme(pathname, currentRole);
+  const navGroups = useMemo(
+    () => buildNavigationGroups(currentRole),
+    [currentRole]
+  );
   const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_SIDEBAR_WIDTH);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});

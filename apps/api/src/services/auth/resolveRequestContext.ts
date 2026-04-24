@@ -15,8 +15,10 @@ export interface RequestContext {
   email?: string;
   authenticatedFirstName?: string | null;
   authenticatedLastName?: string | null;
+  authenticatedPreferredName?: string | null;
   studentFirstName?: string | null;
   studentLastName?: string | null;
+  studentPreferredName?: string | null;
   testContextSwitchingEnabled?: boolean;
   testContextAllowedRoles?: Array<"student" | "parent" | "coach">;
   testContextOverrideRole?: "student" | "parent" | "coach" | null;
@@ -133,8 +135,10 @@ export async function resolveRequestContext(req: IncomingMessage): Promise<Reque
       email: auth.email,
       authenticatedFirstName: authenticatedUser?.firstName ?? null,
       authenticatedLastName: authenticatedUser?.lastName ?? null,
+      authenticatedPreferredName: authenticatedUser?.preferredName ?? null,
       studentFirstName: authenticatedUser?.firstName ?? household?.studentFirstName ?? null,
       studentLastName: authenticatedUser?.lastName ?? household?.studentLastName ?? null,
+      studentPreferredName: authenticatedUser?.preferredName ?? household?.studentPreferredName ?? null,
       testContextSwitchingEnabled: testContextAllowed,
       testContextAllowedRoles: testContextAllowed ? ["student", "parent", "coach"] : [],
       testContextOverrideRole: requestedTestRole,
@@ -156,8 +160,10 @@ export async function resolveRequestContext(req: IncomingMessage): Promise<Reque
     email: auth.email,
     authenticatedFirstName: authenticatedUser?.firstName ?? null,
     authenticatedLastName: authenticatedUser?.lastName ?? null,
+    authenticatedPreferredName: authenticatedUser?.preferredName ?? null,
     studentFirstName: household?.studentFirstName ?? null,
     studentLastName: household?.studentLastName ?? null,
+    studentPreferredName: household?.studentPreferredName ?? null,
     testContextSwitchingEnabled: testContextAllowed,
     testContextAllowedRoles: testContextAllowed ? ["student", "parent", "coach"] : [],
     testContextOverrideRole: requestedTestRole,

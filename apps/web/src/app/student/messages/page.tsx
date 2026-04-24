@@ -5,6 +5,8 @@ import { AppShell } from "../../../components/layout/AppShell";
 import { SectionCard } from "../../../components/layout/SectionCard";
 import { RequireRole } from "../../../components/RequireRole";
 import { useApiData } from "../../../hooks/useApiData";
+import { useAuthContext } from "../../../hooks/useAuthContext";
+import { buildDirectAddressName } from "../../../lib/personalization";
 
 type StudentCommunicationMessagesResponse = {
   ok: boolean;
@@ -28,15 +30,23 @@ function titleCase(value: string | null | undefined) {
 }
 
 export default function StudentMessagesPage() {
+  const auth = useAuthContext();
   const messages = useApiData<StudentCommunicationMessagesResponse>(
     "/students/me/communication-messages",
     true
   );
+  const directName =
+    buildDirectAddressName({
+      preferredName: auth.data?.context?.authenticatedPreferredName,
+      firstName: auth.data?.context?.authenticatedFirstName,
+      lastName: auth.data?.context?.authenticatedLastName,
+      fallback: "you",
+    }) || "you";
 
   return (
     <AppShell
       title="Family messages"
-      subtitle="Review translated parent-originated messages that were explicitly delivered through the system. These should stay transparent, respectful, and easy to read."
+      subtitle={`${directName}, review translated parent-originated messages that were explicitly delivered through the system. These should stay transparent, respectful, and easy to read.`}
     >
       <RequireRole expectedRoles={["student", "admin"]} fallbackTitle="Student sign-in required">
         <SectionCard
@@ -47,7 +57,7 @@ export default function StudentMessagesPage() {
           <div style={{ display: "grid", gap: 10, color: "#334155", lineHeight: 1.7 }}>
             <div>Only translated parent-originated messages that were actually delivered through the system appear here.</div>
             <div>The system should stay transparent about the parent origin and should not disguise those messages as neutral system advice.</div>
-            <div>You can update your communication preferences from the <Link href="/onboarding/profile">student profile</Link> page.</div>
+            <div>You can update your communication preferences from the <Link href="/profile">profile</Link> page.</div>
           </div>
         </SectionCard>
 

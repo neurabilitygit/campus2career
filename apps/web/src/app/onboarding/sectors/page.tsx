@@ -63,7 +63,7 @@ export default function OnboardingSectorsPage() {
   return (
     <AppShell
       title="Choose starting career areas"
-      subtitle="This gives the dashboard an initial direction. It does not lock the student into a final path."
+      subtitle="This gives the dashboard an initial direction. It does not lock you into a final path."
     >
       <RequireRole expectedRoles={["student", "admin"]} fallbackTitle="Student sign-in required">
         <SectionCard

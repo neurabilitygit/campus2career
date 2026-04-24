@@ -49,6 +49,9 @@ export async function verifySupabaseJwt(token: string): Promise<AuthenticatedUse
       userId: typed.sub,
       email: typed.email,
       roleType: mapSupabaseRole(typed),
+      firstName: readFirstName(typed),
+      lastName: readLastName(typed),
+      preferredName: readPreferredName(typed),
     };
   }
 
@@ -64,7 +67,66 @@ export async function verifySupabaseJwt(token: string): Promise<AuthenticatedUse
     userId: typed.sub,
     email: typed.email,
     roleType: mapSupabaseRole(typed),
+    firstName: readFirstName(typed),
+    lastName: readLastName(typed),
+    preferredName: readPreferredName(typed),
   };
+}
+
+function readPreferredName(payload: SupabaseJwtPayload) {
+  const candidate =
+    (typeof payload.user_metadata?.preferred_name === "string"
+      ? payload.user_metadata.preferred_name
+      : undefined) ||
+    (typeof payload.user_metadata?.nickname === "string"
+      ? payload.user_metadata.nickname
+      : undefined);
+  return candidate?.trim() || null;
+}
+
+function readFirstName(payload: SupabaseJwtPayload) {
+  const explicit =
+    (typeof payload.user_metadata?.given_name === "string"
+      ? payload.user_metadata.given_name
+      : undefined) ||
+    (typeof payload.user_metadata?.first_name === "string"
+      ? payload.user_metadata.first_name
+      : undefined);
+  if (explicit?.trim()) {
+    return explicit.trim();
+  }
+
+  const fullName =
+    (typeof payload.user_metadata?.full_name === "string"
+      ? payload.user_metadata.full_name
+      : undefined) ||
+    (typeof payload.user_metadata?.name === "string" ? payload.user_metadata.name : undefined);
+
+  return fullName?.trim()?.split(/\s+/)[0] || null;
+}
+
+function readLastName(payload: SupabaseJwtPayload) {
+  const explicit =
+    (typeof payload.user_metadata?.family_name === "string"
+      ? payload.user_metadata.family_name
+      : undefined) ||
+    (typeof payload.user_metadata?.last_name === "string"
+      ? payload.user_metadata.last_name
+      : undefined);
+  if (explicit?.trim()) {
+    return explicit.trim();
+  }
+
+  const fullName =
+    (typeof payload.user_metadata?.full_name === "string"
+      ? payload.user_metadata.full_name
+      : undefined) ||
+    (typeof payload.user_metadata?.name === "string" ? payload.user_metadata.name : undefined);
+  const parts = fullName?.trim().split(/\s+/).filter(Boolean) || [];
+  if (parts.length <= 1) {
+    return null;
+  }
+  return parts.slice(1).join(" ");
 }
 
 function mapSupabaseRole(payload: SupabaseJwtPayload): AuthenticatedUser["roleType"] {

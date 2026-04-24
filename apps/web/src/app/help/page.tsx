@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { FieldInfoLabel } from "../../components/forms/FieldInfoLabel";
 import { AppShell } from "../../components/layout/AppShell";
 import { SectionCard } from "../../components/layout/SectionCard";
 
@@ -24,11 +25,13 @@ const topics: HelpTopic[] = [
     title: "Open the right workspace",
     role: "shared",
     status: "available",
-    summary: "Use the app shell to move between home, dashboards, onboarding, documents, and help.",
+    summary: "Use the app shell to move between home, your role-specific workspace, communication, profile, documents, and help.",
     whenToUse: "Start here when you are new to the platform or returning after some time away.",
     youNeed: "A signed-in account is helpful, but the help library is open without sign-in.",
     howToUse: [
-      "Use the left navigation to choose the workspace you need.",
+      "Use the left navigation to choose the workspace and tools your role is allowed to use.",
+      "Open Profile when you want to update account details, optional personal context, or role-specific preferences.",
+      "Open Messages & chat when you want chatbot guidance, translated family communication, or role-specific communication tools.",
       "Use the account menu in the upper-right to sign in or open the workspace available to your account.",
       "Use Help whenever you want feature instructions without leaving the app.",
     ],
@@ -37,6 +40,27 @@ const topics: HelpTopic[] = [
       "Starting uploads before the academic path is set.",
       "Assuming every role can open every workspace without the right account access.",
     ],
+  },
+  {
+    category: "Getting started",
+    title: "Update your profile and personalization",
+    role: "shared",
+    status: "available",
+    summary: "Each role now has its own profile screen so names, communication preferences, and optional personal context stay accurate.",
+    whenToUse: "Use this when your name, family context, coaching identity, or optional preferences need to be updated.",
+    youNeed: "A signed-in account. Sensitive fields remain optional.",
+    howToUse: [
+      "Open Profile from the left navigation or the account menu.",
+      "Students can update name and optional personal-choice fields without touching system-managed records.",
+      "Parents can update family context, optional demographic details, and communication preferences.",
+      "Coaches can update professional identity, specialties, and communication preferences.",
+    ],
+    output: "More accurate personalization, clearer attribution, and profile-aware help across the app.",
+    mistakes: [
+      "Assuming optional fields are required.",
+      "Expecting hidden system or scoring fields to be editable from the profile screen.",
+    ],
+    privacy: "Optional demographic, neurodivergence, housing, and family-structure fields are user-controlled and do not need to be disclosed.",
   },
   {
     category: "Student dashboard",
@@ -83,18 +107,18 @@ const topics: HelpTopic[] = [
     title: "Review coach diagnostics",
     role: "coach",
     status: "available",
-    summary: "The coach dashboard focuses on role-mapping quality, diagnostics, and whether the scoring inputs are trustworthy.",
-    whenToUse: "Use this when you want to validate the system before leaning on edge-case scoring.",
+    summary: "The coach workspace is built for roster management, selected-student review, and turning insight into notes, recommendations, and actions.",
+    whenToUse: "Use this when you want to review one assigned student quickly and turn that review into visible next steps.",
     youNeed: "A coach account or an authorized preview context.",
     howToUse: [
-      "Check Current platform picture for the main diagnostic risk.",
-      "Review Role mappings to confirm O*NET links and visible skill coverage.",
-      "Open validation details when you need raw fixture context.",
+      "Start with Coach roster to pick the assigned student you want to review.",
+      "Use the selected student workspace to see evidence gaps, outcomes, flags, notes, and recommendations in one place.",
+      "Create notes, findings, recommendations, action items, and draft follow-up messages from the same workspace.",
     ],
-    output: "A faster path to spotting technical weaknesses in role coverage.",
+    output: "A faster path to preparing for the next coaching session without rebuilding the student picture by hand.",
     mistakes: [
-      "Assuming the coach view is a student coaching workspace; it is currently diagnostic-heavy.",
-      "Relying on role mappings without checking missing links or skill gaps first.",
+      "Assuming coaches can open any student; only assigned students appear in the roster.",
+      "Making notes visible to parents or students before checking the selected visibility setting.",
     ],
   },
   {
@@ -160,10 +184,11 @@ const topics: HelpTopic[] = [
     title: "Translate family concerns constructively",
     role: "parent",
     status: "available",
-    summary: "The communication translator helps parents reframe concerns into student-appropriate language without hiding the parent origin.",
+    summary: "The communication area now has its own navigation entry so parents can find the translator, history, and communication drafts more easily.",
     whenToUse: "Use this when a topic matters, but the usual wording tends to create friction or defensiveness.",
     youNeed: "A saved parent communication baseline plus the concern, context, and desired outcome.",
     howToUse: [
+      "Open Messages & chat in the left navigation, then open the translator workspace.",
       "Save the concern first, even if it is context only.",
       "Generate a translation strategy and review the what-not-to-say guidance.",
       "Only save or send a draft when consent and review conditions allow it.",
@@ -217,12 +242,14 @@ const topics: HelpTopic[] = [
     title: "Use the account menu",
     role: "shared",
     status: "available",
-    summary: "The upper-right account menu handles sign-in, sign-out, workspace access, and persona preview when that testing mode is allowed.",
+    summary: "The upper-right account menu handles sign-in, sign-out, workspace access, and quick links to profile and communication.",
     whenToUse: "Use this whenever you need to open a workspace, sign in, or switch preview context.",
     youNeed: "A configured sign-in provider for real auth. Persona preview only appears for specifically allowed testing accounts.",
     howToUse: [
       "Open the menu in the upper-right corner.",
       "Use Continue with Google if you are signed out.",
+      "Use Profile to edit role-specific account details and optional personalization fields.",
+      "Use Messages & chat when you need communication tools without digging into another workspace first.",
       "Use Switch workspace/persona only if your account explicitly allows preview mode.",
     ],
     output: "A cleaner, centralized account-control flow.",
@@ -314,7 +341,11 @@ export default function HelpPage() {
           }}
         >
           <label style={{ display: "grid", gap: 6 }}>
-            <span style={{ fontWeight: 700, color: "#183153" }}>Search help</span>
+            <FieldInfoLabel
+              label="Search help"
+              info="Search guides by feature, task, or keyword."
+              example="transcript, parent brief, coach notes"
+            />
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
@@ -330,7 +361,11 @@ export default function HelpPage() {
             />
           </label>
           <label style={{ display: "grid", gap: 6 }}>
-            <span style={{ fontWeight: 700, color: "#183153" }}>Role focus</span>
+            <FieldInfoLabel
+              label="Role focus"
+              info="Limit guides to the role you want help with."
+              example="Parent"
+            />
             <select
               value={roleFilter}
               onChange={(event) =>

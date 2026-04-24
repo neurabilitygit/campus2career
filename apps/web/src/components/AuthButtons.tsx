@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { clearStoredDemoAuth } from "../lib/demoAuth";
 import { getSupabaseBrowserClient, getSupabaseConfigError } from "../lib/supabaseClient";
 import { setStoredTestContextRole } from "../lib/testContext";
 import { useSession } from "../hooks/useSession";
@@ -54,10 +55,12 @@ export function AuthButtons() {
   }
 
   async function signOut() {
-    if (!supabase) return;
     setActionBusy("sign_out");
     try {
-      await supabase.auth.signOut();
+      clearStoredDemoAuth();
+      if (supabase) {
+        await supabase.auth.signOut();
+      }
       setStoredTestContextRole(null);
       window.location.href = "/";
     } finally {

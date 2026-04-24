@@ -5,8 +5,12 @@
   "type": "module",
   "scripts": {
     "dev": "node --watch --env-file=.env.local --import tsx/esm src/index.ts",
+    "dev:test": "ALLOW_DEMO_AUTH=true node --watch --env-file=.env.local --import tsx/esm src/index.ts",
     "typecheck": "tsc --noEmit",
     "test": "node --import tsx/esm --test 'src/**/*.test.ts'",
+    "test:unit": "node --import tsx/esm --test --test-concurrency=1 'src/services/**/*.test.ts'",
+    "test:integration": "node --env-file=.env.local --import tsx/esm --test --test-concurrency=1 'src/routes/**/*.test.ts'",
+    "test:seed:e2e": "tsx --env-file=.env.local src/scripts/seedTestHarnessData.ts",
     "db:migrate": "node --env-file=.env.local --import tsx/esm src/scripts/applyDbMigrations.ts",
     "db:seed:institutions": "node --env-file=.env.local --import tsx/esm src/scripts/seedInstitutionDirectoryBootstrap.ts",
     "db:seed:ci": "node --env-file=.env.local --import tsx/esm src/scripts/seedCiBaseline.ts",

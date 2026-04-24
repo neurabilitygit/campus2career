@@ -7,6 +7,7 @@ import { AppShell } from "../layout/AppShell";
 import { SectionCard } from "../layout/SectionCard";
 import { KeyValueList } from "../layout/KeyValueList";
 import { RequireRole } from "../RequireRole";
+import { FieldInfoLabel } from "../forms/FieldInfoLabel";
 import { useApiData } from "../../hooks/useApiData";
 import { apiFetch } from "../../lib/apiClient";
 
@@ -305,23 +306,35 @@ export default function CoachDashboardView() {
         <SectionCard title="Coach roster" subtitle="Only assigned students appear here. Pick one to open the review workspace." tone="highlight">
           <div style={{ display: "grid", gap: 14 }}>
             <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
-              <input
-                value={rosterSearch}
-                onChange={(event) => setRosterSearch(event.target.value)}
-                placeholder="Search assigned students"
-                style={{ minWidth: 240, flex: "1 1 260px" }}
-              />
-              <select
-                value={selectedStudentProfileId || ""}
-                onChange={(event) => switchStudent(event.target.value)}
-                style={{ minWidth: 240, flex: "1 1 240px" }}
-              >
-                {(roster.data?.roster || []).map((item) => (
-                  <option key={item.studentProfileId} value={item.studentProfileId}>
-                    {item.studentDisplayName}
-                  </option>
-                ))}
-              </select>
+              <label style={{ display: "grid", gap: 6, minWidth: 240, flex: "1 1 260px" }}>
+                <FieldInfoLabel
+                  label="Search assigned students"
+                  info="Filter the roster to the student you want to review."
+                  example="Search Maya"
+                />
+                <input
+                  value={rosterSearch}
+                  onChange={(event) => setRosterSearch(event.target.value)}
+                  placeholder="Search assigned students"
+                />
+              </label>
+              <label style={{ display: "grid", gap: 6, minWidth: 240, flex: "1 1 240px" }}>
+                <FieldInfoLabel
+                  label="Active student"
+                  info="Choose which assigned student should load into the workspace."
+                  example="Maya Chen"
+                />
+                <select
+                  value={selectedStudentProfileId || ""}
+                  onChange={(event) => switchStudent(event.target.value)}
+                >
+                  {(roster.data?.roster || []).map((item) => (
+                    <option key={item.studentProfileId} value={item.studentProfileId}>
+                      {item.studentDisplayName}
+                    </option>
+                  ))}
+                </select>
+              </label>
             </div>
             {roster.loading ? <p>Loading coach roster...</p> : null}
             {roster.error ? <p style={{ color: "crimson" }}>{roster.error}</p> : null}
@@ -359,7 +372,7 @@ export default function CoachDashboardView() {
           </div>
         </SectionCard>
 
-        <SectionCard title="Selected student review workspace" subtitle="Use this to prepare for the next session without rebuilding the student picture by hand.">
+        <SectionCard title={`${selectedName} review workspace`} subtitle="Use this to prepare for the next session without rebuilding the picture by hand.">
           {workspace.loading ? <p>Loading coach workspace...</p> : null}
           {workspace.error ? <p style={{ color: "crimson" }}>{workspace.error}</p> : null}
           {!workspace.loading && !workspace.error && !workspaceData ? (
@@ -475,24 +488,52 @@ export default function CoachDashboardView() {
                   <details open>
                     <summary style={{ fontWeight: 800, cursor: "pointer" }}>Add review note</summary>
                     <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
-                      <input placeholder="Short title" value={noteForm.title} onChange={(e) => setNoteForm((v) => ({ ...v, title: e.target.value }))} />
-                      <select value={noteForm.noteType} onChange={(e) => setNoteForm((v) => ({ ...v, noteType: e.target.value }))}>
-                        <option value="session_note">Session note</option>
-                        <option value="observation">Observation</option>
-                        <option value="risk_note">Risk note</option>
-                        <option value="strength_note">Strength note</option>
-                        <option value="parent_context_note">Parent context note</option>
-                        <option value="follow_up_note">Follow-up note</option>
-                        <option value="other">Other</option>
-                      </select>
-                      <select value={noteForm.visibility} onChange={(e) => setNoteForm((v) => ({ ...v, visibility: e.target.value }))}>
-                        <option value="coach_private">Coach private</option>
-                        <option value="student_visible">Student visible</option>
-                        <option value="parent_visible">Parent visible</option>
-                        <option value="student_and_parent_visible">Student and parent visible</option>
-                        <option value="internal_system_context">Internal system context</option>
-                      </select>
-                      <textarea rows={4} placeholder="What changed, what you observed, or what to revisit next session" value={noteForm.body} onChange={(e) => setNoteForm((v) => ({ ...v, body: e.target.value }))} />
+                      <label style={{ display: "grid", gap: 6 }}>
+                        <FieldInfoLabel
+                          label="Note title"
+                          info="Give the note a short label so it is easy to scan later."
+                          example="Mid-semester check-in"
+                        />
+                        <input placeholder="Short title" value={noteForm.title} onChange={(e) => setNoteForm((v) => ({ ...v, title: e.target.value }))} />
+                      </label>
+                      <label style={{ display: "grid", gap: 6 }}>
+                        <FieldInfoLabel
+                          label="Note type"
+                          info="Choose the kind of coach note you are capturing."
+                          example="Session note"
+                        />
+                        <select value={noteForm.noteType} onChange={(e) => setNoteForm((v) => ({ ...v, noteType: e.target.value }))}>
+                          <option value="session_note">Session note</option>
+                          <option value="observation">Observation</option>
+                          <option value="risk_note">Risk note</option>
+                          <option value="strength_note">Strength note</option>
+                          <option value="parent_context_note">Parent context note</option>
+                          <option value="follow_up_note">Follow-up note</option>
+                          <option value="other">Other</option>
+                        </select>
+                      </label>
+                      <label style={{ display: "grid", gap: 6 }}>
+                        <FieldInfoLabel
+                          label="Visibility"
+                          info="Control who can see this note after it is saved."
+                          example="Coach private"
+                        />
+                        <select value={noteForm.visibility} onChange={(e) => setNoteForm((v) => ({ ...v, visibility: e.target.value }))}>
+                          <option value="coach_private">Coach private</option>
+                          <option value="student_visible">Student visible</option>
+                          <option value="parent_visible">Parent visible</option>
+                          <option value="student_and_parent_visible">Student and parent visible</option>
+                          <option value="internal_system_context">Internal system context</option>
+                        </select>
+                      </label>
+                      <label style={{ display: "grid", gap: 6 }}>
+                        <FieldInfoLabel
+                          label="Note body"
+                          info="Capture what changed, what you observed, or what to revisit."
+                          example="Student agreed to send two outreach emails before Friday."
+                        />
+                        <textarea rows={4} placeholder="What changed, what you observed, or what to revisit next session" value={noteForm.body} onChange={(e) => setNoteForm((v) => ({ ...v, body: e.target.value }))} />
+                      </label>
                       <button
                         type="button"
                         className="ui-button ui-button--primary"
@@ -513,33 +554,68 @@ export default function CoachDashboardView() {
                   <details>
                     <summary style={{ fontWeight: 800, cursor: "pointer" }}>Add finding</summary>
                     <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
-                      <input placeholder="Finding title" value={findingForm.title} onChange={(e) => setFindingForm((v) => ({ ...v, title: e.target.value }))} />
-                      <select value={findingForm.findingCategory} onChange={(e) => setFindingForm((v) => ({ ...v, findingCategory: e.target.value }))}>
-                        <option value="academic_gap">Academic gap</option>
-                        <option value="career_direction">Career direction</option>
-                        <option value="execution_risk">Execution risk</option>
-                        <option value="communication_issue">Communication issue</option>
-                        <option value="motivation_or_confidence">Motivation or confidence</option>
-                        <option value="experience_gap">Experience gap</option>
-                        <option value="network_gap">Network gap</option>
-                        <option value="application_strategy">Application strategy</option>
-                        <option value="strength">Strength</option>
-                        <option value="other">Other</option>
-                      </select>
-                      <select value={findingForm.severity} onChange={(e) => setFindingForm((v) => ({ ...v, severity: e.target.value }))}>
-                        <option value="low">Low</option>
-                        <option value="medium">Medium</option>
-                        <option value="high">High</option>
-                        <option value="urgent">Urgent</option>
-                      </select>
-                      <select value={findingForm.visibility} onChange={(e) => setFindingForm((v) => ({ ...v, visibility: e.target.value }))}>
-                        <option value="coach_private">Coach private</option>
-                        <option value="student_visible">Student visible</option>
-                        <option value="parent_visible">Parent visible</option>
-                        <option value="student_and_parent_visible">Student and parent visible</option>
-                        <option value="internal_system_context">Internal system context</option>
-                      </select>
-                      <textarea rows={4} placeholder="State the conclusion clearly and explain the evidence basis" value={findingForm.explanation} onChange={(e) => setFindingForm((v) => ({ ...v, explanation: e.target.value }))} />
+                      <label style={{ display: "grid", gap: 6 }}>
+                        <FieldInfoLabel
+                          label="Finding title"
+                          info="Name the conclusion you want future reviews to notice quickly."
+                          example="Interview prep is the biggest bottleneck"
+                        />
+                        <input placeholder="Finding title" value={findingForm.title} onChange={(e) => setFindingForm((v) => ({ ...v, title: e.target.value }))} />
+                      </label>
+                      <label style={{ display: "grid", gap: 6 }}>
+                        <FieldInfoLabel
+                          label="Finding category"
+                          info="Group the finding by the area it affects most."
+                          example="Execution risk"
+                        />
+                        <select value={findingForm.findingCategory} onChange={(e) => setFindingForm((v) => ({ ...v, findingCategory: e.target.value }))}>
+                          <option value="academic_gap">Academic gap</option>
+                          <option value="career_direction">Career direction</option>
+                          <option value="execution_risk">Execution risk</option>
+                          <option value="communication_issue">Communication issue</option>
+                          <option value="motivation_or_confidence">Motivation or confidence</option>
+                          <option value="experience_gap">Experience gap</option>
+                          <option value="network_gap">Network gap</option>
+                          <option value="application_strategy">Application strategy</option>
+                          <option value="strength">Strength</option>
+                          <option value="other">Other</option>
+                        </select>
+                      </label>
+                      <label style={{ display: "grid", gap: 6 }}>
+                        <FieldInfoLabel
+                          label="Importance"
+                          info="Show how much attention this finding should get right now."
+                          example="High"
+                        />
+                        <select value={findingForm.severity} onChange={(e) => setFindingForm((v) => ({ ...v, severity: e.target.value }))}>
+                          <option value="low">Low</option>
+                          <option value="medium">Medium</option>
+                          <option value="high">High</option>
+                          <option value="urgent">Urgent</option>
+                        </select>
+                      </label>
+                      <label style={{ display: "grid", gap: 6 }}>
+                        <FieldInfoLabel
+                          label="Visibility"
+                          info="Choose whether this finding stays private or can be shared."
+                          example="Student visible"
+                        />
+                        <select value={findingForm.visibility} onChange={(e) => setFindingForm((v) => ({ ...v, visibility: e.target.value }))}>
+                          <option value="coach_private">Coach private</option>
+                          <option value="student_visible">Student visible</option>
+                          <option value="parent_visible">Parent visible</option>
+                          <option value="student_and_parent_visible">Student and parent visible</option>
+                          <option value="internal_system_context">Internal system context</option>
+                        </select>
+                      </label>
+                      <label style={{ display: "grid", gap: 6 }}>
+                        <FieldInfoLabel
+                          label="Finding explanation"
+                          info="State the conclusion clearly and explain the evidence behind it."
+                          example="Resume improved, but outreach follow-through is still inconsistent."
+                        />
+                        <textarea rows={4} placeholder="State the conclusion clearly and explain the evidence basis" value={findingForm.explanation} onChange={(e) => setFindingForm((v) => ({ ...v, explanation: e.target.value }))} />
+                      </label>
                       <button
                         type="button"
                         className="ui-button ui-button--primary"
@@ -560,35 +636,84 @@ export default function CoachDashboardView() {
                   <details>
                     <summary style={{ fontWeight: 800, cursor: "pointer" }}>Add recommendation</summary>
                     <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
-                      <input placeholder="Recommendation title" value={recommendationForm.title} onChange={(e) => setRecommendationForm((v) => ({ ...v, title: e.target.value }))} />
-                      <select value={recommendationForm.recommendationCategory} onChange={(e) => setRecommendationForm((v) => ({ ...v, recommendationCategory: e.target.value }))}>
-                        <option value="academic">Academic</option>
-                        <option value="career_target">Career target</option>
-                        <option value="resume">Resume</option>
-                        <option value="internship_search">Internship search</option>
-                        <option value="networking">Networking</option>
-                        <option value="interview_prep">Interview prep</option>
-                        <option value="project_or_portfolio">Project or portfolio</option>
-                        <option value="communication">Communication</option>
-                        <option value="outcome_tracking">Outcome tracking</option>
-                        <option value="other">Other</option>
-                      </select>
-                      <select value={recommendationForm.priority} onChange={(e) => setRecommendationForm((v) => ({ ...v, priority: e.target.value }))}>
-                        <option value="low">Low</option>
-                        <option value="medium">Medium</option>
-                        <option value="high">High</option>
-                        <option value="urgent">Urgent</option>
-                      </select>
-                      <select value={recommendationForm.visibility} onChange={(e) => setRecommendationForm((v) => ({ ...v, visibility: e.target.value }))}>
-                        <option value="coach_private">Coach private</option>
-                        <option value="student_visible">Student visible</option>
-                        <option value="parent_visible">Parent visible</option>
-                        <option value="student_and_parent_visible">Student and parent visible</option>
-                        <option value="internal_system_context">Internal system context</option>
-                      </select>
-                      <textarea rows={3} placeholder="Why this matters now" value={recommendationForm.rationale} onChange={(e) => setRecommendationForm((v) => ({ ...v, rationale: e.target.value }))} />
-                      <textarea rows={3} placeholder="Recommended next step" value={recommendationForm.recommendedNextStep} onChange={(e) => setRecommendationForm((v) => ({ ...v, recommendedNextStep: e.target.value }))} />
-                      <input type="date" value={recommendationForm.dueDate} onChange={(e) => setRecommendationForm((v) => ({ ...v, dueDate: e.target.value }))} />
+                      <label style={{ display: "grid", gap: 6 }}>
+                        <FieldInfoLabel
+                          label="Recommendation title"
+                          info="Summarize the intervention in a short, actionable phrase."
+                          example="Start weekly alumni outreach"
+                        />
+                        <input placeholder="Recommendation title" value={recommendationForm.title} onChange={(e) => setRecommendationForm((v) => ({ ...v, title: e.target.value }))} />
+                      </label>
+                      <label style={{ display: "grid", gap: 6 }}>
+                        <FieldInfoLabel
+                          label="Recommendation category"
+                          info="Group the recommendation by the kind of help it provides."
+                          example="Networking"
+                        />
+                        <select value={recommendationForm.recommendationCategory} onChange={(e) => setRecommendationForm((v) => ({ ...v, recommendationCategory: e.target.value }))}>
+                          <option value="academic">Academic</option>
+                          <option value="career_target">Career target</option>
+                          <option value="resume">Resume</option>
+                          <option value="internship_search">Internship search</option>
+                          <option value="networking">Networking</option>
+                          <option value="interview_prep">Interview prep</option>
+                          <option value="project_or_portfolio">Project or portfolio</option>
+                          <option value="communication">Communication</option>
+                          <option value="outcome_tracking">Outcome tracking</option>
+                          <option value="other">Other</option>
+                        </select>
+                      </label>
+                      <label style={{ display: "grid", gap: 6 }}>
+                        <FieldInfoLabel
+                          label="Priority"
+                          info="Show how quickly this recommendation should be acted on."
+                          example="High"
+                        />
+                        <select value={recommendationForm.priority} onChange={(e) => setRecommendationForm((v) => ({ ...v, priority: e.target.value }))}>
+                          <option value="low">Low</option>
+                          <option value="medium">Medium</option>
+                          <option value="high">High</option>
+                          <option value="urgent">Urgent</option>
+                        </select>
+                      </label>
+                      <label style={{ display: "grid", gap: 6 }}>
+                        <FieldInfoLabel
+                          label="Visibility"
+                          info="Choose who should be able to see this recommendation."
+                          example="Student and parent visible"
+                        />
+                        <select value={recommendationForm.visibility} onChange={(e) => setRecommendationForm((v) => ({ ...v, visibility: e.target.value }))}>
+                          <option value="coach_private">Coach private</option>
+                          <option value="student_visible">Student visible</option>
+                          <option value="parent_visible">Parent visible</option>
+                          <option value="student_and_parent_visible">Student and parent visible</option>
+                          <option value="internal_system_context">Internal system context</option>
+                        </select>
+                      </label>
+                      <label style={{ display: "grid", gap: 6 }}>
+                        <FieldInfoLabel
+                          label="Why this matters now"
+                          info="Explain the reason this recommendation should be prioritized."
+                          example="Applications are stalling because outreach has not started."
+                        />
+                        <textarea rows={3} placeholder="Why this matters now" value={recommendationForm.rationale} onChange={(e) => setRecommendationForm((v) => ({ ...v, rationale: e.target.value }))} />
+                      </label>
+                      <label style={{ display: "grid", gap: 6 }}>
+                        <FieldInfoLabel
+                          label="Recommended next step"
+                          info="State the next concrete action the student or parent should take."
+                          example="Send three alumni outreach messages by Thursday."
+                        />
+                        <textarea rows={3} placeholder="Recommended next step" value={recommendationForm.recommendedNextStep} onChange={(e) => setRecommendationForm((v) => ({ ...v, recommendedNextStep: e.target.value }))} />
+                      </label>
+                      <label style={{ display: "grid", gap: 6 }}>
+                        <FieldInfoLabel
+                          label="Due date"
+                          info="Add a target date if this recommendation needs follow-through."
+                          example="2026-05-01"
+                        />
+                        <input type="date" value={recommendationForm.dueDate} onChange={(e) => setRecommendationForm((v) => ({ ...v, dueDate: e.target.value }))} />
+                      </label>
                       <button
                         type="button"
                         className="ui-button ui-button--primary"
@@ -619,23 +744,76 @@ export default function CoachDashboardView() {
                   <details>
                     <summary style={{ fontWeight: 800, cursor: "pointer" }}>Add coach-sourced action</summary>
                     <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
-                      <input placeholder="Action title" value={actionItemForm.title} onChange={(e) => setActionItemForm((v) => ({ ...v, title: e.target.value }))} />
-                      <textarea rows={3} placeholder="What should happen next and what good follow-through looks like" value={actionItemForm.description} onChange={(e) => setActionItemForm((v) => ({ ...v, description: e.target.value }))} />
-                      <select value={actionItemForm.priority} onChange={(e) => setActionItemForm((v) => ({ ...v, priority: e.target.value }))}>
-                        <option value="low">Low</option>
-                        <option value="medium">Medium</option>
-                        <option value="high">High</option>
-                        <option value="urgent">Urgent</option>
-                      </select>
-                      <select value={actionItemForm.assignedTo} onChange={(e) => setActionItemForm((v) => ({ ...v, assignedTo: e.target.value }))}>
-                        <option value="student">Student</option>
-                        <option value="parent">Parent</option>
-                        <option value="coach">Coach</option>
-                        <option value="shared">Shared</option>
-                      </select>
-                      <input type="date" value={actionItemForm.dueDate} onChange={(e) => setActionItemForm((v) => ({ ...v, dueDate: e.target.value }))} />
-                      <label><input type="checkbox" checked={actionItemForm.visibleToStudent} onChange={(e) => setActionItemForm((v) => ({ ...v, visibleToStudent: e.target.checked }))} /> Visible to student</label>
-                      <label><input type="checkbox" checked={actionItemForm.visibleToParent} onChange={(e) => setActionItemForm((v) => ({ ...v, visibleToParent: e.target.checked }))} /> Visible to parent</label>
+                      <label style={{ display: "grid", gap: 6 }}>
+                        <FieldInfoLabel
+                          label="Action title"
+                          info="Name the follow-through step in a short, actionable way."
+                          example="Finish resume revision"
+                        />
+                        <input placeholder="Action title" value={actionItemForm.title} onChange={(e) => setActionItemForm((v) => ({ ...v, title: e.target.value }))} />
+                      </label>
+                      <label style={{ display: "grid", gap: 6 }}>
+                        <FieldInfoLabel
+                          label="Action description"
+                          info="Explain what good follow-through looks like."
+                          example="Update bullets for the lab role and send the draft for review."
+                        />
+                        <textarea rows={3} placeholder="What should happen next and what good follow-through looks like" value={actionItemForm.description} onChange={(e) => setActionItemForm((v) => ({ ...v, description: e.target.value }))} />
+                      </label>
+                      <label style={{ display: "grid", gap: 6 }}>
+                        <FieldInfoLabel
+                          label="Priority"
+                          info="Show how urgent this follow-through item is."
+                          example="Medium"
+                        />
+                        <select value={actionItemForm.priority} onChange={(e) => setActionItemForm((v) => ({ ...v, priority: e.target.value }))}>
+                          <option value="low">Low</option>
+                          <option value="medium">Medium</option>
+                          <option value="high">High</option>
+                          <option value="urgent">Urgent</option>
+                        </select>
+                      </label>
+                      <label style={{ display: "grid", gap: 6 }}>
+                        <FieldInfoLabel
+                          label="Assigned to"
+                          info="Choose who should own this action item."
+                          example="Student"
+                        />
+                        <select value={actionItemForm.assignedTo} onChange={(e) => setActionItemForm((v) => ({ ...v, assignedTo: e.target.value }))}>
+                          <option value="student">Student</option>
+                          <option value="parent">Parent</option>
+                          <option value="coach">Coach</option>
+                          <option value="shared">Shared</option>
+                        </select>
+                      </label>
+                      <label style={{ display: "grid", gap: 6 }}>
+                        <FieldInfoLabel
+                          label="Due date"
+                          info="Add a target date when this follow-up should be done."
+                          example="2026-05-03"
+                        />
+                        <input type="date" value={actionItemForm.dueDate} onChange={(e) => setActionItemForm((v) => ({ ...v, dueDate: e.target.value }))} />
+                      </label>
+                      <label style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+                        <input type="checkbox" checked={actionItemForm.visibleToStudent} onChange={(e) => setActionItemForm((v) => ({ ...v, visibleToStudent: e.target.checked }))} />
+                        <span>
+                          <FieldInfoLabel
+                            label="Visible to student"
+                            info="Turn this on when the student should see the action item."
+                            example="Checked for a student task"
+                          />
+                        </span>
+                      </label>
+                      <label style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+                        <input type="checkbox" checked={actionItemForm.visibleToParent} onChange={(e) => setActionItemForm((v) => ({ ...v, visibleToParent: e.target.checked }))} />
+                        <span>
+                          <FieldInfoLabel
+                            label="Visible to parent"
+                            info="Turn this on when a parent should see or support this action."
+                            example="Checked when a parent can help schedule time"
+                          />
+                        </span>
+                      </label>
                       <button
                         type="button"
                         className="ui-button ui-button--primary"
@@ -665,32 +843,67 @@ export default function CoachDashboardView() {
                   <details>
                     <summary style={{ fontWeight: 800, cursor: "pointer" }}>Add flag</summary>
                     <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
-                      <input placeholder="Flag title" value={flagForm.title} onChange={(e) => setFlagForm((v) => ({ ...v, title: e.target.value }))} />
-                      <select value={flagForm.flagType} onChange={(e) => setFlagForm((v) => ({ ...v, flagType: e.target.value }))}>
-                        <option value="missing_evidence">Missing evidence</option>
-                        <option value="academic_risk">Academic risk</option>
-                        <option value="application_stall">Application stall</option>
-                        <option value="communication_breakdown">Communication breakdown</option>
-                        <option value="missed_deadline">Missed deadline</option>
-                        <option value="no_outcome_activity">No outcome activity</option>
-                        <option value="high_parent_concern">High parent concern</option>
-                        <option value="coach_attention_needed">Coach attention needed</option>
-                        <option value="other">Other</option>
-                      </select>
-                      <select value={flagForm.severity} onChange={(e) => setFlagForm((v) => ({ ...v, severity: e.target.value }))}>
-                        <option value="info">Info</option>
-                        <option value="warning">Warning</option>
-                        <option value="high">High</option>
-                        <option value="urgent">Urgent</option>
-                      </select>
-                      <select value={flagForm.visibility} onChange={(e) => setFlagForm((v) => ({ ...v, visibility: e.target.value }))}>
-                        <option value="coach_private">Coach private</option>
-                        <option value="student_visible">Student visible</option>
-                        <option value="parent_visible">Parent visible</option>
-                        <option value="student_and_parent_visible">Student and parent visible</option>
-                        <option value="internal_system_context">Internal system context</option>
-                      </select>
-                      <textarea rows={3} placeholder="Describe what needs attention and why" value={flagForm.description} onChange={(e) => setFlagForm((v) => ({ ...v, description: e.target.value }))} />
+                      <label style={{ display: "grid", gap: 6 }}>
+                        <FieldInfoLabel
+                          label="Flag title"
+                          info="Give the concern a short name that is easy to scan later."
+                          example="Application activity has stalled"
+                        />
+                        <input placeholder="Flag title" value={flagForm.title} onChange={(e) => setFlagForm((v) => ({ ...v, title: e.target.value }))} />
+                      </label>
+                      <label style={{ display: "grid", gap: 6 }}>
+                        <FieldInfoLabel
+                          label="Flag type"
+                          info="Choose the kind of issue that needs attention."
+                          example="Missing evidence"
+                        />
+                        <select value={flagForm.flagType} onChange={(e) => setFlagForm((v) => ({ ...v, flagType: e.target.value }))}>
+                          <option value="missing_evidence">Missing evidence</option>
+                          <option value="academic_risk">Academic risk</option>
+                          <option value="application_stall">Application stall</option>
+                          <option value="communication_breakdown">Communication breakdown</option>
+                          <option value="missed_deadline">Missed deadline</option>
+                          <option value="no_outcome_activity">No outcome activity</option>
+                          <option value="high_parent_concern">High parent concern</option>
+                          <option value="coach_attention_needed">Coach attention needed</option>
+                          <option value="other">Other</option>
+                        </select>
+                      </label>
+                      <label style={{ display: "grid", gap: 6 }}>
+                        <FieldInfoLabel
+                          label="Severity"
+                          info="Show how quickly this issue should be reviewed."
+                          example="Warning"
+                        />
+                        <select value={flagForm.severity} onChange={(e) => setFlagForm((v) => ({ ...v, severity: e.target.value }))}>
+                          <option value="info">Info</option>
+                          <option value="warning">Warning</option>
+                          <option value="high">High</option>
+                          <option value="urgent">Urgent</option>
+                        </select>
+                      </label>
+                      <label style={{ display: "grid", gap: 6 }}>
+                        <FieldInfoLabel
+                          label="Visibility"
+                          info="Choose who should be able to see this flag."
+                          example="Parent visible"
+                        />
+                        <select value={flagForm.visibility} onChange={(e) => setFlagForm((v) => ({ ...v, visibility: e.target.value }))}>
+                          <option value="coach_private">Coach private</option>
+                          <option value="student_visible">Student visible</option>
+                          <option value="parent_visible">Parent visible</option>
+                          <option value="student_and_parent_visible">Student and parent visible</option>
+                          <option value="internal_system_context">Internal system context</option>
+                        </select>
+                      </label>
+                      <label style={{ display: "grid", gap: 6 }}>
+                        <FieldInfoLabel
+                          label="Flag description"
+                          info="Describe what needs attention and why it matters."
+                          example="No interview follow-up has been recorded in the last three weeks."
+                        />
+                        <textarea rows={3} placeholder="Describe what needs attention and why" value={flagForm.description} onChange={(e) => setFlagForm((v) => ({ ...v, description: e.target.value }))} />
+                      </label>
                       <button
                         type="button"
                         className="ui-button ui-button--primary"
@@ -720,22 +933,57 @@ export default function CoachDashboardView() {
                   <summary style={{ fontWeight: 800, cursor: "pointer" }}>Create follow-up message</summary>
                   <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10 }}>
-                      <select value={messageForm.recipientType} onChange={(e) => setMessageForm((v) => ({ ...v, recipientType: e.target.value }))}>
-                        <option value="student">Student</option>
-                        <option value="parent">Parent</option>
-                      </select>
-                      <select value={messageForm.channel} onChange={(e) => setMessageForm((v) => ({ ...v, channel: e.target.value }))}>
-                        <option value="email">Email</option>
-                        <option value="sms">SMS</option>
-                        <option value="whatsapp">WhatsApp</option>
-                      </select>
-                      <select value={messageForm.status} onChange={(e) => setMessageForm((v) => ({ ...v, status: e.target.value }))}>
-                        <option value="draft">Draft</option>
-                        <option value="ready">Ready to send</option>
-                      </select>
+                      <label style={{ display: "grid", gap: 6 }}>
+                        <FieldInfoLabel
+                          label="Recipient"
+                          info="Choose whether this follow-up is meant for the student or the parent."
+                          example="Student"
+                        />
+                        <select value={messageForm.recipientType} onChange={(e) => setMessageForm((v) => ({ ...v, recipientType: e.target.value }))}>
+                          <option value="student">Student</option>
+                          <option value="parent">Parent</option>
+                        </select>
+                      </label>
+                      <label style={{ display: "grid", gap: 6 }}>
+                        <FieldInfoLabel
+                          label="Channel"
+                          info="Pick the delivery channel you would use if sending is approved."
+                          example="Email"
+                        />
+                        <select value={messageForm.channel} onChange={(e) => setMessageForm((v) => ({ ...v, channel: e.target.value }))}>
+                          <option value="email">Email</option>
+                          <option value="sms">SMS</option>
+                          <option value="whatsapp">WhatsApp</option>
+                        </select>
+                      </label>
+                      <label style={{ display: "grid", gap: 6 }}>
+                        <FieldInfoLabel
+                          label="Draft status"
+                          info="Leave this as draft until the message is ready for review or mock send."
+                          example="Draft"
+                        />
+                        <select value={messageForm.status} onChange={(e) => setMessageForm((v) => ({ ...v, status: e.target.value }))}>
+                          <option value="draft">Draft</option>
+                          <option value="ready">Ready to send</option>
+                        </select>
+                      </label>
                     </div>
-                    <input placeholder="Subject (optional for email)" value={messageForm.subject} onChange={(e) => setMessageForm((v) => ({ ...v, subject: e.target.value }))} />
-                    <textarea rows={4} placeholder="Write a calm, professional follow-up message" value={messageForm.body} onChange={(e) => setMessageForm((v) => ({ ...v, body: e.target.value }))} />
+                    <label style={{ display: "grid", gap: 6 }}>
+                      <FieldInfoLabel
+                        label="Subject"
+                        info="Add a short subject line when the channel is email."
+                        example="Quick follow-up before Friday"
+                      />
+                      <input placeholder="Subject (optional for email)" value={messageForm.subject} onChange={(e) => setMessageForm((v) => ({ ...v, subject: e.target.value }))} />
+                    </label>
+                    <label style={{ display: "grid", gap: 6 }}>
+                      <FieldInfoLabel
+                        label="Message body"
+                        info="Draft a calm, professional follow-up the coach would want to send."
+                        example="Please send your updated resume before tomorrow so we can review it together."
+                      />
+                      <textarea rows={4} placeholder="Write a calm, professional follow-up message" value={messageForm.body} onChange={(e) => setMessageForm((v) => ({ ...v, body: e.target.value }))} />
+                    </label>
                     <button
                       type="button"
                       className="ui-button ui-button--primary"

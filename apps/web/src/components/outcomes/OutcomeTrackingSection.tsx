@@ -144,8 +144,12 @@ function sectionCopy(mode: OutcomeTrackingMode) {
   };
 }
 
-export function OutcomeTrackingSection(props: { mode: OutcomeTrackingMode }) {
+export function OutcomeTrackingSection(props: {
+  mode: OutcomeTrackingMode;
+  subjectLabel?: string;
+}) {
   const copy = sectionCopy(props.mode);
+  const subjectLabel = props.subjectLabel || (props.mode === "parent" ? "your student" : "this student");
   const prefix = endpointPrefix(props.mode);
   const [nonce, setNonce] = useState(0);
   const [form, setForm] = useState({
@@ -341,7 +345,16 @@ export function OutcomeTrackingSection(props: { mode: OutcomeTrackingMode }) {
   }
 
   return (
-    <SectionCard title={copy.title} subtitle={copy.subtitle}>
+    <SectionCard
+      title={copy.title}
+      subtitle={
+        props.mode === "parent"
+          ? `Track ${subjectLabel}'s reported applications, interviews, offers, and accepted roles in one place.`
+          : props.mode === "coach"
+            ? `Review ${subjectLabel}'s reported applications, interviews, offers, and accepted roles with source labels still visible.`
+            : copy.subtitle
+      }
+    >
       <div style={{ display: "grid", gap: 20 }}>
         <div
           style={{

@@ -32,12 +32,12 @@ export default function UploadsHomePage() {
   return (
     <AppShell
       title="Document center"
-      subtitle="Add the files that make the dashboards more accurate and more grounded in the student’s real work."
+      subtitle="Add the files that make the dashboards more accurate and more grounded in your real work."
     >
       <RequireRole expectedRoles={["student", "admin"]} fallbackTitle="Student sign-in required">
         <SectionCard
           title="Choose a document type"
-          subtitle="Each upload has a different purpose in the student model, so start with the one you want to strengthen first."
+          subtitle="Each upload has a different purpose in your profile, so start with the one you want to strengthen first."
           tone="highlight"
         >
           <div
@@ -80,7 +80,7 @@ export default function UploadsHomePage() {
             <div>1. Transcript for academic history and course matching.</div>
             <div>2. Resume for experience, leadership, and proof-of-work signals.</div>
             <div>3. Program PDF only when school requirements are missing or incomplete.</div>
-            <div>4. Supporting files for extra evidence that the student has done meaningful work.</div>
+            <div>4. Supporting files for extra evidence of meaningful work you have already done.</div>
           </div>
         </SectionCard>
       </RequireRole>

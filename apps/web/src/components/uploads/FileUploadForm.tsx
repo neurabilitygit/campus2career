@@ -131,7 +131,7 @@ export function FileUploadForm(props: {
                 fontWeight: 800,
               }}
             >
-              View student dashboard
+              View dashboard
             </Link>
           </div>
         </div>

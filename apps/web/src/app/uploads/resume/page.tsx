@@ -9,7 +9,7 @@ export default function ResumeUploadPage() {
   return (
     <AppShell
       title="Add a resume"
-      subtitle="Use the student’s resume to strengthen experience, leadership, project, and proof-of-work signals."
+      subtitle="Use your resume to strengthen experience, leadership, project, and proof-of-work signals."
     >
       <RequireRole expectedRoles={["student", "admin"]} fallbackTitle="Student sign-in required">
         <SectionCard

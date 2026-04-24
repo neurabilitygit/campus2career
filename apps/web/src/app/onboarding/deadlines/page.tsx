@@ -43,7 +43,7 @@ export default function OnboardingDeadlinesPage() {
   return (
     <AppShell
       title="Add an important date"
-      subtitle="One or two important dates are enough to make the student plan much more concrete and time-aware."
+      subtitle="One or two important dates are enough to make your plan much more concrete and time-aware."
     >
       <RequireRole expectedRoles={["student", "admin"]} fallbackTitle="Student sign-in required">
         <SectionCard
@@ -85,7 +85,7 @@ export default function OnboardingDeadlinesPage() {
             <label style={{ display: "grid", gap: 6 }}>
               <FieldInfoLabel
                 label="Due date"
-                info="Use the date the student needs to act by."
+                info="Use the date you need to act by."
                 example="2026-10-15"
               />
               <input
@@ -102,7 +102,7 @@ export default function OnboardingDeadlinesPage() {
                 example="Need transcript and one recommender"
               />
               <textarea
-                placeholder="Add any notes the student or parent should remember"
+                placeholder="Add any notes you or your family should remember"
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 rows={4}

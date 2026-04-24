@@ -7,11 +7,13 @@ export interface HouseholdStudentContext {
   roleInHousehold: string | null;
   studentFirstName?: string | null;
   studentLastName?: string | null;
+  studentPreferredName?: string | null;
 }
 
 export interface UserBasicInfo {
   firstName: string | null;
   lastName: string | null;
+  preferredName: string | null;
 }
 
 export class UserContextRepository {
@@ -28,12 +30,13 @@ export class UserContextRepository {
         limit 1
       )
       select
-        hm.household_id,
-        sp.student_profile_id,
-        sp.user_id as student_user_id,
-        hm.role_in_household,
+        hm.household_id as "householdId",
+        sp.student_profile_id as "studentProfileId",
+        sp.user_id as "studentUserId",
+        hm.role_in_household as "roleInHousehold",
         su.first_name as "studentFirstName",
-        su.last_name as "studentLastName"
+        su.last_name as "studentLastName",
+        su.preferred_name as "studentPreferredName"
       from household_membership hm
       left join households h on h.household_id = hm.household_id
       left join student_profiles sp on sp.user_id = h.primary_student_user_id
@@ -91,7 +94,8 @@ export class UserContextRepository {
       `
       select
         first_name as "firstName",
-        last_name as "lastName"
+        last_name as "lastName",
+        preferred_name as "preferredName"
       from users
       where user_id = $1
       limit 1

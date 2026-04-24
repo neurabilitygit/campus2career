@@ -7,12 +7,14 @@ import { SectionCard } from "../layout/SectionCard";
 import { KeyValueList } from "../layout/KeyValueList";
 import { RequireRole } from "../RequireRole";
 import { FieldInfoLabel } from "../forms/FieldInfoLabel";
+import { useAuthContext } from "../../hooks/useAuthContext";
 import { useApiData, useApiJsonPost } from "../../hooks/useApiData";
 import { apiFetch } from "../../lib/apiClient";
 import { OutcomeTrackingSection } from "../outcomes/OutcomeTrackingSection";
 import { VisibleCoachFeedSection } from "../coach/VisibleCoachFeedSection";
 import { listTargetRoleOptions } from "../../../../../packages/shared/src/market/targetRoleSeeds";
 import type { JobTargetNormalizationResult, StudentJobTargetRecord } from "../../../../../packages/shared/src/contracts/career";
+import { buildDirectAddressName } from "../../lib/personalization";
 
 const DEFAULT_SCENARIO_QUESTION =
   "What if I keep my current major but focus this semester on the highest-signal gap-closing actions?";
@@ -316,6 +318,7 @@ const studentSectionItems = [
 type StudentSectionKey = (typeof studentSectionItems)[number]["key"];
 
 export default function StudentDashboardView() {
+  const auth = useAuthContext();
   const searchParams = useSearchParams();
   const [selectedRole, setSelectedRole] = useState("");
   const [compareRole, setCompareRole] = useState("");
@@ -418,6 +421,13 @@ export default function StudentDashboardView() {
     requestedSection === "outcomes"
       ? requestedSection
       : "strategy";
+  const directName =
+    buildDirectAddressName({
+      preferredName: auth.data?.context?.authenticatedPreferredName,
+      firstName: auth.data?.context?.authenticatedFirstName,
+      lastName: auth.data?.context?.authenticatedLastName,
+      fallback: "you",
+    }) || "you";
 
   async function handleSaveJobTarget() {
     const title = jobTargetDraft.title.trim();
@@ -514,7 +524,7 @@ export default function StudentDashboardView() {
   return (
     <AppShell
       title="Student dashboard"
-      subtitle="Track the student’s target role, current readiness, academic progress, and the most important next move."
+      subtitle={`${directName}, track your target role, current readiness, academic progress, and the most important next move.`}
       secondaryNavTitle="Student sections"
       secondaryNavItems={[...studentSectionItems]}
       activeSecondaryNavKey={activeSection}

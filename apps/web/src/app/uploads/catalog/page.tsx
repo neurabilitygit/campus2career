@@ -232,7 +232,7 @@ function CatalogUploadPageInner() {
           <div style={{ display: "grid", gap: 14 }}>
             <p style={{ margin: 0, color: "#4b5d79", lineHeight: 1.6 }}>
               Upload a PDF from the college catalog, department site, degree checklist, or official requirement page.
-              We&apos;ll extract recognizable courses and use them to strengthen the student&apos;s academic path.
+              We&apos;ll extract recognizable courses and use them to strengthen your academic path.
             </p>
 
             <label style={labelStyle}>
@@ -335,7 +335,7 @@ function CatalogUploadPageInner() {
                 }}
               >
                 If this page was opened directly and your school was not selected first, go back to the
-                student profile page and choose the school there. That gives this upload the cleanest
+                profile page and choose the school there. That gives this upload the cleanest
                 path into the academic directory.
               </div>
             ) : null}
@@ -389,7 +389,7 @@ function CatalogUploadPageInner() {
                 <strong style={{ fontSize: 18 }}>Program document processed</strong>
                 <p style={{ margin: 0, color: "#33546b", lineHeight: 1.6 }}>
                   The PDF was uploaded and extraction has been requested for this academic path.
-                  You can return to onboarding or the student dashboard while the system finishes processing.
+                  You can return to onboarding or your dashboard while the system finishes processing.
                 </p>
               </div>
             ) : null}

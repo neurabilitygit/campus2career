@@ -27,6 +27,8 @@ It also depends on:
 
 Create a database and copy the `DATABASE_URL`.
 
+For Neon, update the connection string so it explicitly uses `sslmode=verify-full`.
+
 Use that URL for:
 
 - `apps/api`

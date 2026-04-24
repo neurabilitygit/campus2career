@@ -230,6 +230,24 @@ test("studentCoachFeedRoute returns coach-sourced records for the authenticated 
   });
 });
 
+test("studentCoachFeedRoute forbids parent role access", async () => {
+  await withStubbedDeps(async () => {
+    coachRouteDeps.resolveRequestContext = async () =>
+      ({
+        authenticatedUserId: "parent-user",
+        authenticatedRoleType: "parent",
+        householdId: "household-1",
+        studentProfileId: "11111111-1111-4111-8111-111111111111",
+      }) as any;
+
+    const response = createResponse();
+    await studentCoachFeedRoute(createRequest(undefined, "GET"), response.res);
+
+    assert.equal(response.statusCode, 403);
+    assert.equal(response.json.error, "forbidden");
+  });
+});
+
 test("parentCoachFeedRoute returns only parent-visible coach records", async () => {
   await withStubbedDeps(async () => {
     coachRouteDeps.resolveRequestContext = async () =>
@@ -274,6 +292,24 @@ test("parentCoachFeedRoute returns only parent-visible coach records", async () 
     assert.equal(response.statusCode, 200);
     assert.equal(response.json.feed.actionItems[0].visibleToParent, true);
     assert.equal(response.json.feed.actionItems[0].coachDisplayName, "Taylor Brooks");
+  });
+});
+
+test("parentCoachFeedRoute forbids student role access", async () => {
+  await withStubbedDeps(async () => {
+    coachRouteDeps.resolveRequestContext = async () =>
+      ({
+        authenticatedUserId: "student-user",
+        authenticatedRoleType: "student",
+        householdId: "household-1",
+        studentProfileId: "11111111-1111-4111-8111-111111111111",
+      }) as any;
+
+    const response = createResponse();
+    await parentCoachFeedRoute(createRequest(undefined, "GET"), response.res);
+
+    assert.equal(response.statusCode, 403);
+    assert.equal(response.json.error, "forbidden");
   });
 });
 
