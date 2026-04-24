@@ -107,6 +107,7 @@ test("runScoring distinguishes low readiness from low evidence when evidence is 
         nonCourseRequirementItemCount: 0,
         excludedRequirementGroupCount: 0,
         coverageNotes: [],
+        curriculumVerificationStatus: "verified",
       },
       courseCoverage: [
         {
@@ -218,6 +219,55 @@ test("missing transcript does not automatically look like academic failure", () 
   );
   assert.ok(
     (scoring.subScoreDetails.academicReadiness.recommendedEvidence || []).includes("Upload transcript")
+  );
+});
+
+test("unverified curriculum keeps scoring provisional even when structured requirements exist", () => {
+  const scoring = runScoring(
+    baseInput({
+      transcript: {
+        parsedStatus: "matched",
+        transcriptSummary: "Loaded transcript.",
+        termCount: 4,
+        courseCount: 12,
+        completedCourseCount: 12,
+        matchedCatalogCourseCount: 10,
+        unmatchedCourseCount: 2,
+        creditsEarned: 36,
+        truthStatus: "inferred",
+        extractionMethod: "pdf_text",
+        extractionConfidenceLabel: "medium",
+        institutionResolutionTruthStatus: "inferred",
+        institutionResolutionNote: "Matched by institution name.",
+      },
+      requirementProgress: {
+        boundToCatalog: true,
+        institutionDisplayName: "Test University",
+        catalogLabel: "2026-2027",
+        majorDisplayName: "Economics",
+        totalRequirementItems: 8,
+        satisfiedRequirementItems: 5,
+        totalRequirementGroups: 3,
+        satisfiedRequirementGroups: 2,
+        creditsApplied: 20,
+        completionPercent: 63,
+        missingRequiredCourses: ["ECON 301"],
+        inferredConfidence: "high",
+        truthStatus: "direct",
+        manualRequirementItemCount: 0,
+        nonCourseRequirementItemCount: 0,
+        excludedRequirementGroupCount: 0,
+        coverageNotes: [],
+        curriculumVerificationStatus: "present_unverified",
+      },
+    })
+  );
+
+  assert.equal(scoring.evidenceQuality.assessmentMode, "provisional");
+  assert.match(scoring.topRisks.join(" "), /degree requirements must be reviewed/i);
+  assert.match(
+    scoring.subScoreDetails.academicReadiness.interpretation || "",
+    /visually verified|provisional|directionally useful/i
   );
 });
 

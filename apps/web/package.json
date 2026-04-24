@@ -3,9 +3,9 @@
   "private": true,
   "version": "0.1.0",
   "scripts": {
-    "predev": "rm -rf .next-dev",
+    "predev": "rm -rf \"${NEXT_DIST_DIR:-.next-dev}\"",
     "dev": "next dev",
-    "predev:test": "rm -rf .next-dev",
+    "predev:test": "rm -rf \"${NEXT_DIST_DIR:-.next-dev}\"",
     "dev:test": "NEXT_PUBLIC_ENABLE_TEST_DEMO_AUTH=true next dev",
     "typecheck": "tsc --noEmit",
     "build": "next build",

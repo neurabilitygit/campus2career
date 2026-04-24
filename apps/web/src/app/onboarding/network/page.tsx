@@ -1,15 +1,15 @@
 "use client";
 
-import { startTransition, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { AppShell } from "../../../components/layout/AppShell";
 import { SectionCard } from "../../../components/layout/SectionCard";
 import { RequireRole } from "../../../components/RequireRole";
 import { FieldInfoLabel } from "../../../components/forms/FieldInfoLabel";
 import { apiFetch } from "../../../lib/apiClient";
+import { useSaveNavigation } from "../../../lib/saveNavigation";
 
 export default function OnboardingNetworkPage() {
-  const router = useRouter();
+  const saveNavigation = useSaveNavigation();
   const [notes, setNotes] = useState("");
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
@@ -22,10 +22,7 @@ export default function OnboardingNetworkPage() {
         method: "POST",
         body: JSON.stringify({ notes }),
       });
-      setStatus("Saved. Returning to the dashboard...");
-      startTransition(() => {
-        router.push("/student?section=guidance");
-      });
+      saveNavigation.returnAfterSave("/student?section=guidance");
     } catch (err: any) {
       setStatus("");
       setError(err?.message || String(err));

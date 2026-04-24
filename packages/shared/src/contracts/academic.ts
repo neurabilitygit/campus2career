@@ -7,6 +7,25 @@ export type RequirementSetProvenanceMethod =
   | "llm_assisted"
   | "synthetic_seed";
 
+export type CurriculumVerificationStatus =
+  | "missing"
+  | "present_unverified"
+  | "verified"
+  | "needs_attention";
+
+export interface CurriculumVerificationRecord {
+  curriculumVerificationStatus: CurriculumVerificationStatus;
+  curriculumVerifiedAt?: string | null;
+  curriculumVerifiedByUserId?: string | null;
+  curriculumVerificationNotes?: string | null;
+  curriculumRequestedAt?: string | null;
+  curriculumRequestedByUserId?: string | null;
+  curriculumPdfUploadId?: string | null;
+  curriculumSource?: RequirementSetProvenanceMethod | "unknown" | null;
+  coachReviewedAt?: string | null;
+  coachReviewedByUserId?: string | null;
+}
+
 export interface InstitutionInput {
   canonicalName: string;
   displayName: string;

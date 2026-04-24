@@ -1,15 +1,15 @@
 "use client";
 
-import { startTransition, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { AppShell } from "../../../components/layout/AppShell";
 import { SectionCard } from "../../../components/layout/SectionCard";
 import { RequireRole } from "../../../components/RequireRole";
 import { FieldInfoLabel } from "../../../components/forms/FieldInfoLabel";
 import { apiFetch } from "../../../lib/apiClient";
+import { useSaveNavigation } from "../../../lib/saveNavigation";
 
 export default function OnboardingDeadlinesPage() {
-  const router = useRouter();
+  const saveNavigation = useSaveNavigation();
   const [title, setTitle] = useState("");
   const [deadlineType, setDeadlineType] = useState("internship_window");
   const [dueDate, setDueDate] = useState("");
@@ -30,10 +30,7 @@ export default function OnboardingDeadlinesPage() {
           notes,
         }),
       });
-      setStatus("Saved. Taking you to the student dashboard...");
-      startTransition(() => {
-        router.push("/student");
-      });
+      saveNavigation.returnAfterSave("/student");
     } catch (err: any) {
       setStatus("");
       setError(err?.message || String(err));

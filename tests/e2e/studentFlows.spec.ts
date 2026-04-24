@@ -27,7 +27,7 @@ test("student completes a multi-screen intake flow and sees the dashboard reflec
     "Professor Lin - mentor - synthetic test contact\nTaylor Brooks - coach - weekly check-in"
   );
   await page.getByRole("button", { name: "Save and continue" }).click();
-  await expect(page).toHaveURL(/\/student\?section=guidance/);
+  await expect(page).toHaveURL(/\/student\?section=strategy/);
 
   await page.goto("/onboarding/deadlines");
   await page.getByPlaceholder("What is this date for?").fill("Synthetic internship deadline");
@@ -38,7 +38,7 @@ test("student completes a multi-screen intake flow and sees the dashboard reflec
     .fill("Submit three internship applications before the deadline.");
   await page.getByRole("button", { name: "Save and continue" }).click();
 
-  await expect(page).toHaveURL(/\/student/);
+  await expect(page).toHaveURL(/\/student\?section=strategy/);
   await expect(page.getByRole("heading", { name: "Student dashboard" })).toBeVisible();
   await expect(page.getByText("Business Analyst", { exact: true }).first()).toBeVisible();
 });
@@ -57,7 +57,10 @@ test("student can update profile, use the communication tab, and see personalize
   page,
   openAs,
 }) => {
-  await openAs("studentMaya", "/profile");
+  await openAs("studentMaya", "/student");
+  await expect(page.getByRole("heading", { name: "Student dashboard" })).toBeVisible();
+
+  await page.goto("/profile");
   await expect(page.getByText("Student profile")).toBeVisible();
   const profileSection = page.locator("section").filter({ hasText: "Student profile" }).first();
 
@@ -69,7 +72,7 @@ test("student can update profile, use the communication tab, and see personalize
     .locator("input")
     .fill("On campus with one roommate");
   await page.getByRole("button", { name: "Save profile" }).click();
-  await expect(page.getByText("Profile saved.")).toBeVisible();
+  await expect(page).toHaveURL(/\/student$/);
 
   const primaryNav = page.getByLabel("Primary navigation");
   await expect(primaryNav.getByRole("button", { name: "Student", exact: true })).toBeVisible();
@@ -101,6 +104,64 @@ test("student cannot open parent-only routes directly", async ({ page, openAs })
   await expect(page.getByText("This page is for a different account view")).toBeVisible();
 });
 
+test("dashboard shows missing curriculum alert and allows a population request", async ({ page, openAs }) => {
+  await openAs("studentLeo", "/student?section=evidence");
+
+  const curriculumSection = page
+    .locator("section")
+    .filter({ has: page.getByRole("heading", { name: "Degree Requirements Review" }) })
+    .first();
+
+  await expect(
+    curriculumSection.locator("p").filter({
+      hasText: "Degree requirements must be reviewed before scoring",
+    })
+  ).toBeVisible();
+  await curriculumSection.getByRole("button", { name: "Ask the system to populate curriculum information" }).click();
+  await expect(curriculumSection.getByText("Curriculum population has been requested", { exact: false })).toBeVisible();
+  await expect(curriculumSection.getByRole("link", { name: "Upload a PDF of degree requirements" })).toBeVisible();
+});
+
+test("student can review curriculum details, save verification, and reach the PDF upload flow from the dashboard", async ({
+  page,
+  openAs,
+}) => {
+  await openAs("studentMaya", "/student?section=evidence");
+
+  const curriculumSection = page
+    .locator("section")
+    .filter({ has: page.getByRole("heading", { name: "Degree Requirements Review" }) })
+    .first();
+
+  await expect(curriculumSection.getByText("Needs review", { exact: false })).toBeVisible();
+  await curriculumSection.getByRole("button", { name: "Review curriculum details" }).click();
+  await expect(curriculumSection.getByText("Core courses")).toBeVisible();
+  await expect(
+    curriculumSection.getByRole("listitem").filter({ hasText: /^ECON 101\b/ }).first()
+  ).toBeVisible();
+
+  const uploadLink = curriculumSection.getByRole("link", { name: "Upload a PDF" });
+  await expect(uploadLink).toBeVisible();
+  await uploadLink.click();
+  await expect(page).toHaveURL(/\/uploads\/catalog/);
+
+  await page.goto("/student?section=evidence");
+  const refreshedSection = page
+    .locator("section")
+    .filter({ has: page.getByRole("heading", { name: "Degree Requirements Review" }) })
+    .first();
+  await refreshedSection.getByLabel("I have visually inspected these degree requirements and confirm they look complete enough to use for scoring.").check();
+  await refreshedSection.getByRole("button", { name: "Save curriculum verification" }).click();
+  await expect(page).toHaveURL(/\/student\?section=evidence/);
+  await expect(refreshedSection.locator("strong").filter({ hasText: /^Verified$/ })).toBeVisible();
+
+  const scoreSection = page
+    .locator("section")
+    .filter({ has: page.getByRole("heading", { name: "Score details" }) })
+    .first();
+  await expect(scoreSection.getByText("Degree requirements must be reviewed before scoring", { exact: false })).toHaveCount(0);
+});
+
 test("happy-path synthetic student journey updates the outcome timeline and dashboard output", async ({
   page,
   openAs,
@@ -111,12 +172,15 @@ test("happy-path synthetic student journey updates the outcome timeline and dash
   await page.getByPlaceholder("What kind of role or trajectory are you aiming for?").fill(
     "I want to move toward business analyst internships with a fintech focus."
   );
+  await page.getByRole("textbox", { name: "School name", exact: true }).fill("Northeastern University");
+  await page.getByPlaceholder("Primary major").fill("Economics");
   await page
     .getByPlaceholder(
       "Add context that the structured catalog does not capture, such as unofficial plans, transfer details, pre-professional tracks, or advisor guidance."
     )
     .fill("Synthetic profile update for Playwright coverage.");
   await page.getByRole("button", { name: "Save academic path" }).click();
+  await expect(page).toHaveURL(/\/student$/);
 
   await page.goto("/student?section=outcomes");
   await expect(page.getByRole("heading", { name: "Student dashboard" })).toBeVisible();
@@ -133,6 +197,7 @@ test("happy-path synthetic student journey updates the outcome timeline and dash
     .fill("Synthetic happy-path offer entry.");
   await page.getByRole("button", { name: "Report a new outcome" }).click();
 
+  await expect(page).toHaveURL(/\/student\?section=outcomes/);
   await expect(page.getByText("Brightpath Capital")).toBeVisible();
   await expect(page.getByText("Offers received")).toBeVisible();
 });

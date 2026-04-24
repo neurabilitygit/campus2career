@@ -25,7 +25,7 @@ export default defineConfig({
     },
     {
       command:
-        "PORT=3100 NEXT_PUBLIC_API_BASE_URL=http://localhost:8180 NEXT_PUBLIC_ENABLE_TEST_DEMO_AUTH=true pnpm --dir apps/web dev",
+        "PORT=3100 NEXT_DIST_DIR=.next-dev-e2e NEXT_PUBLIC_API_BASE_URL=http://localhost:8180 NEXT_PUBLIC_ENABLE_TEST_DEMO_AUTH=true pnpm --dir apps/web dev",
       url: "http://localhost:3100",
       reuseExistingServer: false,
       timeout: 120_000,

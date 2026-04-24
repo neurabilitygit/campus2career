@@ -7,6 +7,7 @@ import { SectionCard } from "../../../components/layout/SectionCard";
 import { RequireRole } from "../../../components/RequireRole";
 import { FieldInfoLabel } from "../../../components/forms/FieldInfoLabel";
 import { apiFetch } from "../../../lib/apiClient";
+import { useSaveNavigation } from "../../../lib/saveNavigation";
 import { useApiData } from "../../../hooks/useApiData";
 import { useSession } from "../../../hooks/useSession";
 
@@ -189,6 +190,7 @@ const labelStyle: React.CSSProperties = {
 };
 
 export default function OnboardingProfilePage() {
+  const saveNavigation = useSaveNavigation();
   const { isAuthenticated } = useSession();
   const profile = useApiData<StudentProfileResponse>("/students/me/profile", isAuthenticated);
   const assignment = useApiData<CatalogAssignmentResponse>(
@@ -780,11 +782,7 @@ export default function OnboardingProfilePage() {
         );
       }
 
-      setStatus(
-        catalogAssignmentResult
-          ? "Your academic path was saved. The platform is now connecting it to program requirements so the dashboard can use that context."
-          : "Your profile was saved. You can open the dashboard now and come back later to strengthen the academic path."
-      );
+      saveNavigation.returnAfterSave("/student");
     } catch (error: any) {
       setStatus("");
       setErrorMessage(error?.message || String(error));

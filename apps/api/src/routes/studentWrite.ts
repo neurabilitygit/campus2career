@@ -163,7 +163,7 @@ function validateArtifactUpload(input: {
   }
 }
 
-function validateUploadSourceFile(input: {
+export function validateUploadSourceFile(input: {
   artifactType: string;
   fileName: string;
   contentType: string;

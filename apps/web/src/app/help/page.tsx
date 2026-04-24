@@ -4,6 +4,8 @@ import { useMemo, useState } from "react";
 import { FieldInfoLabel } from "../../components/forms/FieldInfoLabel";
 import { AppShell } from "../../components/layout/AppShell";
 import { SectionCard } from "../../components/layout/SectionCard";
+import { useAuthContext } from "../../hooks/useAuthContext";
+import { launchIntroOnboardingReplay } from "../../lib/introOnboarding";
 
 type HelpTopic = {
   category: string;
@@ -20,6 +22,26 @@ type HelpTopic = {
 };
 
 const topics: HelpTopic[] = [
+  {
+    category: "Getting started",
+    title: "Take the introductory tour",
+    role: "shared",
+    status: "available",
+    summary: "Newly registered users see a lightweight introduction once so they can find the dashboard, profile, curriculum review, communication tools, and help.",
+    whenToUse: "Use this after first registration or anytime you want to replay the orientation.",
+    youNeed: "A signed-in account. Existing users can replay it manually from Help or the account menu.",
+    howToUse: [
+      "After a brand-new registration, the welcome splash appears before the interactive tour.",
+      "Use Next, Back, Skip, or Finish to move at your own pace.",
+      "Replay intro from Help or the account menu whenever you want the overview again.",
+      "The tour stays general and uses only the features available to your current role.",
+    ],
+    output: "A quick orientation to the main app areas without forcing a role-specific training flow.",
+    mistakes: [
+      "Expecting the intro to appear after every normal login.",
+      "Skipping the tour and forgetting that it can be relaunched later from Help.",
+    ],
+  },
   {
     category: "Getting started",
     title: "Open the right workspace",
@@ -141,6 +163,27 @@ const topics: HelpTopic[] = [
     ],
   },
   {
+    category: "Academic progress",
+    title: "Review and verify degree requirements",
+    role: "shared",
+    status: "available",
+    summary: "Curriculum verification makes sure the system does not treat degree requirements as confirmed until someone has visually reviewed them.",
+    whenToUse: "Use this when curriculum information appears on the dashboard or when the dashboard warns that requirements are missing or unverified.",
+    youNeed: "A saved school path plus either discovered requirements or an uploaded degree-requirement PDF.",
+    howToUse: [
+      "Open the Degree Requirements Review card from the dashboard.",
+      "Inspect the institution, program, major, catalog year, requirement groups, and parsing notes.",
+      "If requirements are missing, ask the system to populate them or upload an official program PDF.",
+      "Only check the verification box after the curriculum looks complete enough to use for scoring.",
+    ],
+    output: "A verified curriculum record that lets scoring treat degree requirements as reviewed rather than provisional.",
+    mistakes: [
+      "Treating unverified requirements as final just because the dashboard found a curriculum source.",
+      "Skipping the PDF upload when the discovery result still says the source is incomplete or uncertain.",
+    ],
+    privacy: "Verification records keep source attribution and review timing so the platform can distinguish confirmed curriculum from provisional curriculum.",
+  },
+  {
     category: "Career readiness score",
     title: "Understand the score",
     role: "shared",
@@ -151,6 +194,7 @@ const topics: HelpTopic[] = [
     howToUse: [
       "Start with the explanation panel before changing the target job.",
       "Look at missing evidence separately from weak readiness.",
+      "Treat missing or unverified curriculum as a scoring-confidence issue, not automatically as poor student performance.",
       "Use comparison mode only after reviewing the current target and evidence base.",
     ],
     output: "A clearer understanding of what is known, weak, missing, or still provisional.",
@@ -290,6 +334,7 @@ function titleCase(value: string) {
 }
 
 export default function HelpPage() {
+  const auth = useAuthContext();
   const [query, setQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState<HelpTopic["role"] | "all">("all");
 
@@ -332,6 +377,17 @@ export default function HelpPage() {
         title="Find the right guide"
         subtitle="Search by feature, role, or task. Status labels stay honest about what is available right now."
         tone="highlight"
+        actions={
+          auth.isAuthenticated ? (
+            <button
+              type="button"
+              className="ui-button ui-button--primary"
+              onClick={launchIntroOnboardingReplay}
+            >
+              Replay intro
+            </button>
+          ) : null
+        }
       >
         <div
           style={{

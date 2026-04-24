@@ -9,6 +9,7 @@ import { useAuthContext } from "../../../hooks/useAuthContext";
 import { useApiData } from "../../../hooks/useApiData";
 import { apiFetch } from "../../../lib/apiClient";
 import { formatNamedReference } from "../../../lib/personalization";
+import { useSaveNavigation } from "../../../lib/saveNavigation";
 
 type ParentProfileResponse = {
   ok: boolean;
@@ -79,6 +80,7 @@ function titleCase(value: string | null | undefined) {
 }
 
 export default function ParentCommunicationPage() {
+  const saveNavigation = useSaveNavigation();
   const auth = useAuthContext();
   const profile = useApiData<ParentProfileResponse>("/parents/me/communication-profile", true);
   const [entriesNonce, setEntriesNonce] = useState(0);
@@ -127,7 +129,7 @@ export default function ParentCommunicationPage() {
       });
       setSelectedEntryId(response.parentCommunicationEntryId);
       setEntriesNonce((value) => value + 1);
-      setStatus("Saved. You can translate this concern now or keep it as context only.");
+      saveNavigation.returnAfterSave("/parent");
     } catch (err) {
       setStatus("");
       setError(err instanceof Error ? err.message : String(err));
@@ -174,6 +176,7 @@ export default function ParentCommunicationPage() {
           ? "Draft saved for review."
           : "Draft saved and ready for mock delivery."
       );
+      saveNavigation.returnAfterSave("/parent");
     } catch (err) {
       setDraftStatus("");
       setError(err instanceof Error ? err.message : String(err));

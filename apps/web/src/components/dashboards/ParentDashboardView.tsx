@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { AppShell } from "../layout/AppShell";
 import { SectionCard } from "../layout/SectionCard";
+import { CurriculumVerificationSection } from "../academic/CurriculumVerificationSection";
 import { RequireRole } from "../RequireRole";
 import { useApiData } from "../../hooks/useApiData";
 import { useAuthContext } from "../../hooks/useAuthContext";
@@ -305,14 +306,22 @@ export default function ParentDashboardView() {
       subtitle={`See ${studentPossessive} direction, current level of risk, and the most helpful ways to support progress without overload.`}
     >
       <RequireRole expectedRoles={["parent", "admin"]} fallbackTitle="Parent sign-in required">
-        <ParentNarrative
-          scoring={scoring.data?.scoring}
-          brief={brief.data?.brief}
-          monthLabel={brief.data?.monthLabel || "Current month"}
-          studentLabel={studentLabel}
-        />
+        <div data-intro-target="dashboard-overview">
+          <ParentNarrative
+            scoring={scoring.data?.scoring}
+            brief={brief.data?.brief}
+            monthLabel={brief.data?.monthLabel || "Current month"}
+            studentLabel={studentLabel}
+          />
+        </div>
 
         <OutcomeTrackingSection mode="parent" subjectLabel={studentLabel} />
+
+        <CurriculumVerificationSection
+          title="Degree Requirements Review"
+          subtitle={`Review ${studentPossessive} curriculum information here, then confirm it looks complete enough to use for scoring.`}
+          subjectLabel={studentLabel}
+        />
 
         <VisibleCoachFeedSection mode="parent" />
 
@@ -384,15 +393,17 @@ export default function ParentDashboardView() {
             </div>
           </SectionCard>
 
-          <SectionCard
-            title="Where a parent can help next"
-            subtitle="Use the smallest actions that improve momentum without increasing pressure."
-          >
-            <BulletList
-              items={recommendedActions}
-              empty="No parent actions have been generated yet. Use the monthly update card below to create the first saved summary."
-            />
-          </SectionCard>
+          <div data-intro-target="next-actions">
+            <SectionCard
+              title="Where a parent can help next"
+              subtitle="Use the smallest actions that improve momentum without increasing pressure."
+            >
+              <BulletList
+                items={recommendedActions}
+                empty="No parent actions have been generated yet. Use the monthly update card below to create the first saved summary."
+              />
+            </SectionCard>
+          </div>
         </div>
 
         <div style={twoColumnGridStyle}>
@@ -445,10 +456,11 @@ export default function ParentDashboardView() {
           </SectionCard>
         </div>
 
-        <SectionCard
-          title="How the score breaks down"
-          subtitle={`Use this only when you want more detail on where ${studentObject} already looks strong and where support may matter most.`}
-        >
+        <div data-intro-target="readiness-score">
+          <SectionCard
+            title="How the score breaks down"
+            subtitle={`Use this only when you want more detail on where ${studentObject} already looks strong and where support may matter most.`}
+          >
           {scoring.loading ? <p>Loading live scoring...</p> : null}
           {scoring.error ? <p style={{ color: "crimson" }}>{scoring.error}</p> : null}
           {!scoring.loading && !scoring.error ? (
@@ -479,7 +491,8 @@ export default function ParentDashboardView() {
               ))}
             </div>
           ) : null}
-        </SectionCard>
+          </SectionCard>
+        </div>
 
         <div style={twoColumnGridStyle}>
           <SectionCard

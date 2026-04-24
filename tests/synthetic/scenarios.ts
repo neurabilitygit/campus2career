@@ -8,6 +8,7 @@ export type SyntheticUser = {
   lastName: string;
   preferredName?: string;
   email: string;
+  seed?: boolean;
 };
 
 export type SyntheticStudentRecord = {
@@ -80,6 +81,16 @@ export const SYNTHETIC_USERS: Record<string, SyntheticUser> = {
     lastName: "Brooks",
     preferredName: "Taylor",
     email: "taylor.brooks@synthetic.rising-senior.local",
+  },
+  studentNova: {
+    key: "studentNova",
+    userId: "44444444-4444-4444-8444-444444444444",
+    roleType: "student",
+    firstName: "Nova",
+    lastName: "Lane",
+    preferredName: "Nova",
+    email: "nova.lane@synthetic.rising-senior.local",
+    seed: false,
   },
 } as const;
 
@@ -186,6 +197,10 @@ export function getSyntheticStudent(key: keyof typeof SYNTHETIC_STUDENTS) {
 
 export function listSyntheticUsers() {
   return Object.values(SYNTHETIC_USERS);
+}
+
+export function listSeededSyntheticUsers() {
+  return Object.values(SYNTHETIC_USERS).filter((user) => user.seed !== false);
 }
 
 export function listSyntheticStudents() {

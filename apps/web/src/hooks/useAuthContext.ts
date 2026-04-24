@@ -15,6 +15,13 @@ export type AuthContextResponse = {
     authenticatedFirstName?: string | null;
     authenticatedLastName?: string | null;
     authenticatedPreferredName?: string | null;
+    hasCompletedIntroOnboarding?: boolean;
+    introOnboardingCompletedAt?: string | null;
+    introOnboardingSkippedAt?: string | null;
+    introOnboardingVersion?: number;
+    introOnboardingStatus?: "not_started" | "completed" | "skipped";
+    introOnboardingShouldAutoShow?: boolean;
+    currentIntroOnboardingVersion?: number;
     studentFirstName?: string | null;
     studentLastName?: string | null;
     studentPreferredName?: string | null;

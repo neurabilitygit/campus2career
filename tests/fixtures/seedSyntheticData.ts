@@ -4,10 +4,26 @@ import {
   SYNTHETIC_STUDENTS,
   SYNTHETIC_USERS,
   listSyntheticStudents,
+  listSeededSyntheticUsers,
   listSyntheticUsers,
 } from "../synthetic/scenarios";
 
 const seedIds = {
+  institutionSyntheticState: "10000000-0000-4000-8000-100000000000",
+  catalogSynthetic2026: "10000000-0000-4000-8000-100000000001",
+  degreeProgramSyntheticUndergrad: "10000000-0000-4000-8000-100000000002",
+  majorSyntheticEconomics: "10000000-0000-4000-8000-100000000003",
+  courseSyntheticEcon101: "10000000-0000-4000-8000-100000000004",
+  courseSyntheticStat201: "10000000-0000-4000-8000-100000000005",
+  courseSyntheticAcct210: "10000000-0000-4000-8000-100000000006",
+  requirementSetSyntheticEconomics: "10000000-0000-4000-8000-100000000007",
+  requirementGroupSyntheticCore: "10000000-0000-4000-8000-100000000008",
+  requirementGroupSyntheticElectives: "10000000-0000-4000-8000-100000000009",
+  requirementItemSyntheticEcon101: "10000000-0000-4000-8000-100000000010",
+  requirementItemSyntheticStat201: "10000000-0000-4000-8000-100000000011",
+  requirementItemSyntheticAcct210: "10000000-0000-4000-8000-100000000012",
+  requirementItemSyntheticUpperDivision: "10000000-0000-4000-8000-100000000013",
+  studentCatalogAssignmentMaya: "10000000-0000-4000-8000-100000000014",
   parentProfileMaya: "11111111-a0a0-40a0-80a0-111111111111",
   parentProfileLeo: "22222222-a0a0-40a0-80a0-222222222222",
   coachProfileTaylor: "33333333-a0a0-40a0-80a0-333333333333",
@@ -53,12 +69,38 @@ async function cleanupTable(table: string, column: string, ids: string[]) {
 }
 
 export async function resetSyntheticTestData() {
+  await query(`delete from student_curriculum_reviews where student_profile_id = any($1::uuid[])`, [
+    STUDENT_PROFILE_IDS,
+  ]);
   await query(`delete from student_sector_selections where student_profile_id = any($1::uuid[])`, [
     STUDENT_PROFILE_IDS,
   ]);
   await query(`delete from onboarding_states where student_profile_id = any($1::uuid[])`, [
     STUDENT_PROFILE_IDS,
   ]);
+  await cleanupTable("student_catalog_assignments", "student_catalog_assignment_id", [
+    seedIds.studentCatalogAssignmentMaya,
+  ]);
+  await cleanupTable("requirement_items", "requirement_item_id", [
+    seedIds.requirementItemSyntheticEcon101,
+    seedIds.requirementItemSyntheticStat201,
+    seedIds.requirementItemSyntheticAcct210,
+    seedIds.requirementItemSyntheticUpperDivision,
+  ]);
+  await cleanupTable("requirement_groups", "requirement_group_id", [
+    seedIds.requirementGroupSyntheticCore,
+    seedIds.requirementGroupSyntheticElectives,
+  ]);
+  await cleanupTable("requirement_sets", "requirement_set_id", [seedIds.requirementSetSyntheticEconomics]);
+  await cleanupTable("catalog_courses", "catalog_course_id", [
+    seedIds.courseSyntheticEcon101,
+    seedIds.courseSyntheticStat201,
+    seedIds.courseSyntheticAcct210,
+  ]);
+  await cleanupTable("majors", "major_id", [seedIds.majorSyntheticEconomics]);
+  await cleanupTable("degree_programs", "degree_program_id", [seedIds.degreeProgramSyntheticUndergrad]);
+  await cleanupTable("academic_catalogs", "academic_catalog_id", [seedIds.catalogSynthetic2026]);
+  await cleanupTable("institutions", "institution_id", [seedIds.institutionSyntheticState]);
   await cleanupTable("coach_profiles", "coach_profile_id", [seedIds.coachProfileTaylor]);
   await cleanupTable("parent_profiles", "parent_profile_id", [
     seedIds.parentProfileMaya,
@@ -112,7 +154,169 @@ export async function resetSyntheticTestData() {
 export async function seedSyntheticTestData() {
   await resetSyntheticTestData();
 
-  for (const user of listSyntheticUsers()) {
+  await query(
+    `
+    insert into institutions (
+      institution_id,
+      canonical_name,
+      display_name,
+      country_code,
+      state_region,
+      city,
+      website_url
+    ) values ($1,'synthetic_state_university','Synthetic State University','US','NY','New York','https://synthetic-state.example.edu')
+    `,
+    [seedIds.institutionSyntheticState]
+  );
+
+  await query(
+    `
+    insert into academic_catalogs (
+      academic_catalog_id,
+      institution_id,
+      catalog_label,
+      start_year,
+      end_year,
+      source_url,
+      source_format,
+      extraction_status
+    ) values ($1,$2,'2026-2027',2026,2027,'https://synthetic-state.example.edu/catalog/economics','html','published')
+    `,
+    [seedIds.catalogSynthetic2026, seedIds.institutionSyntheticState]
+  );
+
+  await query(
+    `
+    insert into degree_programs (
+      degree_program_id,
+      academic_catalog_id,
+      degree_type,
+      program_name,
+      school_name,
+      total_credits_required,
+      residency_credits_required,
+      minimum_gpa_required
+    ) values ($1,$2,'Undergraduate','Synthetic State University majors','College of Social Sciences',120,30,2.0)
+    `,
+    [seedIds.degreeProgramSyntheticUndergrad, seedIds.catalogSynthetic2026]
+  );
+
+  await query(
+    `
+    insert into majors (
+      major_id,
+      degree_program_id,
+      canonical_name,
+      display_name,
+      cip_code,
+      department_name,
+      is_active
+    ) values ($1,$2,'economics','Economics','45.0601','Economics',true)
+    `,
+    [seedIds.majorSyntheticEconomics, seedIds.degreeProgramSyntheticUndergrad]
+  );
+
+  await query(
+    `
+    insert into catalog_courses (
+      catalog_course_id,
+      academic_catalog_id,
+      course_code,
+      course_title,
+      department,
+      credits_min,
+      credits_max,
+      description,
+      level_hint
+    ) values
+      ($1,$4,'ECON 101','Intro to Economics','Economics',4,4,'Core economics introduction.','introductory'),
+      ($2,$4,'STAT 201','Statistics for Social Science','Statistics',4,4,'Applied statistics requirement.','intermediate'),
+      ($3,$4,'ACCT 210','Financial Accounting','Accounting',4,4,'Foundational accounting course.','intermediate')
+    `,
+    [
+      seedIds.courseSyntheticEcon101,
+      seedIds.courseSyntheticStat201,
+      seedIds.courseSyntheticAcct210,
+      seedIds.catalogSynthetic2026,
+    ]
+  );
+
+  await query(
+    `
+    insert into requirement_sets (
+      requirement_set_id,
+      major_id,
+      minor_id,
+      concentration_id,
+      set_type,
+      display_name,
+      total_credits_required,
+      provenance_method,
+      source_url,
+      source_note
+    ) values (
+      $1,$2,null,null,'major','Economics major requirements',36,'direct_scrape',
+      'https://synthetic-state.example.edu/catalog/economics',
+      'Synthetic seeded curriculum for dashboard verification tests.'
+    )
+    `,
+    [seedIds.requirementSetSyntheticEconomics, seedIds.majorSyntheticEconomics]
+  );
+
+  await query(
+    `
+    insert into requirement_groups (
+      requirement_group_id,
+      requirement_set_id,
+      group_name,
+      group_type,
+      min_courses_required,
+      min_credits_required,
+      display_order,
+      notes
+    ) values
+      ($1,$3,'Core courses','all_of',null,null,1,'Complete both core foundation courses.'),
+      ($2,$3,'Elective and supporting coursework','choose_n',2,8,2,'Choose two supporting courses or approved upper-division electives.')
+    `,
+    [
+      seedIds.requirementGroupSyntheticCore,
+      seedIds.requirementGroupSyntheticElectives,
+      seedIds.requirementSetSyntheticEconomics,
+    ]
+  );
+
+  await query(
+    `
+    insert into requirement_items (
+      requirement_item_id,
+      requirement_group_id,
+      catalog_course_id,
+      item_label,
+      item_type,
+      course_prefix,
+      min_level,
+      credits_if_used,
+      display_order
+    ) values
+      ($1,$5,$6,'ECON 101','course',null,null,4,1),
+      ($2,$5,$7,'STAT 201','course',null,null,4,2),
+      ($3,$8,$9,'ACCT 210','course',null,null,4,1),
+      ($4,$8,null,'Economics elective at the 300 level','course_pattern','ECON',300,4,2)
+    `,
+    [
+      seedIds.requirementItemSyntheticEcon101,
+      seedIds.requirementItemSyntheticStat201,
+      seedIds.requirementItemSyntheticAcct210,
+      seedIds.requirementItemSyntheticUpperDivision,
+      seedIds.requirementGroupSyntheticCore,
+      seedIds.courseSyntheticEcon101,
+      seedIds.courseSyntheticStat201,
+      seedIds.requirementGroupSyntheticElectives,
+      seedIds.courseSyntheticAcct210,
+    ]
+  );
+
+  for (const user of listSeededSyntheticUsers()) {
     await query(
       `
       insert into users (
@@ -122,12 +326,16 @@ export async function seedSyntheticTestData() {
         last_name,
         preferred_name,
         email,
+        has_completed_intro_onboarding,
+        intro_onboarding_completed_at,
+        intro_onboarding_version,
+        intro_onboarding_status,
         timezone,
         preferred_language,
         account_status,
         created_at,
         updated_at
-      ) values ($1,$2,$3,$4,$5,$6,'America/New_York','en','active',now(),now())
+      ) values ($1,$2,$3,$4,$5,$6,true,now(),1,'completed','America/New_York','en','active',now(),now())
       `,
       [user.userId, user.roleType, user.firstName, user.lastName, user.preferredName ?? null, user.email]
     );
@@ -214,6 +422,31 @@ export async function seedSyntheticTestData() {
       ]
     );
   }
+
+  await query(
+    `
+    insert into student_catalog_assignments (
+      student_catalog_assignment_id,
+      student_profile_id,
+      institution_id,
+      academic_catalog_id,
+      degree_program_id,
+      major_id,
+      minor_id,
+      concentration_id,
+      assignment_source,
+      is_primary
+    ) values ($1,$2,$3,$4,$5,$6,null,null,'student_selected',true)
+    `,
+    [
+      seedIds.studentCatalogAssignmentMaya,
+      SYNTHETIC_STUDENTS.maya.studentProfileId,
+      seedIds.institutionSyntheticState,
+      seedIds.catalogSynthetic2026,
+      seedIds.degreeProgramSyntheticUndergrad,
+      seedIds.majorSyntheticEconomics,
+    ]
+  );
 
   await query(
     `

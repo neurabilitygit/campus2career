@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { clearStoredDemoAuth } from "../../lib/demoAuth";
+import { launchIntroOnboardingReplay } from "../../lib/introOnboarding";
 import { getSupabaseBrowserClient, getSupabaseConfigError } from "../../lib/supabaseClient";
 import {
   getStoredTestContextRole,
@@ -111,6 +112,7 @@ export function AccountMenu() {
     email: context?.email || null,
   });
   const triggerValue = auth.isAuthenticated ? userLabel : "Sign in";
+  const triggerLabel = auth.isAuthenticated ? "Account" : null;
   const avatarLetter = (context?.authenticatedFirstName || context?.email || "A")
     .trim()
     .charAt(0)
@@ -156,6 +158,7 @@ export function AccountMenu() {
       <button
         type="button"
         className="account-menu__trigger"
+        data-intro-target="account-profile"
         aria-haspopup="menu"
         aria-expanded={open ? "true" : "false"}
         onClick={() => setOpen((value) => !value)}
@@ -164,9 +167,11 @@ export function AccountMenu() {
           {avatarLetter}
         </span>
         <span className="account-menu__meta">
-          <span className="account-menu__meta-label">
-            {auth.isAuthenticated ? "Account" : "Sign in"}
-          </span>
+          {triggerLabel ? (
+            <span className="account-menu__meta-label">
+              {triggerLabel}
+            </span>
+          ) : null}
           <span className="account-menu__meta-value">
             {triggerValue}
           </span>
@@ -262,6 +267,16 @@ export function AccountMenu() {
               </div>
 
               <div className="account-menu__actions">
+                <button
+                  type="button"
+                  className="ui-button ui-button--secondary"
+                  onClick={() => {
+                    launchIntroOnboardingReplay();
+                    setOpen(false);
+                  }}
+                >
+                  Replay intro
+                </button>
                 <button
                   type="button"
                   className="ui-button ui-button--ghost"

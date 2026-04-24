@@ -7,10 +7,12 @@ import type {
   TranscriptEvidenceSummary,
 } from "../../../../../packages/shared/src/scoring/types";
 import { CatalogRepository } from "../../repositories/academic/catalogRepository";
+import { CurriculumVerificationRepository } from "../../repositories/academic/curriculumVerificationRepository";
 import { getPrimaryRequirementSetGraphForStudent } from "./catalogService";
 import { getLatestStudentTranscriptGraphForStudent } from "./transcriptService";
 
 const catalogRepo = new CatalogRepository();
+const curriculumReviewRepo = new CurriculumVerificationRepository();
 
 type CompletedMatchedCourse = {
   catalogCourseId: string;
@@ -133,10 +135,11 @@ export async function buildAcademicScoringEvidence(studentProfileId: string): Pr
   transcript?: TranscriptEvidenceSummary;
   requirementProgress?: RequirementProgressSummary;
 }> {
-  const [assignment, transcriptGraph, requirementGraph] = await Promise.all([
+  const [assignment, transcriptGraph, requirementGraph, curriculumReview] = await Promise.all([
     catalogRepo.getPrimaryStudentCatalogContext(studentProfileId),
     getLatestStudentTranscriptGraphForStudent(studentProfileId),
     getPrimaryRequirementSetGraphForStudent(studentProfileId),
+    curriculumReviewRepo.getForStudent(studentProfileId),
   ]);
 
   const transcriptCourses =
@@ -207,6 +210,15 @@ export async function buildAcademicScoringEvidence(studentProfileId: string): Pr
         nonCourseRequirementItemCount: 0,
         excludedRequirementGroupCount: 0,
         coverageNotes,
+        curriculumVerificationStatus: "missing",
+        curriculumVerifiedAt: curriculumReview?.curriculumVerifiedAt ?? null,
+        curriculumVerifiedByUserId: curriculumReview?.curriculumVerifiedByUserId ?? null,
+        curriculumVerificationNotes: curriculumReview?.curriculumVerificationNotes ?? null,
+        curriculumRequestedAt: curriculumReview?.curriculumRequestedAt ?? null,
+        curriculumRequestedByUserId: curriculumReview?.curriculumRequestedByUserId ?? null,
+        curriculumPdfUploadId: curriculumReview?.curriculumPdfUploadId ?? null,
+        coachReviewedAt: curriculumReview?.coachReviewedAt ?? null,
+        coachReviewedByUserId: curriculumReview?.coachReviewedByUserId ?? null,
       },
     };
   }
@@ -299,6 +311,18 @@ export async function buildAcademicScoringEvidence(studentProfileId: string): Pr
       nonCourseRequirementItemCount,
       excludedRequirementGroupCount,
       coverageNotes,
+      curriculumVerificationStatus:
+        curriculumReview?.curriculumVerificationStatus === "verified"
+          ? "verified"
+          : "present_unverified",
+      curriculumVerifiedAt: curriculumReview?.curriculumVerifiedAt ?? null,
+      curriculumVerifiedByUserId: curriculumReview?.curriculumVerifiedByUserId ?? null,
+      curriculumVerificationNotes: curriculumReview?.curriculumVerificationNotes ?? null,
+      curriculumRequestedAt: curriculumReview?.curriculumRequestedAt ?? null,
+      curriculumRequestedByUserId: curriculumReview?.curriculumRequestedByUserId ?? null,
+      curriculumPdfUploadId: curriculumReview?.curriculumPdfUploadId ?? null,
+      coachReviewedAt: curriculumReview?.coachReviewedAt ?? null,
+      coachReviewedByUserId: curriculumReview?.coachReviewedByUserId ?? null,
     },
   };
 }

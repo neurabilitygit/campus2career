@@ -7,6 +7,7 @@ import { RequireRole } from "../../../components/RequireRole";
 import { FieldInfoLabel } from "../../../components/forms/FieldInfoLabel";
 import { useApiData } from "../../../hooks/useApiData";
 import { apiFetch } from "../../../lib/apiClient";
+import { useSaveNavigation } from "../../../lib/saveNavigation";
 
 type ParentProfileResponse = {
   ok: boolean;
@@ -38,6 +39,7 @@ const labelStyle: React.CSSProperties = {
 };
 
 export default function ParentOnboardingPage() {
+  const saveNavigation = useSaveNavigation();
   const profile = useApiData<ParentProfileResponse>("/parents/me/communication-profile", true);
   const [didHydrate, setDidHydrate] = useState(false);
   const [form, setForm] = useState({
@@ -75,7 +77,7 @@ export default function ParentOnboardingPage() {
         method: "POST",
         body: JSON.stringify(form),
       });
-      setStatus("Saved. The translator can now use this context.");
+      saveNavigation.returnAfterSave("/parent");
     } catch (err) {
       setStatus("");
       setError(err instanceof Error ? err.message : String(err));

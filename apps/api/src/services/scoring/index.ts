@@ -298,6 +298,7 @@ function computeMarketDemand(input: StudentScoringInput): SubScoreEvidenceDetail
 function computeAcademicReadiness(input: StudentScoringInput): SubScoreEvidenceDetail {
   const transcript = input.transcript;
   const requirementProgress = input.requirementProgress;
+  const curriculumVerified = requirementProgress?.curriculumVerificationStatus === "verified";
 
   if (!transcript && !requirementProgress?.boundToCatalog) {
     const score = 50;
@@ -394,6 +395,15 @@ function computeAcademicReadiness(input: StudentScoringInput): SubScoreEvidenceD
       sourceFlags.push("placeholder");
     }
     evidenceNotes.push(...(requirementProgress.coverageNotes || []));
+    if (!curriculumVerified) {
+      sourceFlags.push("unresolved");
+      missingSignals.push("Visual curriculum verification");
+      evidenceNotes.push(
+        "Structured degree requirements are present, but they have not been visually verified yet."
+      );
+      confidenceLabel = minConfidence(confidenceLabel, "low");
+      evidenceLevel = minEvidenceLevel(evidenceLevel, "weak");
+    }
   } else {
     missingSignals.push("Bound degree requirements");
   }
@@ -426,20 +436,30 @@ function computeAcademicReadiness(input: StudentScoringInput): SubScoreEvidenceD
       ...(!transcript ? ["transcript" as const] : []),
       ...(!requirementProgress?.boundToCatalog ? ["academic_requirements" as const] : []),
     ],
-    weakEvidence: evidenceLevel === "weak" ? ["transcript", "academic_requirements"] : [],
+    weakEvidence: [
+      ...(evidenceLevel === "weak" ? (["transcript", "academic_requirements"] as const) : []),
+      ...(!curriculumVerified && requirementProgress?.boundToCatalog ? (["academic_requirements"] as const) : []),
+    ],
     sourceFlags: Array.from(new Set(sourceFlags)),
     evidenceNotes: Array.from(new Set(evidenceNotes)).slice(0, 6),
     recommendedEvidence: [
       ...(!transcript ? ["Upload transcript"] : []),
       ...(!requirementProgress?.boundToCatalog ? ["Confirm degree program"] : []),
+      ...(!curriculumVerified && requirementProgress?.boundToCatalog
+        ? ["Visually review and verify degree requirements"]
+        : []),
     ],
     explanation:
       !transcript || !requirementProgress?.boundToCatalog
         ? "Academic readiness is only partially assessable because transcript and requirement evidence are incomplete."
+        : !curriculumVerified
+          ? "Academic readiness uses structured degree requirements, but those requirements have not been visually verified yet."
         : "Academic readiness is supported by transcript progress and structured degree requirements.",
     interpretation:
       !transcript || !requirementProgress?.boundToCatalog
         ? "Academic readiness is based on partial academic evidence and should be treated as provisional."
+        : !curriculumVerified
+          ? "Academic readiness remains provisional until the degree requirements have been visually reviewed and confirmed."
         : "Academic readiness reflects transcript progress and structured degree requirements.",
     knownSignals,
     missingSignals,
@@ -863,11 +883,16 @@ export function runScoring(input: StudentScoringInput): ScoringOutput {
           (weakEvidence.length >= 6 && knownEvidence.length < 5)
         ? "weak"
         : weakEvidence.length >= 1 || missingEvidence.length >= 1
-          ? "moderate"
+        ? "moderate"
           : "strong";
-  const assessmentMode: AssessmentMode = overallEvidenceLevel === "strong" || overallEvidenceLevel === "moderate"
-    ? "measured"
-    : "provisional";
+  const curriculumVerificationNeeded =
+    input.requirementProgress?.boundToCatalog &&
+    input.requirementProgress.curriculumVerificationStatus !== "verified";
+  const assessmentMode: AssessmentMode =
+    !curriculumVerificationNeeded &&
+    (overallEvidenceLevel === "strong" || overallEvidenceLevel === "moderate")
+      ? "measured"
+      : "provisional";
   const evidenceSummary = summarizeOverallEvidence(categoryAssessments);
   const evidenceQuality = {
     overallEvidenceLevel,
@@ -888,6 +913,9 @@ export function runScoring(input: StudentScoringInput): ScoringOutput {
     missingEvidence: missingEvidence.slice(0, 8),
     provisionalReasons: [
       ...(input.dataQualityNotes || []),
+      ...(curriculumVerificationNeeded
+        ? ["Structured degree requirements are present but have not been visually verified yet."]
+        : []),
       ...(assessmentMode === "provisional"
         ? ["The score is provisional because multiple subscore areas still depend on limited or missing evidence."]
         : []),
@@ -913,6 +941,9 @@ export function runScoring(input: StudentScoringInput): ScoringOutput {
   }
 
   const topRisks: string[] = [
+      ...(curriculumVerificationNeeded
+        ? ["Degree requirements must be reviewed before scoring can be treated as authoritative"]
+        : []),
       ...(assessmentMode === "provisional"
         ? ["The current score is provisional because several evidence areas are still weak or missing"]
         : []),

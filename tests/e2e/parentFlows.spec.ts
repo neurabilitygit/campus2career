@@ -35,7 +35,10 @@ test("parent can update family profile and sees only parent-appropriate navigati
   page,
   openAs,
 }) => {
-  await openAs("parentMaya", "/profile");
+  await openAs("parentMaya", "/parent");
+  await expect(page.getByRole("heading", { name: "Parent dashboard" })).toBeVisible();
+
+  await page.goto("/profile");
 
   await expect(page.getByText("Parent profile")).toBeVisible();
   const profileSection = page.locator("section").filter({ hasText: "Parent profile" }).first();
@@ -51,7 +54,7 @@ test("parent can update family profile and sees only parent-appropriate navigati
     .locator("input")
     .fill("Mother");
   await page.getByRole("button", { name: "Save profile" }).click();
-  await expect(page.getByText("Profile saved.")).toBeVisible();
+  await expect(page).toHaveURL(/\/parent$/);
 
   const primaryNav = page.getByLabel("Primary navigation");
   await expect(primaryNav.getByRole("button", { name: "Parent", exact: true })).toBeVisible();
@@ -67,6 +70,27 @@ test("parent can update family profile and sees only parent-appropriate navigati
   await page.getByRole("link", { name: "Messages & chat" }).click();
   await expect(page).toHaveURL(/\/communication/);
   await expect(page.getByRole("heading", { name: "Communication", level: 1 })).toBeVisible();
+});
+
+test("parent saves a communication entry and returns to the previous page", async ({
+  page,
+  openAs,
+}) => {
+  await openAs("parentMaya", "/parent");
+  await expect(page.getByRole("heading", { name: "Parent dashboard" })).toBeVisible();
+
+  await page.goto("/parent/communication");
+  await expect(page.getByRole("heading", { name: "Communication translator" })).toBeVisible();
+  await page.locator("label").filter({ hasText: "Concerns" }).locator("textarea").fill(
+    "The internship search has stalled for two weeks."
+  );
+  await page.locator("label").filter({ hasText: "Preferred outcome" }).locator("textarea").fill(
+    "A calmer conversation with one concrete next step."
+  );
+  await page.getByRole("button", { name: "Save concern or question" }).click();
+
+  await expect(page).toHaveURL(/\/parent$/);
+  await expect(page.getByRole("heading", { name: "Parent dashboard" })).toBeVisible();
 });
 
 test("parent cannot open coach-only routes directly", async ({ page, openAs }) => {

@@ -7,6 +7,7 @@ import { SectionCard } from "../layout/SectionCard";
 import { KeyValueList } from "../layout/KeyValueList";
 import { RequireRole } from "../RequireRole";
 import { FieldInfoLabel } from "../forms/FieldInfoLabel";
+import { CurriculumVerificationSection } from "../academic/CurriculumVerificationSection";
 import { useAuthContext } from "../../hooks/useAuthContext";
 import { useApiData, useApiJsonPost } from "../../hooks/useApiData";
 import { apiFetch } from "../../lib/apiClient";
@@ -15,6 +16,7 @@ import { VisibleCoachFeedSection } from "../coach/VisibleCoachFeedSection";
 import { listTargetRoleOptions } from "../../../../../packages/shared/src/market/targetRoleSeeds";
 import type { JobTargetNormalizationResult, StudentJobTargetRecord } from "../../../../../packages/shared/src/contracts/career";
 import { buildDirectAddressName } from "../../lib/personalization";
+import { useSaveNavigation } from "../../lib/saveNavigation";
 
 const DEFAULT_SCENARIO_QUESTION =
   "What if I keep my current major but focus this semester on the highest-signal gap-closing actions?";
@@ -127,6 +129,9 @@ type ScoringInputPayload = {
     completionPercent: number;
     missingRequiredCourses: string[];
     inferredConfidence: "low" | "medium" | "high";
+    curriculumVerificationStatus?: "missing" | "present_unverified" | "verified" | "needs_attention";
+    curriculumVerifiedAt?: string | null;
+    curriculumVerificationNotes?: string | null;
   };
 };
 
@@ -318,6 +323,7 @@ const studentSectionItems = [
 type StudentSectionKey = (typeof studentSectionItems)[number]["key"];
 
 export default function StudentDashboardView() {
+  const saveNavigation = useSaveNavigation();
   const auth = useAuthContext();
   const searchParams = useSearchParams();
   const [selectedRole, setSelectedRole] = useState("");
@@ -476,6 +482,7 @@ export default function StudentDashboardView() {
         success: result.message,
         normalization: result.normalized,
       });
+      saveNavigation.reloadAfterSave();
     } catch (error) {
       setJobTargetAction({
         saving: false,
@@ -532,11 +539,12 @@ export default function StudentDashboardView() {
       <RequireRole expectedRoles={["student", "admin"]} fallbackTitle="Student sign-in required">
         {activeSection === "strategy" ? (
           <>
-            <SectionCard
-              title="Current picture"
-              subtitle="Start here for the current status, the main risk, the best next move, and what still needs to be filled in."
-              tone="highlight"
-            >
+            <div data-intro-target="dashboard-overview">
+              <SectionCard
+                title="Current picture"
+                subtitle="Start here for the current status, the main risk, the best next move, and what still needs to be filled in."
+                tone="highlight"
+              >
               {scoring.loading ? <p style={{ margin: 0 }}>Building your current snapshot...</p> : null}
               {scoring.error ? <p style={{ margin: 0, color: "crimson" }}>{scoring.error}</p> : null}
               {!scoring.loading && !scoring.error ? (
@@ -585,14 +593,16 @@ export default function StudentDashboardView() {
                   </div>
                 </div>
               ) : null}
-            </SectionCard>
+              </SectionCard>
+            </div>
 
             <VisibleCoachFeedSection mode="student" />
 
-            <SectionCard
-              title="What is helping and what is still missing"
-              subtitle="This explains why the score looks the way it does before you make any changes to the target role."
-            >
+            <div data-intro-target="next-actions">
+              <SectionCard
+                title="What is helping and what is still missing"
+                subtitle="This explains why the score looks the way it does before you make any changes to the target role."
+              >
               {explanation.loading ? <p>Building score explanation...</p> : null}
               {explanation.error ? <p style={{ color: "crimson" }}>{explanation.error}</p> : null}
               {!explanation.loading && !explanation.error && explanation.data?.explanation ? (
@@ -725,12 +735,14 @@ export default function StudentDashboardView() {
                   ) : null}
                 </div>
               ) : null}
-            </SectionCard>
+              </SectionCard>
+            </div>
 
-            <SectionCard
-              title="Score details"
-              subtitle="Use this to confirm the target, the overall score, and whether the current read is measured or still provisional."
-            >
+            <div data-intro-target="readiness-score">
+              <SectionCard
+                title="Score details"
+                subtitle="Use this to confirm the target, the overall score, and whether the current read is measured or still provisional."
+              >
               {scoring.loading ? <p>Loading scoring...</p> : null}
               {scoring.error ? <p style={{ color: "crimson" }}>{scoring.error}</p> : null}
               {!scoring.loading && !scoring.error ? (
@@ -749,6 +761,20 @@ export default function StudentDashboardView() {
                       },
                     ]}
                   />
+                  {requirementProgress?.curriculumVerificationStatus !== "verified" ? (
+                    <div
+                      style={{
+                        border: "1px solid #f2d9ad",
+                        borderRadius: 16,
+                        padding: "14px 16px",
+                        background: "#fff8e7",
+                        color: "#7a5817",
+                        lineHeight: 1.6,
+                      }}
+                    >
+                      Degree requirements must be reviewed before scoring because the readiness score depends on accurate curriculum information.
+                    </div>
+                  ) : null}
                   {scoring.data?.scoring?.evidenceQuality?.recommendedEvidenceActions?.length ? (
                     <div>
                       <strong>Fastest ways to improve confidence</strong>
@@ -792,7 +818,8 @@ export default function StudentDashboardView() {
                   ) : null}
                 </div>
               ) : null}
-            </SectionCard>
+              </SectionCard>
+            </div>
 
             <SectionCard
               title="Save the exact job you want"
@@ -1133,6 +1160,12 @@ export default function StudentDashboardView() {
                 </div>
               ) : null}
             </SectionCard>
+
+            <CurriculumVerificationSection
+              title="Degree Requirements Review"
+              subtitle={`${directName}, inspect the curriculum details below and confirm they look complete before relying on them for scoring.`}
+              subjectLabel={directName}
+            />
 
             <SectionCard
               title="Career market context"

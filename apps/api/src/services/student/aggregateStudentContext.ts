@@ -208,6 +208,12 @@ function buildScoringInputQualityNotes(input: {
     if (!input.requirementProgress.boundToCatalog) {
       notes.push("The student is not yet bound to a structured catalog requirement set.");
     }
+    if (
+      input.requirementProgress.boundToCatalog &&
+      input.requirementProgress.curriculumVerificationStatus !== "verified"
+    ) {
+      notes.push("Structured degree requirements are present but have not been visually reviewed and verified yet.");
+    }
     notes.push(...(input.requirementProgress.coverageNotes || []));
   }
 

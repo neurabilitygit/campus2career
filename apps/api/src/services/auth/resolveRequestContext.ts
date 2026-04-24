@@ -4,6 +4,7 @@ import { getAuthenticatedUser } from "../../middleware/auth";
 import { UserContextRepository } from "../../repositories/auth/userContextRepository";
 import { StudentWriteRepository } from "../../repositories/student/studentWriteRepository";
 import { AppError } from "../../utils/appError";
+import { buildIntroOnboardingView } from "./introOnboarding";
 import { syncAuthenticatedUser } from "./syncAuthenticatedUser";
 
 export interface RequestContext {
@@ -16,6 +17,13 @@ export interface RequestContext {
   authenticatedFirstName?: string | null;
   authenticatedLastName?: string | null;
   authenticatedPreferredName?: string | null;
+  hasCompletedIntroOnboarding?: boolean;
+  introOnboardingCompletedAt?: string | null;
+  introOnboardingSkippedAt?: string | null;
+  introOnboardingVersion?: number;
+  introOnboardingStatus?: "not_started" | "completed" | "skipped";
+  introOnboardingShouldAutoShow?: boolean;
+  currentIntroOnboardingVersion?: number;
   studentFirstName?: string | null;
   studentLastName?: string | null;
   studentPreferredName?: string | null;
@@ -123,6 +131,8 @@ export async function resolveRequestContext(req: IncomingMessage): Promise<Reque
       student = await repo.resolveStudentProfileForStudentUser(auth.userId);
     }
 
+    const introOnboarding = buildIntroOnboardingView(authenticatedUser);
+
     return {
       authenticatedUserId: auth.userId,
       authenticatedRoleType: resolvedRole,
@@ -136,6 +146,13 @@ export async function resolveRequestContext(req: IncomingMessage): Promise<Reque
       authenticatedFirstName: authenticatedUser?.firstName ?? null,
       authenticatedLastName: authenticatedUser?.lastName ?? null,
       authenticatedPreferredName: authenticatedUser?.preferredName ?? null,
+      hasCompletedIntroOnboarding: introOnboarding.hasCompletedIntroOnboarding,
+      introOnboardingCompletedAt: introOnboarding.introOnboardingCompletedAt,
+      introOnboardingSkippedAt: introOnboarding.introOnboardingSkippedAt,
+      introOnboardingVersion: introOnboarding.introOnboardingVersion,
+      introOnboardingStatus: introOnboarding.introOnboardingStatus,
+      introOnboardingShouldAutoShow: introOnboarding.shouldAutoShow,
+      currentIntroOnboardingVersion: introOnboarding.currentVersion,
       studentFirstName: authenticatedUser?.firstName ?? household?.studentFirstName ?? null,
       studentLastName: authenticatedUser?.lastName ?? household?.studentLastName ?? null,
       studentPreferredName: authenticatedUser?.preferredName ?? household?.studentPreferredName ?? null,
@@ -150,6 +167,7 @@ export async function resolveRequestContext(req: IncomingMessage): Promise<Reque
     studentProfilePromise,
     authenticatedUserPromise,
   ]);
+  const introOnboarding = buildIntroOnboardingView(authenticatedUser);
 
   return {
     authenticatedUserId: auth.userId,
@@ -161,6 +179,13 @@ export async function resolveRequestContext(req: IncomingMessage): Promise<Reque
     authenticatedFirstName: authenticatedUser?.firstName ?? null,
     authenticatedLastName: authenticatedUser?.lastName ?? null,
     authenticatedPreferredName: authenticatedUser?.preferredName ?? null,
+    hasCompletedIntroOnboarding: introOnboarding.hasCompletedIntroOnboarding,
+    introOnboardingCompletedAt: introOnboarding.introOnboardingCompletedAt,
+    introOnboardingSkippedAt: introOnboarding.introOnboardingSkippedAt,
+    introOnboardingVersion: introOnboarding.introOnboardingVersion,
+    introOnboardingStatus: introOnboarding.introOnboardingStatus,
+    introOnboardingShouldAutoShow: introOnboarding.shouldAutoShow,
+    currentIntroOnboardingVersion: introOnboarding.currentVersion,
     studentFirstName: household?.studentFirstName ?? null,
     studentLastName: household?.studentLastName ?? null,
     studentPreferredName: household?.studentPreferredName ?? null,

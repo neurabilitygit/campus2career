@@ -168,6 +168,19 @@ details summary {
   cursor: default;
 }
 
+.app-help-button__icon {
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid currentColor;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1;
+}
+
 .ui-pill {
   display: inline-flex;
   align-items: center;
@@ -746,6 +759,191 @@ details summary {
   line-height: 1.55;
 }
 
+[data-intro-highlighted="true"] {
+  position: relative;
+  z-index: 82;
+  box-shadow:
+    0 0 0 4px rgba(255, 255, 255, 0.92),
+    0 0 0 8px color-mix(in srgb, var(--role-accent, var(--accent-blue)) 28%, white),
+    0 24px 54px rgba(15, 23, 42, 0.18);
+  border-radius: 20px;
+}
+
+.intro-onboarding {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+}
+
+.intro-onboarding__scrim {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.38);
+  backdrop-filter: blur(4px);
+}
+
+.intro-welcome,
+.intro-tour,
+.intro-confirm {
+  position: relative;
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.98);
+  border: 1px solid rgba(255, 255, 255, 0.86);
+  box-shadow: 0 30px 80px rgba(15, 23, 42, 0.18);
+}
+
+.intro-welcome {
+  width: min(620px, calc(100vw - 28px));
+  padding: 34px clamp(22px, 4vw, 40px);
+  display: grid;
+  gap: 18px;
+  text-align: center;
+  background:
+    radial-gradient(circle at top, color-mix(in srgb, var(--role-soft, #eef3f8) 74%, white), rgba(255, 255, 255, 0.98) 62%),
+    rgba(255, 255, 255, 0.98);
+}
+
+.intro-welcome__eyebrow {
+  justify-self: center;
+  display: inline-flex;
+  width: fit-content;
+  padding: 7px 12px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--role-soft, #eef3f8) 86%, white);
+  color: var(--role-accent, var(--accent-blue));
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.intro-welcome__animation {
+  position: relative;
+  justify-self: center;
+  width: 92px;
+  height: 92px;
+  display: grid;
+  place-items: center;
+}
+
+.intro-welcome__core,
+.intro-welcome__orbit {
+  position: absolute;
+  border-radius: 999px;
+}
+
+.intro-welcome__core {
+  width: 24px;
+  height: 24px;
+  background: linear-gradient(135deg, var(--role-accent, var(--accent-blue)), #f5b94d);
+  box-shadow: 0 0 0 14px color-mix(in srgb, var(--role-soft, #eef3f8) 76%, white);
+}
+
+.intro-welcome__orbit {
+  width: 12px;
+  height: 12px;
+  background: rgba(245, 185, 77, 0.92);
+  transform-origin: 0 34px;
+  animation: introOrbit 3.8s linear infinite;
+  animation-delay: calc(var(--orbit-index) * -0.7s);
+}
+
+.intro-welcome__animation[data-reduced-motion="true"] .intro-welcome__orbit {
+  animation: none;
+}
+
+.intro-welcome h2,
+.intro-confirm h2,
+.intro-tour h2 {
+  margin: 0;
+  font-size: clamp(1.65rem, 4vw, 2.3rem);
+  line-height: 1.08;
+}
+
+.intro-welcome p,
+.intro-confirm p,
+.intro-tour p {
+  margin: 0;
+  color: var(--ink-body);
+  line-height: 1.7;
+}
+
+.intro-welcome__actions,
+.intro-confirm__actions,
+.intro-tour__actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+}
+
+.intro-welcome__countdown,
+.intro-tour__counter {
+  color: var(--ink-muted);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.intro-tour {
+  position: fixed;
+  padding: 22px;
+  display: grid;
+  gap: 14px;
+  z-index: 83;
+}
+
+.intro-tour__actions {
+  justify-content: space-between;
+}
+
+.intro-tour__actions-group {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.intro-tour__error {
+  border-radius: 16px;
+  padding: 12px 14px;
+  background: #fff5f5;
+  border: 1px solid #fecaca;
+  color: #b42318;
+  line-height: 1.6;
+}
+
+.intro-confirm {
+  width: min(420px, calc(100vw - 28px));
+  z-index: 83;
+  padding: 24px;
+  display: grid;
+  gap: 14px;
+}
+
+@keyframes introOrbit {
+  from {
+    transform: rotate(0deg) translateY(-34px);
+  }
+  to {
+    transform: rotate(360deg) translateY(-34px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .intro-welcome__orbit {
+    animation: none;
+  }
+
+  .intro-onboarding__scrim {
+    backdrop-filter: none;
+  }
+}
+
 @media (max-width: 980px) {
   .app-shell__scrim {
     display: block;
@@ -786,6 +984,14 @@ details summary {
     display: inline-flex;
     align-items: center;
     justify-content: center;
+  }
+
+  .intro-tour {
+    position: relative;
+    inset: auto;
+    width: min(100%, 420px) !important;
+    left: auto !important;
+    top: auto !important;
   }
 }
 
@@ -835,5 +1041,20 @@ details summary {
   .account-menu__meta-value {
     max-width: 100%;
     font-size: 13px;
+  }
+
+  .intro-welcome__actions,
+  .intro-confirm__actions,
+  .intro-tour__actions,
+  .intro-tour__actions-group {
+    display: grid;
+    width: 100%;
+  }
+
+  .intro-welcome__actions > *,
+  .intro-confirm__actions > *,
+  .intro-tour__actions > *,
+  .intro-tour__actions-group > * {
+    width: 100%;
   }
 }

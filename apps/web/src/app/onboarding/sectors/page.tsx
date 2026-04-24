@@ -1,12 +1,12 @@
 "use client";
 
-import { startTransition, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { AppShell } from "../../../components/layout/AppShell";
 import { SectionCard } from "../../../components/layout/SectionCard";
 import { RequireRole } from "../../../components/RequireRole";
 import { FieldInfoLabel } from "../../../components/forms/FieldInfoLabel";
 import { apiFetch } from "../../../lib/apiClient";
+import { useSaveNavigation } from "../../../lib/saveNavigation";
 
 const sectors = [
   "Technology & Startups",
@@ -29,7 +29,7 @@ const sectors = [
 ];
 
 export default function OnboardingSectorsPage() {
-  const router = useRouter();
+  const saveNavigation = useSaveNavigation();
   const [selected, setSelected] = useState<string[]>([]);
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
@@ -50,10 +50,7 @@ export default function OnboardingSectorsPage() {
           sectorClusters: selected,
         }),
       });
-      setStatus("Saved. Returning to the dashboard...");
-      startTransition(() => {
-        router.push("/student?section=strategy");
-      });
+      saveNavigation.returnAfterSave("/student?section=strategy");
     } catch (err: any) {
       setStatus("");
       setError(err?.message || String(err));

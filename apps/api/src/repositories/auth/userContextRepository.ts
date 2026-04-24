@@ -1,4 +1,5 @@
 import { query } from "../../db/client";
+import type { IntroOnboardingState } from "../../../../../packages/shared/src/contracts/introOnboarding";
 
 export interface HouseholdStudentContext {
   householdId: string | null;
@@ -10,7 +11,7 @@ export interface HouseholdStudentContext {
   studentPreferredName?: string | null;
 }
 
-export interface UserBasicInfo {
+export interface UserBasicInfo extends IntroOnboardingState {
   firstName: string | null;
   lastName: string | null;
   preferredName: string | null;
@@ -95,7 +96,12 @@ export class UserContextRepository {
       select
         first_name as "firstName",
         last_name as "lastName",
-        preferred_name as "preferredName"
+        preferred_name as "preferredName",
+        has_completed_intro_onboarding as "hasCompletedIntroOnboarding",
+        intro_onboarding_completed_at as "introOnboardingCompletedAt",
+        intro_onboarding_skipped_at as "introOnboardingSkippedAt",
+        intro_onboarding_version as "introOnboardingVersion",
+        intro_onboarding_status as "introOnboardingStatus"
       from users
       where user_id = $1
       limit 1

@@ -4,6 +4,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { useAuthContext } from "../../hooks/useAuthContext";
+import { useIntroOnboarding } from "../../hooks/useIntroOnboarding";
+import { rememberSaveNavigationRoute } from "../../lib/saveNavigation";
+import { IntroTourOverlay } from "../onboarding/IntroTourOverlay";
+import { IntroWelcomeSplash } from "../onboarding/IntroWelcomeSplash";
+import { INTRO_TOUR_STEPS } from "../onboarding/introTourConfig";
 import { AccountMenu } from "./AccountMenu";
 import { buildNavigationGroups, type ShellNavGroup, type ShellNavItem } from "./navigation";
 
@@ -82,6 +87,16 @@ export function AppShell(props: {
     () => buildNavigationGroups(currentRole),
     [currentRole]
   );
+  const introOnboarding = useIntroOnboarding({
+    pathname,
+    authenticated: auth.isAuthenticated,
+    authResolved: !auth.loading && !!auth.data?.context,
+    role: currentRole,
+    introOnboardingStatus: auth.data?.context?.introOnboardingStatus,
+    introOnboardingVersion: auth.data?.context?.introOnboardingVersion,
+    introOnboardingShouldAutoShow: auth.data?.context?.introOnboardingShouldAutoShow,
+    steps: INTRO_TOUR_STEPS,
+  });
   const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_SIDEBAR_WIDTH);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
@@ -128,6 +143,14 @@ export function AppShell(props: {
 
   useEffect(() => {
     setMobileNavOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    rememberSaveNavigationRoute(`${pathname}${window.location.search}`);
   }, [pathname]);
 
   useEffect(() => {
@@ -277,6 +300,7 @@ export function AppShell(props: {
                                 href={item.href}
                                 className="app-sidebar__link"
                                 data-active={active || childActive ? "true" : "false"}
+                                data-intro-target={item.introTargetKey || undefined}
                               >
                                 <span>{item.label}</span>
                                 {item.description ? <small>{item.description}</small> : null}
@@ -366,6 +390,7 @@ export function AppShell(props: {
             <button
               type="button"
               className="app-topbar__menu-button"
+              data-intro-target="nav-open"
               aria-label="Open navigation"
               onClick={() => setMobileNavOpen(true)}
             >
@@ -378,8 +403,13 @@ export function AppShell(props: {
           </div>
 
           <div className="app-topbar__actions">
-            <Link href="/help" className="ui-button ui-button--secondary">
-              Help
+            <Link
+              href="/help"
+              className="ui-button ui-button--secondary app-help-button"
+              aria-label="Help"
+              data-intro-target="help"
+            >
+              <span className="app-help-button__icon" aria-hidden="true">?</span>
             </Link>
             <AccountMenu />
           </div>
@@ -401,6 +431,54 @@ export function AppShell(props: {
 
         <div className="app-detail__content">{props.children}</div>
       </section>
+
+      {introOnboarding.stage === "splash" ? (
+        <IntroWelcomeSplash
+          onContinue={introOnboarding.startTour}
+          onSkip={introOnboarding.openSkipConfirmation}
+        />
+      ) : null}
+
+      {introOnboarding.stage === "tour" && introOnboarding.activeStep ? (
+        <IntroTourOverlay
+          step={introOnboarding.activeStep}
+          stepIndex={introOnboarding.currentIndex}
+          totalSteps={introOnboarding.steps.length}
+          target={introOnboarding.target}
+          canGoBack={introOnboarding.canGoBack}
+          isLastStep={introOnboarding.isLastStep}
+          busy={introOnboarding.pending === "complete"}
+          error={introOnboarding.error}
+          onBack={introOnboarding.goBack}
+          onNext={introOnboarding.goNext}
+          onSkip={introOnboarding.openSkipConfirmation}
+          onFinish={introOnboarding.complete}
+        />
+      ) : null}
+
+      {introOnboarding.stage === "skip_confirm" ? (
+        <div className="intro-onboarding intro-onboarding--confirm" role="dialog" aria-modal="true" aria-labelledby="intro-skip-title">
+          <div className="intro-onboarding__scrim" aria-hidden="true" />
+          <div className="intro-confirm">
+            <h2 id="intro-skip-title">Skip the intro?</h2>
+            <p>You can restart it later from Help.</p>
+            {introOnboarding.error ? <div className="intro-tour__error">{introOnboarding.error}</div> : null}
+            <div className="intro-confirm__actions">
+              <button type="button" className="ui-button ui-button--ghost" onClick={introOnboarding.cancelSkipConfirmation}>
+                Keep intro
+              </button>
+              <button
+                type="button"
+                className="ui-button ui-button--primary"
+                onClick={introOnboarding.skip}
+                disabled={introOnboarding.pending === "skip"}
+              >
+                {introOnboarding.pending === "skip" ? "Skipping..." : "Skip intro"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </main>
   );
 }

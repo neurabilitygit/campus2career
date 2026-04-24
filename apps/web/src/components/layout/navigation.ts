@@ -5,6 +5,7 @@ export type ShellNavItem = {
   label: string;
   description?: string;
   sectionKey?: string;
+  introTargetKey?: string;
   allowedRoles?: NavigationRole[];
   children?: ShellNavItem[];
 };
@@ -111,6 +112,7 @@ const navGroups: ShellNavGroup[] = [
         href: "/communication",
         label: "Messages & chat",
         description: "Chatbot, translated messages, and role-aware communication tools",
+        introTargetKey: "nav-communication",
         allowedRoles: ["student", "parent", "coach", "admin"],
       },
     ],

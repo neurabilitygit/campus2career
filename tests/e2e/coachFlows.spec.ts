@@ -36,7 +36,10 @@ test("coach can record a recommendation and the student can see it afterward", a
   await recommendationForm.locator('input[type="date"]').fill("2026-05-06");
   await page.getByRole("button", { name: "Save recommendation" }).click();
 
-  await expect(page.getByText("Coach recommendation saved")).toBeVisible();
+  await expect(page).toHaveURL(
+    new RegExp(`/coach\\?studentProfileId=${encodeURIComponent(SYNTHETIC_STUDENTS.maya.studentProfileId)}`)
+  );
+  await expect(page.getByText("Create a simple informational interview script")).toBeVisible();
 
   await switchAs("studentMaya", "/student");
   await expect(page.getByRole("heading", { name: "Student dashboard" })).toBeVisible();
@@ -66,7 +69,10 @@ test("coach can update profile, keep coach-only navigation, and see the selected
   page,
   openAs,
 }) => {
-  await openAs("coachTaylor", "/profile");
+  await openAs("coachTaylor", "/coach");
+  await expect(page.getByRole("heading", { name: "Coach workspace" })).toBeVisible();
+
+  await page.goto("/profile");
 
   await expect(page.getByText("Coach profile")).toBeVisible();
   const profileSection = page.locator("section").filter({ hasText: "Coach profile" }).first();
@@ -86,7 +92,7 @@ test("coach can update profile, keep coach-only navigation, and see the selected
     .nth(4)
     .fill("Networking, Career direction");
   await page.getByRole("button", { name: "Save profile" }).click();
-  await expect(page.getByText("Profile saved.")).toBeVisible();
+  await expect(page).toHaveURL(/\/coach$/);
 
   await expect(page.getByRole("button", { name: "Coach", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Communication", exact: true })).toBeVisible();
@@ -109,4 +115,23 @@ test("coach cannot open parent-only routes directly", async ({ page, openAs }) =
   await openAs("coachTaylor", "/parent");
 
   await expect(page.getByText("This page is for a different account view")).toBeVisible();
+});
+
+test("coach can review curriculum for the selected student but cannot family-verify it", async ({
+  page,
+  openAs,
+}) => {
+  await openAs(
+    "coachTaylor",
+    `/coach?studentProfileId=${encodeURIComponent(SYNTHETIC_STUDENTS.maya.studentProfileId)}`
+  );
+
+  const curriculumSection = page
+    .locator("section")
+    .filter({ has: page.getByRole("heading", { name: "Degree Requirements Review" }) })
+    .first();
+
+  await expect(curriculumSection.getByRole("button", { name: "Mark reviewed by coach" })).toBeVisible();
+  await expect(curriculumSection.getByRole("button", { name: "Save curriculum verification" })).toHaveCount(0);
+  await expect(curriculumSection.getByRole("link", { name: "Upload a PDF" })).toHaveCount(0);
 });

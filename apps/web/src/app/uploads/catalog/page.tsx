@@ -56,7 +56,7 @@ function CatalogUploadPageLoading() {
       title="Add a program requirement PDF"
       subtitle="Preparing the document flow for coursework and degree requirements..."
     >
-      <RequireRole expectedRoles={["student", "admin"]} fallbackTitle="Student sign-in required">
+      <RequireRole expectedRoles={["student", "parent", "coach", "admin"]} fallbackTitle="Sign in to review curriculum requirements">
         <SectionCard title="Loading">
           <p>Loading catalog upload context...</p>
         </SectionCard>
@@ -207,6 +207,13 @@ function CatalogUploadPageInner() {
         }),
       });
 
+      await apiFetch("/students/me/academic/curriculum-review/link-upload", {
+        method: "POST",
+        body: JSON.stringify({
+          academicArtifactId,
+        }),
+      });
+
       setStatus("Catalog PDF extracted successfully.");
       setResult({
         upload,
@@ -223,7 +230,7 @@ function CatalogUploadPageInner() {
       title="Add a program requirement PDF"
       subtitle="Use this when the school website is incomplete or unclear and you want the system to learn from an official PDF instead."
     >
-      <RequireRole expectedRoles={["student", "admin"]} fallbackTitle="Student sign-in required">
+      <RequireRole expectedRoles={["student", "parent", "coach", "admin"]} fallbackTitle="Sign in to review curriculum requirements">
         <SectionCard
           title="Program details"
           subtitle="This tells the system which school and academic path the uploaded document belongs to."

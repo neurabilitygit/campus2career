@@ -38,6 +38,24 @@ export async function router(req: IncomingMessage, res: ServerResponse) {
     return;
   }
 
+  if (url === "/auth/intro-onboarding/complete" && req.method === "POST") {
+    const { introOnboardingCompleteRoute } = await import("./routes/auth");
+    await introOnboardingCompleteRoute(req, res);
+    return;
+  }
+
+  if (url === "/auth/intro-onboarding/skip" && req.method === "POST") {
+    const { introOnboardingSkipRoute } = await import("./routes/auth");
+    await introOnboardingSkipRoute(req, res);
+    return;
+  }
+
+  if (url === "/auth/intro-onboarding/replay" && req.method === "POST") {
+    const { introOnboardingReplayRoute } = await import("./routes/auth");
+    await introOnboardingReplayRoute(req, res);
+    return;
+  }
+
   if (url === "/v1/scoring/demo") {
     await scoringRoute(req, res);
     return;
@@ -250,6 +268,36 @@ export async function router(req: IncomingMessage, res: ServerResponse) {
   if (url === "/students/me/academic/requirements/primary" && req.method === "GET") {
     const { primaryRequirementGraphRoute } = await import("./routes/academic");
     await primaryRequirementGraphRoute(req, res);
+    return;
+  }
+
+  if (url === "/students/me/academic/curriculum-review" && req.method === "GET") {
+    const { curriculumReviewRoute } = await import("./routes/academic");
+    await curriculumReviewRoute(req, res);
+    return;
+  }
+
+  if (url === "/students/me/academic/curriculum-review/verify" && req.method === "POST") {
+    const { curriculumVerifyRoute } = await import("./routes/academic");
+    await curriculumVerifyRoute(req, res);
+    return;
+  }
+
+  if (url === "/students/me/academic/curriculum-review/request-population" && req.method === "POST") {
+    const { curriculumRequestPopulationRoute } = await import("./routes/academic");
+    await curriculumRequestPopulationRoute(req, res);
+    return;
+  }
+
+  if (url === "/students/me/academic/curriculum-review/link-upload" && req.method === "POST") {
+    const { curriculumLinkUploadRoute } = await import("./routes/academic");
+    await curriculumLinkUploadRoute(req, res);
+    return;
+  }
+
+  if (url === "/students/me/academic/curriculum-review/coach-review" && req.method === "POST") {
+    const { curriculumCoachReviewRoute } = await import("./routes/academic");
+    await curriculumCoachReviewRoute(req, res);
     return;
   }
 

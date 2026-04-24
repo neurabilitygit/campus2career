@@ -10,6 +10,7 @@ import type {
 } from "../../../../../packages/shared/src/contracts/outcomes";
 import { useApiData } from "../../hooks/useApiData";
 import { apiFetch } from "../../lib/apiClient";
+import { useSaveNavigation } from "../../lib/saveNavigation";
 import { FieldInfoLabel } from "../forms/FieldInfoLabel";
 import { SectionCard } from "../layout/SectionCard";
 
@@ -148,6 +149,7 @@ export function OutcomeTrackingSection(props: {
   mode: OutcomeTrackingMode;
   subjectLabel?: string;
 }) {
+  const saveNavigation = useSaveNavigation();
   const copy = sectionCopy(props.mode);
   const subjectLabel = props.subjectLabel || (props.mode === "parent" ? "your student" : "this student");
   const prefix = endpointPrefix(props.mode);
@@ -243,7 +245,7 @@ export function OutcomeTrackingSection(props: {
           (result as { message?: string }).message ||
           (editingOutcomeId ? "Outcome updated" : "Outcome saved"),
       });
-      setNonce((value) => value + 1);
+      saveNavigation.reloadAfterSave();
     } catch (error) {
       setActionState({
         saving: false,

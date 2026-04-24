@@ -5,6 +5,7 @@ import { badRequest, forbidden, json, unauthorized } from "../utils/http";
 import {
   assignStudentCatalog,
   getPrimaryRequirementSetGraphForStudent,
+  getPrimaryStudentCatalogContext,
   replaceCatalogCourseAliases,
   replaceCoursePrerequisites,
   replaceResolvedRequirementGroups,
@@ -20,6 +21,16 @@ import {
   discoverInstitutionCatalog,
   discoverProgramRequirements,
 } from "../services/academic/catalogDiscoveryService";
+import {
+  buildCurriculumReviewPayload,
+  canCoachReviewCurriculum,
+  canVerifyCurriculum,
+  linkCurriculumPdfUpload,
+  saveCoachCurriculumReview,
+  saveCurriculumPopulationRequest,
+  saveCurriculumVerification,
+} from "../services/academic/curriculumReview";
+import { resolveCoachRelationshipOrThrow } from "../services/coach/workspace";
 import { extractCatalogRequirementsFromArtifact } from "../services/academic/catalogArtifactExtractionService";
 import {
   autoMatchTranscriptToPrimaryCatalog,
@@ -198,11 +209,41 @@ const programRequirementDiscoveryBodySchema = z.object({
   path: ["majorCanonicalName"],
 });
 
+const curriculumVerificationBodySchema = z.object({
+  confirmReviewed: z.literal(true),
+  verificationNotes: z.string().trim().max(1200).optional(),
+});
+
+const curriculumUploadLinkBodySchema = z.object({
+  academicArtifactId: z.string().trim().min(1),
+});
+
 function formatZodErrorMessage(error: z.ZodError): string {
   return (
     error.issues.map((issue) => `${issue.path.join(".") || "body"}: ${issue.message}`).join("; ") ||
     "Invalid request body"
   );
+}
+
+async function resolveAcademicStudentScope(req: IncomingMessage) {
+  const ctx = await resolveRequestContext(req);
+  if (!ctx.studentProfileId) {
+    return { ctx, studentProfileId: null as string | null };
+  }
+
+  if (ctx.authenticatedRoleType !== "coach") {
+    return { ctx, studentProfileId: ctx.studentProfileId };
+  }
+
+  const requestedStudentProfileId = new URL(req.url || "/", "http://localhost").searchParams.get("studentProfileId");
+  const relationship = await resolveCoachRelationshipOrThrow(ctx, requestedStudentProfileId);
+  if (requestedStudentProfileId && !relationship) {
+    return { ctx, studentProfileId: null as string | null };
+  }
+  return {
+    ctx,
+    studentProfileId: relationship?.studentProfileId || ctx.studentProfileId,
+  };
 }
 
 export async function studentCatalogAssignmentRoute(req: IncomingMessage, res: ServerResponse) {
@@ -367,6 +408,222 @@ export async function primaryRequirementGraphRoute(req: IncomingMessage, res: Se
     return json(res, 200, {
       ok: true,
       requirementGraph,
+    });
+  } catch (error: any) {
+    if (error?.message === "UNAUTHENTICATED") {
+      return unauthorized(res);
+    }
+    throw error;
+  }
+}
+
+export async function curriculumReviewRoute(req: IncomingMessage, res: ServerResponse) {
+  try {
+    const { ctx, studentProfileId } = await resolveAcademicStudentScope(req);
+    if (!studentProfileId) {
+      return badRequest(res, "No student profile could be resolved for the authenticated user");
+    }
+
+    const curriculum = await buildCurriculumReviewPayload(
+      studentProfileId,
+      ctx.authenticatedRoleType
+    );
+
+    return json(res, 200, {
+      ok: true,
+      curriculum,
+      resolvedContext: ctx,
+    });
+  } catch (error: any) {
+    if (error?.message === "UNAUTHENTICATED") {
+      return unauthorized(res);
+    }
+    throw error;
+  }
+}
+
+export async function curriculumVerifyRoute(req: IncomingMessage, res: ServerResponse) {
+  try {
+    let raw: unknown;
+    try {
+      raw = await readJsonBody(req);
+    } catch {
+      return badRequest(res, "Invalid JSON body");
+    }
+
+    const parsed = curriculumVerificationBodySchema.safeParse(raw);
+    if (!parsed.success) {
+      return badRequest(res, formatZodErrorMessage(parsed.error));
+    }
+
+    const { ctx, studentProfileId } = await resolveAcademicStudentScope(req);
+    if (!studentProfileId) {
+      return badRequest(res, "No student profile could be resolved for the authenticated user");
+    }
+    if (!canVerifyCurriculum(ctx.authenticatedRoleType)) {
+      return forbidden(res, "This role cannot verify curriculum for scoring");
+    }
+
+    const curriculum = await buildCurriculumReviewPayload(
+      studentProfileId,
+      ctx.authenticatedRoleType
+    );
+    if (curriculum.verification.effectiveStatus === "missing") {
+      return badRequest(res, "Curriculum information must exist before it can be visually verified");
+    }
+
+    const verifiedAt = await saveCurriculumVerification({
+      studentProfileId,
+      userId: ctx.authenticatedUserId,
+      status: "verified",
+      verificationNotes: parsed.data.verificationNotes,
+      curriculumSource: curriculum.summary.sourceProvenance,
+    });
+
+    return json(res, 200, {
+      ok: true,
+      verifiedAt,
+      message: "Curriculum review saved",
+    });
+  } catch (error: any) {
+    if (error?.message === "UNAUTHENTICATED") {
+      return unauthorized(res);
+    }
+    throw error;
+  }
+}
+
+export async function curriculumRequestPopulationRoute(req: IncomingMessage, res: ServerResponse) {
+  try {
+    const { ctx, studentProfileId } = await resolveAcademicStudentScope(req);
+    if (!studentProfileId) {
+      return badRequest(res, "No student profile could be resolved for the authenticated user");
+    }
+
+    const assignment = await getPrimaryStudentCatalogContext(studentProfileId);
+    const requestedAt = await saveCurriculumPopulationRequest({
+      studentProfileId,
+      userId: ctx.authenticatedUserId,
+      curriculumSource: "unknown",
+      status: assignment ? "present_unverified" : "missing",
+    });
+
+    if (
+      !assignment?.institution_canonical_name ||
+      !assignment.catalog_label ||
+      !assignment.degree_type ||
+      !assignment.program_name ||
+      (!assignment.major_canonical_name && !assignment.minor_canonical_name)
+    ) {
+      return json(res, 200, {
+        ok: true,
+        requestedAt,
+        populated: false,
+        message:
+          "Curriculum population has been requested, but the academic path is still incomplete. Save the school, catalog, program, and major first or upload a degree-requirement PDF.",
+      });
+    }
+
+    const result = await discoverProgramRequirements({
+      institutionCanonicalName: assignment.institution_canonical_name,
+      catalogLabel: assignment.catalog_label,
+      degreeType: assignment.degree_type,
+      programName: assignment.program_name,
+      majorCanonicalName: assignment.major_canonical_name || undefined,
+      minorCanonicalName: assignment.minor_canonical_name || undefined,
+    });
+
+    return json(res, 200, {
+      ok: true,
+      requestedAt,
+      populated: result.status === "requirements_discovered",
+      result,
+      message:
+        result.status === "requirements_discovered"
+          ? "Curriculum discovery ran successfully. Review the requirement details before using them for scoring."
+          : "Curriculum population has been requested, but a degree-requirement PDF is still recommended.",
+    });
+  } catch (error: any) {
+    if (error?.message === "UNAUTHENTICATED") {
+      return unauthorized(res);
+    }
+    if (typeof error?.message === "string" && error.message.includes("not found")) {
+      return badRequest(res, error.message);
+    }
+    throw error;
+  }
+}
+
+export async function curriculumLinkUploadRoute(req: IncomingMessage, res: ServerResponse) {
+  try {
+    let raw: unknown;
+    try {
+      raw = await readJsonBody(req);
+    } catch {
+      return badRequest(res, "Invalid JSON body");
+    }
+
+    const parsed = curriculumUploadLinkBodySchema.safeParse(raw);
+    if (!parsed.success) {
+      return badRequest(res, formatZodErrorMessage(parsed.error));
+    }
+
+    const { ctx, studentProfileId } = await resolveAcademicStudentScope(req);
+    if (!studentProfileId) {
+      return badRequest(res, "No student profile could be resolved for the authenticated user");
+    }
+
+    const artifact = await artifactRepo.getAcademicArtifactById(parsed.data.academicArtifactId);
+    if (!artifact || artifact.student_profile_id !== studentProfileId) {
+      return badRequest(res, "Academic artifact not found for the authenticated student");
+    }
+
+    await linkCurriculumPdfUpload({
+      studentProfileId,
+      academicArtifactId: artifact.academic_artifact_id,
+      curriculumSource: "artifact_pdf",
+    });
+
+    return json(res, 200, {
+      ok: true,
+      message: "Curriculum PDF linked to this student record",
+    });
+  } catch (error: any) {
+    if (error?.message === "UNAUTHENTICATED") {
+      return unauthorized(res);
+    }
+    throw error;
+  }
+}
+
+export async function curriculumCoachReviewRoute(req: IncomingMessage, res: ServerResponse) {
+  try {
+    const { ctx, studentProfileId } = await resolveAcademicStudentScope(req);
+    if (!studentProfileId) {
+      return badRequest(res, "No student profile could be resolved for the authenticated user");
+    }
+    if (!canCoachReviewCurriculum(ctx.authenticatedRoleType)) {
+      return forbidden(res, "This role cannot save a coach curriculum review");
+    }
+
+    const curriculum = await buildCurriculumReviewPayload(
+      studentProfileId,
+      ctx.authenticatedRoleType
+    );
+    if (curriculum.verification.effectiveStatus === "missing") {
+      return badRequest(res, "Curriculum information must exist before a coach review can be saved");
+    }
+
+    const reviewedAt = await saveCoachCurriculumReview({
+      studentProfileId,
+      userId: ctx.authenticatedUserId,
+      curriculumSource: curriculum.summary.sourceProvenance,
+    });
+
+    return json(res, 200, {
+      ok: true,
+      reviewedAt,
+      message: "Coach curriculum review saved",
     });
   } catch (error: any) {
     if (error?.message === "UNAUTHENTICATED") {

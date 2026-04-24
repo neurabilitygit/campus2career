@@ -1,4 +1,7 @@
-import type { RequirementSetProvenanceMethod } from "../contracts/academic";
+import type {
+  CurriculumVerificationStatus,
+  RequirementSetProvenanceMethod,
+} from "../contracts/academic";
 import type { StudentOutcomeSummary } from "../contracts/outcomes";
 import type {
   ConfidenceLabel,
@@ -207,6 +210,15 @@ export interface RequirementProgressSummary {
   nonCourseRequirementItemCount: number;
   excludedRequirementGroupCount: number;
   coverageNotes?: string[];
+  curriculumVerificationStatus?: CurriculumVerificationStatus;
+  curriculumVerifiedAt?: string | null;
+  curriculumVerifiedByUserId?: string | null;
+  curriculumVerificationNotes?: string | null;
+  curriculumRequestedAt?: string | null;
+  curriculumRequestedByUserId?: string | null;
+  curriculumPdfUploadId?: string | null;
+  coachReviewedAt?: string | null;
+  coachReviewedByUserId?: string | null;
 }
 
 export interface TargetResolutionSummary {

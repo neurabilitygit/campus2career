@@ -8,8 +8,10 @@ import { SectionCard } from "../layout/SectionCard";
 import { KeyValueList } from "../layout/KeyValueList";
 import { RequireRole } from "../RequireRole";
 import { FieldInfoLabel } from "../forms/FieldInfoLabel";
+import { CurriculumVerificationSection } from "../academic/CurriculumVerificationSection";
 import { useApiData } from "../../hooks/useApiData";
 import { apiFetch } from "../../lib/apiClient";
+import { useSaveNavigation } from "../../lib/saveNavigation";
 
 type MappingDiagnosticsResponse = {
   ok?: boolean;
@@ -168,6 +170,7 @@ function buildWorkspaceUrl(studentProfileId?: string | null) {
 export default function CoachDashboardView() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const saveNavigation = useSaveNavigation();
   const [nonce, setNonce] = useState(0);
   const [rosterSearch, setRosterSearch] = useState("");
   const [actionState, setActionState] = useState<{ saving: boolean; sending: boolean; error: string | null; success: string | null }>({
@@ -257,7 +260,7 @@ export default function CoachDashboardView() {
       });
       reset?.();
       setActionState({ saving: false, sending: false, error: null, success });
-      setNonce((value) => value + 1);
+      saveNavigation.reloadAfterSave();
     } catch (error) {
       setActionState({
         saving: false,
@@ -372,7 +375,8 @@ export default function CoachDashboardView() {
           </div>
         </SectionCard>
 
-        <SectionCard title={`${selectedName} review workspace`} subtitle="Use this to prepare for the next session without rebuilding the picture by hand.">
+        <div data-intro-target="dashboard-overview">
+          <SectionCard title={`${selectedName} review workspace`} subtitle="Use this to prepare for the next session without rebuilding the picture by hand.">
           {workspace.loading ? <p>Loading coach workspace...</p> : null}
           {workspace.error ? <p style={{ color: "crimson" }}>{workspace.error}</p> : null}
           {!workspace.loading && !workspace.error && !workspaceData ? (
@@ -380,7 +384,7 @@ export default function CoachDashboardView() {
           ) : null}
           {!workspace.loading && !workspace.error && workspaceData ? (
             <div style={{ display: "grid", gap: 16 }}>
-              <div className="ui-summary-grid">
+              <div className="ui-summary-grid" data-intro-target="readiness-score">
                 {[
                   {
                     label: "Active student",
@@ -478,11 +482,13 @@ export default function CoachDashboardView() {
               ) : null}
             </div>
           ) : null}
-        </SectionCard>
+          </SectionCard>
+        </div>
 
         {workspaceData ? (
           <>
-            <SectionCard title="Create coach records" subtitle="Capture what changed, what matters, and what should happen next.">
+            <div data-intro-target="next-actions">
+              <SectionCard title="Create coach records" subtitle="Capture what changed, what matters, and what should happen next.">
               <div style={{ display: "grid", gap: 16 }}>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16 }}>
                   <details open>
@@ -1004,9 +1010,18 @@ export default function CoachDashboardView() {
                 {actionState.error ? <p style={{ color: "crimson", margin: 0 }}>{actionState.error}</p> : null}
                 {actionState.success ? <p style={{ color: "#166534", margin: 0 }}>{actionState.success}</p> : null}
               </div>
-            </SectionCard>
+        </SectionCard>
 
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16 }}>
+        {workspaceData ? (
+          <CurriculumVerificationSection
+            title="Degree Requirements Review"
+            subtitle={`Review ${selectedName}'s curriculum source and completeness before treating scoring as authoritative.`}
+            subjectLabel={selectedName}
+            selectedStudentProfileId={selectedStudentProfileId}
+          />
+        ) : null}
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16 }}>
               <SectionCard title="Recommendations" tone="quiet">
                 {workspaceData.recommendations.length ? (
                   <div style={{ display: "grid", gap: 10 }}>
@@ -1111,7 +1126,8 @@ export default function CoachDashboardView() {
               ) : (
                 <p style={{ margin: 0, color: "#64748b" }}>No outbound drafts are saved for this student yet.</p>
               )}
-            </SectionCard>
+              </SectionCard>
+            </div>
           </>
         ) : null}
 

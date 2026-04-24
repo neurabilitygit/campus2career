@@ -16,6 +16,7 @@ import type {
 } from "../../../../../packages/shared/src/contracts/profile";
 import { neurodivergentCategoryOptions } from "../../../../../packages/shared/src/contracts/profile";
 import { buildDirectAddressName } from "../../lib/personalization";
+import { useSaveNavigation } from "../../lib/saveNavigation";
 
 const inputStyle: React.CSSProperties = {
   width: "100%",
@@ -46,6 +47,7 @@ function commaSeparatedValues(value: string) {
 }
 
 function StudentProfileEditor() {
+  const saveNavigation = useSaveNavigation();
   const data = useApiData<ProfileResponse<StudentEditableProfile>>("/students/me/account-profile", true);
   const auth = useAuthContext();
   const [form, setForm] = useState({
@@ -106,7 +108,7 @@ function StudentProfileEditor() {
           personalChoices: form.personalChoices || null,
         }),
       });
-      setStatus("Profile saved.");
+      saveNavigation.returnAfterSave("/student");
     } catch (saveError: any) {
       setError(saveError?.message || "Could not save the profile.");
     }
@@ -297,6 +299,7 @@ function StudentProfileEditor() {
 }
 
 function ParentProfileEditor() {
+  const saveNavigation = useSaveNavigation();
   const data = useApiData<ProfileResponse<ParentEditableProfile>>("/parents/me/profile", true);
   const [form, setForm] = useState({
     fullName: "",
@@ -342,7 +345,7 @@ function ParentProfileEditor() {
         method: "POST",
         body: JSON.stringify(form),
       });
-      setStatus("Profile saved.");
+      saveNavigation.returnAfterSave("/parent");
     } catch (saveError: any) {
       setError(saveError?.message || "Could not save the profile.");
     }
@@ -509,6 +512,7 @@ function ParentProfileEditor() {
 }
 
 function CoachProfileEditor() {
+  const saveNavigation = useSaveNavigation();
   const data = useApiData<ProfileResponse<CoachEditableProfile>>("/coaches/me/profile", true);
   const [form, setForm] = useState({
     fullName: "",
@@ -551,7 +555,7 @@ function CoachProfileEditor() {
           communicationPreferences: form.communicationPreferences || null,
         }),
       });
-      setStatus("Profile saved.");
+      saveNavigation.returnAfterSave("/coach");
     } catch (saveError: any) {
       setError(saveError?.message || "Could not save the profile.");
     }

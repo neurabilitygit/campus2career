@@ -2,12 +2,17 @@
 
 export function KeyValueList(props: {
   items: Array<{ label: string; value: React.ReactNode }>;
+  columns?: number;
 }) {
   return (
     <div
       style={{
         display: "grid",
         gap: 12,
+        gridTemplateColumns:
+          props.columns && props.columns > 1
+            ? `repeat(${props.columns}, minmax(0, 1fr))`
+            : undefined,
       }}
     >
       {props.items.map((item, idx) => (
