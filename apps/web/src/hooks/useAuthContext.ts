@@ -3,14 +3,29 @@
 import { useApiData } from "./useApiData";
 import { useSession } from "./useSession";
 import type { TestContextRole } from "../lib/testContext";
+import type { CapabilityKey, Persona } from "../../../../packages/shared/src/capabilities";
 
 export type AuthContextResponse = {
   authenticated?: boolean;
   context?: {
+    authenticatedUserId?: string;
     authenticatedRoleType?: "student" | "parent" | "coach" | "admin";
+    primaryPersona?: Persona;
     householdId?: string | null;
     studentProfileId?: string | null;
     studentUserId?: string | null;
+    accountStatus?: string;
+    authProvider?: string | null;
+    isSuperAdmin?: boolean;
+    effectiveCapabilities?: CapabilityKey[];
+    deniedCapabilities?: CapabilityKey[];
+    activeMemberships?: Array<{
+      householdId: string;
+      householdName?: string | null;
+      roleInHousehold: string;
+      membershipStatus: string;
+      isPrimary: boolean;
+    }>;
     email?: string;
     authenticatedFirstName?: string | null;
     authenticatedLastName?: string | null;

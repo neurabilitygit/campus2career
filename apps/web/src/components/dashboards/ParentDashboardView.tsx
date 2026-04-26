@@ -13,6 +13,8 @@ import { formatNamedReference } from "../../lib/personalization";
 import { apiFetch } from "../../lib/apiClient";
 import { OutcomeTrackingSection } from "../outcomes/OutcomeTrackingSection";
 import { VisibleCoachFeedSection } from "../coach/VisibleCoachFeedSection";
+import { ActiveCareerScenarioBanner } from "../career/ActiveCareerScenarioBanner";
+import { CareerScenarioComparisonSnapshot } from "../career/CareerScenarioComparisonSnapshot";
 
 type TrajectoryStatus = "on_track" | "watch" | "at_risk";
 type RoleType = "parent" | "coach" | "student" | "admin";
@@ -74,6 +76,41 @@ type BriefResponse = {
     studentProfileId?: string | null;
     householdId?: string | null;
   };
+};
+
+type CommunicationSummaryResponse = {
+  summary?: {
+    frictionSignals?: string[];
+    sharedThemes?: string[];
+    recentTranslationActivity?: {
+      createdAt?: string | null;
+    } | null;
+  };
+  completion?: {
+    parent?: { completionPercent: number };
+    student?: { completionPercent: number };
+  };
+};
+
+type CareerScenarioActiveResponse = {
+  ok: boolean;
+  activeScenario?: {
+    careerScenarioId: string;
+    scenarioName: string;
+    status: string;
+    targetRole?: string | null;
+    targetProfession?: string | null;
+    lastRunAt?: string | null;
+    actionItems?: Array<{
+      title: string;
+      rationale?: string | null;
+      priority?: string;
+    }>;
+    analysisResult?: {
+      scenarioSpecificActions?: string[];
+      recommendedActions?: string[];
+    } | null;
+  } | null;
 };
 
 const statusTone: Record<TrajectoryStatus, { label: string; accent: string; background: string; description: string }> = {
@@ -236,6 +273,8 @@ function BulletList(props: {
 export default function ParentDashboardView() {
   const auth = useAuthContext();
   const scoring = useApiData<ScoringResponse>("/students/me/scoring");
+  const activeCareerScenario = useApiData<CareerScenarioActiveResponse>("/parents/me/career-scenarios/active");
+  const communicationSummary = useApiData<CommunicationSummaryResponse>("/communication/summary");
   const [briefRefresh, setBriefRefresh] = useState(0);
   const [generateBusy, setGenerateBusy] = useState(false);
   const [generateError, setGenerateError] = useState<string | null>(null);
@@ -307,6 +346,22 @@ export default function ParentDashboardView() {
       subtitle={`See ${studentPossessive} direction, current level of risk, and the most helpful ways to support progress without overload.`}
     >
       <RequireRole expectedRoles={["parent", "admin"]} fallbackTitle="Parent sign-in required">
+        <ActiveCareerScenarioBanner
+          scenario={activeCareerScenario.data?.activeScenario}
+          linkHref="/career-scenarios"
+          missingFallback="Create a Career Goal to see job-specific readiness guidance instead of only the broad general dashboard."
+        />
+
+        <CareerScenarioComparisonSnapshot
+          activeScenarioId={activeCareerScenario.data?.activeScenario?.careerScenarioId}
+          listPath="/parents/me/career-scenarios"
+          buildItemPath={(careerScenarioId) =>
+            `/parents/me/career-scenarios/item?careerScenarioId=${encodeURIComponent(careerScenarioId)}`
+          }
+          linkHref="/career-scenarios"
+          subjectLabel={studentLabel}
+        />
+
         <div data-intro-target="dashboard-overview">
           <ParentNarrative
             scoring={scoring.data?.scoring}
@@ -341,23 +396,34 @@ export default function ParentDashboardView() {
             }}
           >
             <Link
-              href="/parent/communication"
+              href="/communication?section=translator"
               className="ui-feature-link-card"
             >
               <strong style={{ display: "block", fontSize: 18 }}>Open communication workspace</strong>
               <p style={{ margin: "8px 0 0", color: "#52657d", lineHeight: 1.6 }}>
-                Capture concerns, generate a translation strategy, and save a reviewable message draft.
+                Translate a concern, review gentler phrasing, and keep family communication lower-friction.
               </p>
             </Link>
             <Link
-              href="/parent/onboarding"
+              href="/communication?section=profile"
               className="ui-feature-link-card"
             >
-              <strong style={{ display: "block", fontSize: 18 }}>Set parent communication baseline</strong>
+              <strong style={{ display: "block", fontSize: 18 }}>Grow communication context</strong>
               <p style={{ margin: "8px 0 0", color: "#52657d", lineHeight: 1.6 }}>
-                Tell the system what tends not to work so translation starts from a calmer family context.
+                Add family context, friction cues, and communication patterns so future messaging lands better.
               </p>
             </Link>
+            <div className="ui-feature-link-card">
+              <strong style={{ display: "block", fontSize: 18 }}>Communication profile progress</strong>
+              <p style={{ margin: "8px 0 0", color: "#52657d", lineHeight: 1.6 }}>
+                Parent profile {communicationSummary.data?.completion?.parent?.completionPercent ?? 0}% complete · Student preferences {communicationSummary.data?.completion?.student?.completionPercent ?? 0}% complete.
+              </p>
+              {(communicationSummary.data?.summary?.frictionSignals || []).length ? (
+                <p style={{ margin: "8px 0 0", color: "#334155", lineHeight: 1.6 }}>
+                  Top friction signal: {communicationSummary.data?.summary?.frictionSignals?.[0]}
+                </p>
+              ) : null}
+            </div>
           </div>
         </SectionCard>
 

@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { z } from "zod";
+import { withTransaction } from "../db/client";
 import { resolveRequestContext } from "../services/auth/resolveRequestContext";
 import { readJsonBody } from "../utils/body";
 import { badRequest, json, unauthorized } from "../utils/http";
@@ -10,6 +11,7 @@ import { StudentReadRepository } from "../repositories/student/studentReadReposi
 import { ArtifactRepository } from "../repositories/student/artifactRepository";
 import { createSignedUploadTarget, verifyStorageObjectExists } from "../services/storage/supabaseStorage";
 import { persistArtifactAndQueueParse } from "../services/student/artifactIntake";
+import { careerScenarioService } from "../services/career/careerScenarioService";
 import { runScoring } from "../services/scoring";
 import { finalizeOnboardingAndDiagnostic } from "../services/student/diagnosticService";
 import { buildStudentScoringInput } from "../services/student/aggregateStudentContext";
@@ -18,6 +20,15 @@ const repo = new StudentWriteRepository();
 const onboardingRepo = new OnboardingRepository();
 const studentReadRepo = new StudentReadRepository();
 const artifactRepo = new ArtifactRepository();
+export const studentWriteRouteDeps = {
+  artifactRepo,
+  onboardingRepo,
+  repo,
+  resolveRequestContext,
+  verifyStorageObjectExists,
+  persistArtifactAndQueueParse,
+  withTransaction,
+};
 const allowedArtifactTypes = [
   "resume",
   "transcript",
@@ -267,7 +278,7 @@ export function validateUploadSourceFile(input: {
 
 export async function studentProfileUpsertRoute(req: IncomingMessage, res: ServerResponse) {
   try {
-    const ctx = await resolveRequestContext(req);
+    const ctx = await studentWriteRouteDeps.resolveRequestContext(req);
     if (ctx.authenticatedRoleType !== "student" && ctx.authenticatedRoleType !== "admin") {
       return unauthorized(res);
     }
@@ -288,23 +299,33 @@ export async function studentProfileUpsertRoute(req: IncomingMessage, res: Serve
     const studentProfileId =
       ctx.studentProfileId || stableId("student_profile", ctx.authenticatedUserId);
 
-    await repo.upsertStudentProfile({
-      studentProfileId,
-      userId: ctx.studentUserId || ctx.authenticatedUserId,
-      householdId: ctx.householdId,
-      schoolName: normalizeOptionalText(body.schoolName),
-      expectedGraduationDate: normalizeOptionalDate(body.expectedGraduationDate),
-      majorPrimary: normalizeOptionalText(body.majorPrimary),
-      majorSecondary: normalizeOptionalText(body.majorSecondary),
-      preferredGeographies: body.preferredGeographies,
-      careerGoalSummary: normalizeOptionalText(body.careerGoalSummary),
-      academicNotes: normalizeOptionalText(body.academicNotes),
-    });
+    await studentWriteRouteDeps.withTransaction(async (tx) => {
+      await studentWriteRouteDeps.repo.upsertStudentProfile(
+        {
+          studentProfileId,
+          userId: ctx.studentUserId || ctx.authenticatedUserId,
+          householdId: ctx.householdId,
+          schoolName: normalizeOptionalText(body.schoolName),
+          expectedGraduationDate: normalizeOptionalDate(body.expectedGraduationDate),
+          majorPrimary: normalizeOptionalText(body.majorPrimary),
+          majorSecondary: normalizeOptionalText(body.majorSecondary),
+          preferredGeographies: body.preferredGeographies,
+          careerGoalSummary: normalizeOptionalText(body.careerGoalSummary),
+          academicNotes: normalizeOptionalText(body.academicNotes),
+        },
+        tx
+      );
 
-    await ensureOnboardingState(studentProfileId);
-    await onboardingRepo.updateFlags(studentProfileId, {
-      profile_completed: true,
+      await onboardingRepo.ensureState(studentProfileId, stableId("onboarding_state", studentProfileId), tx);
+      await onboardingRepo.updateFlags(
+        studentProfileId,
+        {
+          profile_completed: true,
+        },
+        tx
+      );
     });
+    await careerScenarioService.markStudentScenariosNeedsRerun(studentProfileId);
 
     return json(res, 200, {
       ok: true,
@@ -325,7 +346,7 @@ export async function studentProfileUpsertRoute(req: IncomingMessage, res: Serve
 
 export async function studentProfileReadRoute(req: IncomingMessage, res: ServerResponse) {
   try {
-    const ctx = await resolveRequestContext(req);
+    const ctx = await studentWriteRouteDeps.resolveRequestContext(req);
     if (ctx.authenticatedRoleType !== "student" && ctx.authenticatedRoleType !== "admin") {
       return unauthorized(res);
     }
@@ -370,6 +391,7 @@ export async function sectorSelectionRoute(req: IncomingMessage, res: ServerResp
     await onboardingRepo.updateFlags(ctx.studentProfileId, {
       sectors_completed: selections.length > 0,
     });
+    await careerScenarioService.markStudentScenariosNeedsRerun(ctx.studentProfileId);
 
     return json(res, 200, {
       ok: true,
@@ -500,7 +522,7 @@ export async function deadlineCreateRoute(req: IncomingMessage, res: ServerRespo
 
 export async function uploadPresignRoute(req: IncomingMessage, res: ServerResponse) {
   try {
-    const ctx = await resolveRequestContext(req);
+    const ctx = await studentWriteRouteDeps.resolveRequestContext(req);
     if (!ctx.studentProfileId) {
       return badRequest(res, "No student profile resolved");
     }
@@ -545,7 +567,7 @@ export async function uploadPresignRoute(req: IncomingMessage, res: ServerRespon
       upsert: false,
     });
 
-    await artifactRepo.upsertUploadTarget({
+    await studentWriteRouteDeps.artifactRepo.upsertUploadTarget({
       uploadTargetId: stableId("upload_target", `${ctx.studentProfileId}:${objectPath}`),
       studentProfileId: ctx.studentProfileId,
       artifactType: body.artifactType,
@@ -571,7 +593,7 @@ export async function uploadPresignRoute(req: IncomingMessage, res: ServerRespon
 
 export async function uploadCompleteRoute(req: IncomingMessage, res: ServerResponse) {
   try {
-    const ctx = await resolveRequestContext(req);
+    const ctx = await studentWriteRouteDeps.resolveRequestContext(req);
     if (!ctx.studentProfileId) {
       return badRequest(res, "No student profile resolved");
     }
@@ -604,7 +626,7 @@ export async function uploadCompleteRoute(req: IncomingMessage, res: ServerRespo
       throw error;
     }
 
-    const uploadTarget = await artifactRepo.getUploadTargetByObjectPath(
+    const uploadTarget = await studentWriteRouteDeps.artifactRepo.getUploadTargetByObjectPath(
       ctx.studentProfileId,
       body.objectPath
     );
@@ -628,7 +650,7 @@ export async function uploadCompleteRoute(req: IncomingMessage, res: ServerRespo
       );
     }
 
-    const objectExists = await verifyStorageObjectExists({
+    const objectExists = await studentWriteRouteDeps.verifyStorageObjectExists({
       bucket: uploadTarget.bucket,
       path: body.objectPath,
     });
@@ -639,12 +661,19 @@ export async function uploadCompleteRoute(req: IncomingMessage, res: ServerRespo
       );
     }
 
-    const result = await persistArtifactAndQueueParse({
-      studentProfileId: ctx.studentProfileId,
-      artifactType: body.artifactType,
-      objectPath: body.objectPath,
+    const result = await studentWriteRouteDeps.withTransaction(async (tx) => {
+      const persisted = await studentWriteRouteDeps.persistArtifactAndQueueParse(
+        {
+          studentProfileId: ctx.studentProfileId!,
+          artifactType: body.artifactType,
+          objectPath: body.objectPath,
+        },
+        tx
+      );
+      await studentWriteRouteDeps.artifactRepo.markUploadTargetConsumed(uploadTarget.upload_target_id, tx);
+      return persisted;
     });
-    await artifactRepo.markUploadTargetConsumed(uploadTarget.upload_target_id);
+    await careerScenarioService.markStudentScenariosNeedsRerun(ctx.studentProfileId);
 
     return json(res, 200, {
       ok: true,

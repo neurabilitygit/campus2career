@@ -1,6 +1,7 @@
 import http from "node:http";
 import { router } from "./server";
 import { isAppError, toAppErrorResponse } from "./utils/appError";
+import { shouldLogServerError } from "./utils/errorLogging";
 
 const port = Number(process.env.PORT || 8080);
 
@@ -8,7 +9,9 @@ const server = http.createServer(async (req, res) => {
   try {
     await router(req, res);
   } catch (error) {
-    console.error("Unhandled API error", error);
+    if (shouldLogServerError(error)) {
+      console.error("Unhandled API error", error);
+    }
     res.setHeader("content-type", "application/json");
     if (isAppError(error)) {
       res.statusCode = error.status;

@@ -95,8 +95,8 @@
         "University of Chicago"
       ],
       "websiteUrl": "https://www.uchicago.edu/",
-      "officialProgramsUrl": "https://collegecatalog.uchicago.edu/thecollege/programsofstudy/",
-      "officialCatalogUrl": "https://collegecatalog.uchicago.edu/thecollege/",
+      "officialProgramsUrl": "http://collegecatalog.uchicago.edu/thecollege/programsofstudy/",
+      "officialCatalogUrl": "http://collegecatalog.uchicago.edu/thecollege/",
       "tags": [
         "top50",
         "us-news",
@@ -223,8 +223,8 @@
         "Dartmouth College"
       ],
       "websiteUrl": "https://dartmouth.edu/",
-      "officialProgramsUrl": "https://home.dartmouth.edu/academics/programs-study",
-      "officialCatalogUrl": "https://dartmouth.smartcatalogiq.com/",
+      "officialProgramsUrl": "https://dartmouth.smartcatalogiq.com/en/current/orc/departments-programs-undergraduate/",
+      "officialCatalogUrl": "https://dartmouth.smartcatalogiq.com/en/current/orc/",
       "tags": [
         "top50",
         "us-news",
@@ -287,7 +287,7 @@
         "University of California, Los Angeles"
       ],
       "websiteUrl": "https://www.ucla.edu/",
-      "officialProgramsUrl": "https://admission.ucla.edu/academics/majors",
+      "officialProgramsUrl": "https://catalog.registrar.ucla.edu/",
       "officialCatalogUrl": "https://catalog.registrar.ucla.edu/",
       "tags": [
         "top50",
@@ -447,7 +447,7 @@
         "University of Southern California"
       ],
       "websiteUrl": "https://www.usc.edu/",
-      "officialProgramsUrl": "https://admission.usc.edu/prospective-students/academics/",
+      "officialProgramsUrl": "https://catalogue.usc.edu/content.php?catoid=21&navoid=8873",
       "officialCatalogUrl": "https://catalogue.usc.edu/",
       "tags": [
         "top50",
@@ -463,7 +463,7 @@
         "University of California, San Diego"
       ],
       "websiteUrl": "https://ucsd.edu/",
-      "officialProgramsUrl": "https://catalog.ucsd.edu/front/courses.html",
+      "officialProgramsUrl": "https://catalog.ucsd.edu/undergraduate/degrees-offered/index.html",
       "officialCatalogUrl": "https://catalog.ucsd.edu/",
       "tags": [
         "top50",
@@ -527,7 +527,7 @@
         "New York University"
       ],
       "websiteUrl": "https://www.nyu.edu/",
-      "officialProgramsUrl": "https://www.nyu.edu/admissions/undergraduate-admissions/academics.html",
+      "officialProgramsUrl": "https://bulletins.nyu.edu/undergraduate/",
       "officialCatalogUrl": "https://bulletins.nyu.edu/",
       "tags": [
         "top50",
@@ -543,7 +543,7 @@
         "University of California, Davis"
       ],
       "websiteUrl": "https://www.ucdavis.edu/",
-      "officialProgramsUrl": "https://catalog.ucdavis.edu/academic-programs/",
+      "officialProgramsUrl": "https://catalog.ucdavis.edu/departments-programs-degrees/",
       "officialCatalogUrl": "https://catalog.ucdavis.edu/",
       "tags": [
         "top50",
@@ -559,7 +559,7 @@
         "University of California, Irvine"
       ],
       "websiteUrl": "https://uci.edu/",
-      "officialProgramsUrl": "https://catalogue.uci.edu/undergraduate/",
+      "officialProgramsUrl": "https://catalogue.uci.edu/undergraduatedegrees/",
       "officialCatalogUrl": "https://catalogue.uci.edu/",
       "tags": [
         "top50",
@@ -639,8 +639,8 @@
         "University of California, Santa Barbara"
       ],
       "websiteUrl": "https://www.ucsb.edu/",
-      "officialProgramsUrl": "https://my.sa.ucsb.edu/catalog/Current/CollegesDepartments/ls-intro/ls-depts-and-majors",
-      "officialCatalogUrl": "https://my.sa.ucsb.edu/catalog/Current/",
+      "officialProgramsUrl": "https://catalog.ucsb.edu/programs",
+      "officialCatalogUrl": "https://catalog.ucsb.edu/",
       "tags": [
         "top50",
         "us-news",
@@ -671,7 +671,7 @@
         "Boston University"
       ],
       "websiteUrl": "https://www.bu.edu/",
-      "officialProgramsUrl": "https://www.bu.edu/academics/",
+      "officialProgramsUrl": "https://www.bu.edu/academics/degree-programs/",
       "officialCatalogUrl": "https://www.bu.edu/academics/",
       "tags": [
         "top50",
@@ -687,8 +687,8 @@
         "Rutgers University-New Brunswick"
       ],
       "websiteUrl": "https://newbrunswick.rutgers.edu/",
-      "officialProgramsUrl": "https://newbrunswick.rutgers.edu/academics/undergraduate/majors",
-      "officialCatalogUrl": "https://catalogs.rutgers.edu/generated/nb-ug_current/",
+      "officialProgramsUrl": "https://newbrunswick-undergrad-25-26.catalogs.rutgers.edu/",
+      "officialCatalogUrl": "https://newbrunswick-undergrad-25-26.catalogs.rutgers.edu/",
       "tags": [
         "top50",
         "us-news",
@@ -703,7 +703,7 @@
         "University of Maryland, College Park"
       ],
       "websiteUrl": "https://umd.edu/",
-      "officialProgramsUrl": "https://academiccatalog.umd.edu/undergraduate/fields-study/",
+      "officialProgramsUrl": "https://academiccatalog.umd.edu/undergraduate/programs/",
       "officialCatalogUrl": "https://academiccatalog.umd.edu/",
       "tags": [
         "top50",
@@ -719,7 +719,7 @@
         "University of Washington"
       ],
       "websiteUrl": "https://www.washington.edu/",
-      "officialProgramsUrl": "https://admit.washington.edu/academics/majors/",
+      "officialProgramsUrl": "https://www.washington.edu/students/gencat/degree_programs.html",
       "officialCatalogUrl": "https://www.washington.edu/students/gencat/",
       "tags": [
         "top50",
@@ -735,7 +735,7 @@
         "Lehigh University"
       ],
       "websiteUrl": "https://www.lehigh.edu/",
-      "officialProgramsUrl": "https://catalog.lehigh.edu/coursesprogramsandcurricula/",
+      "officialProgramsUrl": "https://catalog.lehigh.edu/programsandmajors/",
       "officialCatalogUrl": "https://catalog.lehigh.edu/",
       "tags": [
         "top50",
@@ -751,7 +751,7 @@
         "Northeastern University"
       ],
       "websiteUrl": "https://www.northeastern.edu/",
-      "officialProgramsUrl": "https://admissions.northeastern.edu/academics/majors/",
+      "officialProgramsUrl": "https://catalog.northeastern.edu/undergraduate/",
       "officialCatalogUrl": "https://catalog.northeastern.edu/",
       "tags": [
         "top50",

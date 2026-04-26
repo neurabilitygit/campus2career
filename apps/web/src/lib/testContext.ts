@@ -18,6 +18,26 @@ export function getStoredTestContextRole(): TestContextRole | null {
   return isTestContextRole(value) ? value : null;
 }
 
+export function inferTestContextRoleFromPath(pathname: string | null | undefined): TestContextRole | null {
+  if (!pathname) {
+    return null;
+  }
+
+  if (pathname === "/student" || pathname.startsWith("/student/")) {
+    return "student";
+  }
+
+  if (pathname === "/parent" || pathname.startsWith("/parent/")) {
+    return "parent";
+  }
+
+  if (pathname === "/coach" || pathname.startsWith("/coach/")) {
+    return "coach";
+  }
+
+  return null;
+}
+
 export function setStoredTestContextRole(role: TestContextRole | null) {
   if (typeof window === "undefined") {
     return;

@@ -85,6 +85,63 @@ export type CommunicationAuditEventType =
   | "delivery_blocked"
   | "delivery_mocked";
 
+export type CommunicationActorRole = "student" | "parent" | "coach" | "admin" | "system";
+
+export type CommunicationVisibilityScope =
+  | "private_to_user"
+  | "visible_to_household_admin"
+  | "visible_to_student"
+  | "visible_to_parent"
+  | "visible_to_coach"
+  | "visible_to_system_only"
+  | "shared_summary_only";
+
+export type CommunicationSensitivityLevel = "low" | "medium" | "high";
+
+export type CommunicationPromptStatus =
+  | "unanswered"
+  | "answered"
+  | "skipped"
+  | "revisit_later";
+
+export type CommunicationPromptAudience = "parent" | "student";
+
+export type CommunicationTranslationGoal =
+  | "clarify"
+  | "reduce_friction"
+  | "reminder"
+  | "check_in"
+  | "boundary_setting"
+  | "status_update"
+  | "encouragement";
+
+export type CommunicationFeedbackRating =
+  | "helpful"
+  | "not_helpful"
+  | "too_direct"
+  | "too_soft"
+  | "missed_the_point"
+  | "made_it_worse"
+  | "other";
+
+export type CommunicationLearningEventType =
+  | "translation_feedback"
+  | "prompt_answered"
+  | "prompt_skipped"
+  | "prompt_revisit_requested"
+  | "summary_generated";
+
+export type CommunicationInferredInsightType =
+  | "tone_preference"
+  | "reminder_pattern"
+  | "friction_pattern"
+  | "support_pattern";
+
+export type CommunicationInferredInsightStatus =
+  | "pending_review"
+  | "confirmed"
+  | "rejected";
+
 export interface StudentCommunicationPreferencesRecord {
   studentProfileId: string;
   preferredChannels: CommunicationChannel[];
@@ -196,4 +253,127 @@ export interface CommunicationAuditLogRecord {
   eventSummary: string;
   eventPayload?: unknown;
   createdAt?: string;
+}
+
+export interface CommunicationProfileRecord {
+  communicationProfileId: string;
+  householdId?: string | null;
+  studentProfileId: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface ParentCommunicationInputRecord {
+  parentCommunicationInputId: string;
+  communicationProfileId: string;
+  parentUserId: string;
+  category: string;
+  promptKey: string;
+  questionText: string;
+  responseText: string;
+  sensitivityLevel: CommunicationSensitivityLevel;
+  visibilityScope: CommunicationVisibilityScope;
+  confidenceLevel: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface StudentCommunicationInputRecord {
+  studentCommunicationInputId: string;
+  communicationProfileId: string;
+  studentUserId: string;
+  category: string;
+  promptKey: string;
+  questionText: string;
+  responseText: string;
+  sensitivityLevel: CommunicationSensitivityLevel;
+  visibilityScope: CommunicationVisibilityScope;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CommunicationTranslationEventRecord {
+  communicationTranslationEventId: string;
+  communicationProfileId: string;
+  sourceRole: Exclude<CommunicationActorRole, "system" | "admin">;
+  targetRole: Exclude<CommunicationActorRole, "system" | "admin">;
+  originalText: string;
+  translatedText: string;
+  translationGoal: CommunicationTranslationGoal;
+  tone: CommunicationTone | null;
+  contextUsedJson?: unknown;
+  structuredResultJson?: unknown;
+  feedbackRating?: CommunicationFeedbackRating | null;
+  feedbackNotes?: string | null;
+  createdByUserId: string;
+  createdAt?: string;
+}
+
+export interface CommunicationPromptProgressRecord {
+  communicationPromptProgressId: string;
+  communicationProfileId: string;
+  userId: string;
+  role: CommunicationPromptAudience;
+  promptKey: string;
+  status: CommunicationPromptStatus;
+  lastPromptedAt?: string | null;
+  answeredAt?: string | null;
+  updatedAt?: string;
+}
+
+export interface CommunicationLearningEventRecord {
+  communicationLearningEventId: string;
+  communicationProfileId: string;
+  eventType: CommunicationLearningEventType;
+  sourceRole: CommunicationActorRole;
+  signalJson?: unknown;
+  interpretationJson?: unknown;
+  createdAt?: string;
+}
+
+export interface CommunicationInferredInsightRecord {
+  communicationInferredInsightId: string;
+  communicationProfileId: string;
+  insightKey: string;
+  insightType: CommunicationInferredInsightType;
+  title: string;
+  summaryText: string;
+  evidenceJson?: unknown;
+  confidenceLabel: "low" | "medium" | "high";
+  status: CommunicationInferredInsightStatus;
+  reviewedByUserId?: string | null;
+  reviewedAt?: string | null;
+  reviewNotes?: string | null;
+  lastDerivedAt?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CommunicationAnalyticsSummary {
+  promptStats: {
+    parent: {
+      answered: number;
+      skipped: number;
+      revisitLater: number;
+      totalPrompts: number;
+    };
+    student: {
+      answered: number;
+      skipped: number;
+      revisitLater: number;
+      totalPrompts: number;
+    };
+  };
+  translationStats: {
+    totalTranslations: number;
+    feedbackCount: number;
+    latestCreatedAt: string | null;
+  };
+  feedbackBreakdown: Record<CommunicationFeedbackRating, number>;
+  topPromptSignals: Array<{
+    promptKey: string;
+    audience: CommunicationPromptAudience;
+    status: CommunicationPromptStatus;
+    count: number;
+  }>;
 }

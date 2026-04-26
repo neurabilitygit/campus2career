@@ -1,4 +1,4 @@
-import { query } from "../../db/client";
+import { executeQuery, query, type DbExecutor } from "../../db/client";
 
 export interface UpsertStudentProfileInput {
   studentProfileId: string;
@@ -84,8 +84,9 @@ export interface CreateInsightInput {
 }
 
 export class StudentWriteRepository {
-  async upsertStudentProfile(input: UpsertStudentProfileInput): Promise<void> {
-    await query(
+  async upsertStudentProfile(input: UpsertStudentProfileInput, executor?: DbExecutor): Promise<void> {
+    await executeQuery(
+      executor,
       `
       insert into student_profiles (
         student_profile_id,

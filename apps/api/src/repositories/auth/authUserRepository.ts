@@ -8,10 +8,63 @@ export interface UpsertUserInput {
   lastName?: string | null;
   preferredName?: string | null;
   roleType?: "student" | "parent" | "coach" | "admin";
+  authProvider?: string | null;
 }
 
 export class AuthUserRepository {
-  async upsertUserFromAuth(input: UpsertUserInput): Promise<void> {
+  async upsertUserFromAuth(input: UpsertUserInput): Promise<string> {
+    const normalizedEmail = input.email.trim().toLowerCase();
+    const isEricBass =
+      normalizedEmail === "eric.bassman@gmail.com" ||
+      `${input.firstName || ""} ${input.lastName || ""}`.trim().toLowerCase() === "eric bass";
+    const resolvedRoleType = isEricBass ? "admin" : input.roleType || "student";
+    const defaultAccountStatus = isEricBass ? "active" : "pending_setup";
+    const existingByEmail = await query<{ userId: string }>(
+      `
+      select user_id as "userId"
+      from users
+      where lower(email) = $1
+      limit 1
+      `,
+      [normalizedEmail]
+    );
+    const canonicalUserId = existingByEmail.rows[0]?.userId ?? input.userId;
+
+    if (canonicalUserId !== input.userId) {
+      await query(
+        `
+        update users
+        set
+          email = $2,
+          role_type = $3,
+          first_name = coalesce($4, first_name),
+          last_name = coalesce($5, last_name),
+          preferred_name = coalesce($6, preferred_name),
+          auth_provider = coalesce($7, auth_provider),
+          is_super_admin = case when $8 then true else is_super_admin end,
+          account_status = case
+            when account_status = 'active' then account_status
+            when $8 then 'active'
+            else account_status
+          end,
+          updated_at = now()
+        where user_id = $1
+        `,
+        [
+          canonicalUserId,
+          input.email,
+          resolvedRoleType,
+          input.firstName ?? null,
+          input.lastName ?? null,
+          input.preferredName ?? null,
+          input.authProvider || "supabase_google",
+          isEricBass,
+        ]
+      );
+
+      return canonicalUserId;
+    }
+
     await query(
       `
       insert into users (
@@ -21,17 +74,22 @@ export class AuthUserRepository {
         last_name,
         preferred_name,
         email,
+        auth_provider,
+        is_super_admin,
         account_status,
         created_at,
         updated_at
-      ) values ($1,$2,'Unknown','User',$3,$4,'active',now(),now())
+      ) values ($1,$2,'Unknown','User',$3,$4,$5,$6,$7,now(),now())
       on conflict (user_id) do nothing
       `,
       [
-        input.userId,
-        input.roleType || "student",
+        canonicalUserId,
+        resolvedRoleType,
         input.preferredName || null,
         input.email,
+        input.authProvider || "supabase_google",
+        isEricBass,
+        defaultAccountStatus,
       ]
     );
 
@@ -44,18 +102,29 @@ export class AuthUserRepository {
         first_name = coalesce($4, first_name),
         last_name = coalesce($5, last_name),
         preferred_name = coalesce($6, preferred_name),
+        auth_provider = coalesce($7, auth_provider),
+        is_super_admin = case when $8 then true else is_super_admin end,
+        account_status = case
+          when account_status = 'active' then account_status
+          when $8 then 'active'
+          else account_status
+        end,
         updated_at = now()
       where user_id = $1
       `,
       [
-        input.userId,
+        canonicalUserId,
         input.email,
-        input.roleType || "student",
+        resolvedRoleType,
         input.firstName ?? null,
         input.lastName ?? null,
         input.preferredName ?? null,
+        input.authProvider || "supabase_google",
+        isEricBass,
       ]
     );
+
+    return canonicalUserId;
   }
 
   async getIntroOnboardingState(userId: string): Promise<IntroOnboardingState | null> {

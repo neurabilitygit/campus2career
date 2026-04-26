@@ -2,12 +2,19 @@ import { query } from "../../db/client";
 import type {
   CommunicationAuditEventType,
   CommunicationAuditLogRecord,
+  CommunicationInferredInsightRecord,
+  CommunicationLearningEventRecord,
   CommunicationMessageDraftRecord,
+  CommunicationProfileRecord,
+  CommunicationPromptProgressRecord,
+  CommunicationTranslationEventRecord,
   CommunicationTranslationStrategyRecord,
+  ParentCommunicationInputRecord,
   ParentCommunicationEntryRecord,
   ParentCommunicationEntryStatus,
   ParentCommunicationProfileRecord,
   StudentCommunicationPreferencesRecord,
+  StudentCommunicationInputRecord,
   TranslationDeliveryStatus,
 } from "../../../../../packages/shared/src/contracts/communication";
 
@@ -122,6 +129,100 @@ type CommunicationAuditLogRow = {
   event_summary: string;
   event_payload: unknown;
   created_at: string;
+};
+
+type CommunicationProfileRow = {
+  communication_profile_id: string;
+  household_id: string | null;
+  student_profile_id: string;
+  created_at: string;
+  updated_at: string;
+};
+
+type ParentCommunicationInputRow = {
+  parent_communication_input_id: string;
+  communication_profile_id: string;
+  parent_user_id: string;
+  category: string;
+  prompt_key: string;
+  question_text: string;
+  response_text: string;
+  sensitivity_level: ParentCommunicationInputRecord["sensitivityLevel"];
+  visibility_scope: ParentCommunicationInputRecord["visibilityScope"];
+  confidence_level: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type StudentCommunicationInputRow = {
+  student_communication_input_id: string;
+  communication_profile_id: string;
+  student_user_id: string;
+  category: string;
+  prompt_key: string;
+  question_text: string;
+  response_text: string;
+  sensitivity_level: StudentCommunicationInputRecord["sensitivityLevel"];
+  visibility_scope: StudentCommunicationInputRecord["visibilityScope"];
+  created_at: string;
+  updated_at: string;
+};
+
+type CommunicationTranslationEventRow = {
+  communication_translation_event_id: string;
+  communication_profile_id: string;
+  source_role: CommunicationTranslationEventRecord["sourceRole"];
+  target_role: CommunicationTranslationEventRecord["targetRole"];
+  original_text: string;
+  translated_text: string;
+  translation_goal: CommunicationTranslationEventRecord["translationGoal"];
+  tone: CommunicationTranslationEventRecord["tone"];
+  context_used_json: unknown;
+  structured_result_json: unknown;
+  feedback_rating: CommunicationTranslationEventRecord["feedbackRating"];
+  feedback_notes: string | null;
+  created_by_user_id: string;
+  created_at: string;
+};
+
+type CommunicationPromptProgressRow = {
+  communication_prompt_progress_id: string;
+  communication_profile_id: string;
+  user_id: string;
+  role: CommunicationPromptProgressRecord["role"];
+  prompt_key: string;
+  status: CommunicationPromptProgressRecord["status"];
+  last_prompted_at: string | null;
+  answered_at: string | null;
+  updated_at: string;
+};
+
+type CommunicationLearningEventRow = {
+  communication_learning_event_id: string;
+  communication_profile_id: string;
+  event_type: CommunicationLearningEventRecord["eventType"];
+  source_role: CommunicationLearningEventRecord["sourceRole"];
+  signal_json: unknown;
+  interpretation_json: unknown;
+  created_at: string;
+};
+
+type CommunicationInferredInsightRow = {
+  communication_inferred_insight_id: string;
+  communication_profile_id: string;
+  insight_key: string;
+  insight_type: CommunicationInferredInsightRecord["insightType"];
+  title: string;
+  summary_text: string;
+  evidence_json: unknown;
+  confidence_label: CommunicationInferredInsightRecord["confidenceLabel"];
+  status: CommunicationInferredInsightRecord["status"];
+  reviewed_by_user_id: string | null;
+  reviewed_at: string | null;
+  review_notes: string | null;
+  last_derived_at: string | null;
+  created_at: string;
+  updated_at: string;
 };
 
 function mapStudentPreferences(row: StudentCommunicationPreferencesRow): StudentCommunicationPreferencesRecord {
@@ -250,7 +351,172 @@ function mapAudit(row: CommunicationAuditLogRow): CommunicationAuditLogRecord {
   };
 }
 
+function mapCommunicationProfile(row: CommunicationProfileRow): CommunicationProfileRecord {
+  return {
+    communicationProfileId: row.communication_profile_id,
+    householdId: row.household_id,
+    studentProfileId: row.student_profile_id,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+function mapParentInput(row: ParentCommunicationInputRow): ParentCommunicationInputRecord {
+  return {
+    parentCommunicationInputId: row.parent_communication_input_id,
+    communicationProfileId: row.communication_profile_id,
+    parentUserId: row.parent_user_id,
+    category: row.category,
+    promptKey: row.prompt_key,
+    questionText: row.question_text,
+    responseText: row.response_text,
+    sensitivityLevel: row.sensitivity_level,
+    visibilityScope: row.visibility_scope,
+    confidenceLevel: row.confidence_level,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+function mapStudentInput(row: StudentCommunicationInputRow): StudentCommunicationInputRecord {
+  return {
+    studentCommunicationInputId: row.student_communication_input_id,
+    communicationProfileId: row.communication_profile_id,
+    studentUserId: row.student_user_id,
+    category: row.category,
+    promptKey: row.prompt_key,
+    questionText: row.question_text,
+    responseText: row.response_text,
+    sensitivityLevel: row.sensitivity_level,
+    visibilityScope: row.visibility_scope,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+function mapTranslationEvent(row: CommunicationTranslationEventRow): CommunicationTranslationEventRecord {
+  return {
+    communicationTranslationEventId: row.communication_translation_event_id,
+    communicationProfileId: row.communication_profile_id,
+    sourceRole: row.source_role,
+    targetRole: row.target_role,
+    originalText: row.original_text,
+    translatedText: row.translated_text,
+    translationGoal: row.translation_goal,
+    tone: row.tone,
+    contextUsedJson: row.context_used_json,
+    structuredResultJson: row.structured_result_json,
+    feedbackRating: row.feedback_rating,
+    feedbackNotes: row.feedback_notes,
+    createdByUserId: row.created_by_user_id,
+    createdAt: row.created_at,
+  };
+}
+
+function mapPromptProgress(row: CommunicationPromptProgressRow): CommunicationPromptProgressRecord {
+  return {
+    communicationPromptProgressId: row.communication_prompt_progress_id,
+    communicationProfileId: row.communication_profile_id,
+    userId: row.user_id,
+    role: row.role,
+    promptKey: row.prompt_key,
+    status: row.status,
+    lastPromptedAt: row.last_prompted_at,
+    answeredAt: row.answered_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+function mapLearningEvent(row: CommunicationLearningEventRow): CommunicationLearningEventRecord {
+  return {
+    communicationLearningEventId: row.communication_learning_event_id,
+    communicationProfileId: row.communication_profile_id,
+    eventType: row.event_type,
+    sourceRole: row.source_role,
+    signalJson: row.signal_json,
+    interpretationJson: row.interpretation_json,
+    createdAt: row.created_at,
+  };
+}
+
+function mapInferredInsight(row: CommunicationInferredInsightRow): CommunicationInferredInsightRecord {
+  return {
+    communicationInferredInsightId: row.communication_inferred_insight_id,
+    communicationProfileId: row.communication_profile_id,
+    insightKey: row.insight_key,
+    insightType: row.insight_type,
+    title: row.title,
+    summaryText: row.summary_text,
+    evidenceJson: row.evidence_json,
+    confidenceLabel: row.confidence_label,
+    status: row.status,
+    reviewedByUserId: row.reviewed_by_user_id,
+    reviewedAt: row.reviewed_at,
+    reviewNotes: row.review_notes,
+    lastDerivedAt: row.last_derived_at,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
 export class CommunicationRepository {
+  async getOrCreateCommunicationProfile(input: {
+    communicationProfileId: string;
+    studentProfileId: string;
+    householdId?: string | null;
+  }): Promise<CommunicationProfileRecord> {
+    await query(
+      `
+      insert into communication_profiles (
+        communication_profile_id,
+        household_id,
+        student_profile_id,
+        created_at,
+        updated_at
+      ) values ($1,$2,$3,now(),now())
+      on conflict (student_profile_id) do update set
+        household_id = coalesce(excluded.household_id, communication_profiles.household_id),
+        updated_at = now()
+      `,
+      [input.communicationProfileId, input.householdId ?? null, input.studentProfileId]
+    );
+
+    const result = await query<CommunicationProfileRow>(
+      `
+      select
+        communication_profile_id,
+        household_id,
+        student_profile_id,
+        created_at,
+        updated_at
+      from communication_profiles
+      where student_profile_id = $1
+      limit 1
+      `,
+      [input.studentProfileId]
+    );
+
+    return mapCommunicationProfile(result.rows[0]);
+  }
+
+  async getCommunicationProfileByStudent(studentProfileId: string): Promise<CommunicationProfileRecord | null> {
+    const result = await query<CommunicationProfileRow>(
+      `
+      select
+        communication_profile_id,
+        household_id,
+        student_profile_id,
+        created_at,
+        updated_at
+      from communication_profiles
+      where student_profile_id = $1
+      limit 1
+      `,
+      [studentProfileId]
+    );
+    return result.rows[0] ? mapCommunicationProfile(result.rows[0]) : null;
+  }
+
   async getStudentPreferences(studentProfileId: string): Promise<StudentCommunicationPreferencesRecord | null> {
     const result = await query<StudentCommunicationPreferencesRow>(
       `
@@ -957,5 +1223,542 @@ export class CommunicationRepository {
       [studentProfileId, householdId ?? null]
     );
     return result.rows.map(mapAudit);
+  }
+
+  async listParentInputs(communicationProfileId: string, parentUserId?: string): Promise<ParentCommunicationInputRecord[]> {
+    const result = await query<ParentCommunicationInputRow>(
+      `
+      select
+        parent_communication_input_id,
+        communication_profile_id,
+        parent_user_id,
+        category,
+        prompt_key,
+        question_text,
+        response_text,
+        sensitivity_level,
+        visibility_scope,
+        confidence_level,
+        created_at,
+        updated_at
+      from parent_communication_inputs
+      where communication_profile_id = $1
+        and ($2::uuid is null or parent_user_id = $2::uuid)
+      order by updated_at desc, created_at desc
+      `,
+      [communicationProfileId, parentUserId ?? null]
+    );
+    return result.rows.map(mapParentInput);
+  }
+
+  async upsertParentInput(input: ParentCommunicationInputRecord): Promise<void> {
+    await query(
+      `
+      insert into parent_communication_inputs (
+        parent_communication_input_id,
+        communication_profile_id,
+        parent_user_id,
+        category,
+        prompt_key,
+        question_text,
+        response_text,
+        sensitivity_level,
+        visibility_scope,
+        confidence_level,
+        created_at,
+        updated_at
+      ) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,now(),now())
+      on conflict (communication_profile_id, parent_user_id, prompt_key) do update set
+        category = excluded.category,
+        question_text = excluded.question_text,
+        response_text = excluded.response_text,
+        sensitivity_level = excluded.sensitivity_level,
+        visibility_scope = excluded.visibility_scope,
+        confidence_level = excluded.confidence_level,
+        updated_at = now()
+      `,
+      [
+        input.parentCommunicationInputId,
+        input.communicationProfileId,
+        input.parentUserId,
+        input.category,
+        input.promptKey,
+        input.questionText,
+        input.responseText,
+        input.sensitivityLevel,
+        input.visibilityScope,
+        input.confidenceLevel,
+      ]
+    );
+  }
+
+  async updateParentInput(input: ParentCommunicationInputRecord): Promise<boolean> {
+    const result = await query(
+      `
+      update parent_communication_inputs
+      set
+        category = $4,
+        question_text = $5,
+        response_text = $6,
+        sensitivity_level = $7,
+        visibility_scope = $8,
+        confidence_level = $9,
+        updated_at = now()
+      where parent_communication_input_id = $1
+        and communication_profile_id = $2
+        and parent_user_id = $3
+      `,
+      [
+        input.parentCommunicationInputId,
+        input.communicationProfileId,
+        input.parentUserId,
+        input.category,
+        input.questionText,
+        input.responseText,
+        input.sensitivityLevel,
+        input.visibilityScope,
+        input.confidenceLevel,
+      ]
+    );
+    return (result.rowCount || 0) > 0;
+  }
+
+  async deleteParentInput(input: {
+    parentCommunicationInputId: string;
+    communicationProfileId: string;
+    parentUserId: string;
+  }): Promise<boolean> {
+    const result = await query(
+      `
+      delete from parent_communication_inputs
+      where parent_communication_input_id = $1
+        and communication_profile_id = $2
+        and parent_user_id = $3
+      `,
+      [input.parentCommunicationInputId, input.communicationProfileId, input.parentUserId]
+    );
+    return (result.rowCount || 0) > 0;
+  }
+
+  async listStudentInputs(communicationProfileId: string, studentUserId?: string): Promise<StudentCommunicationInputRecord[]> {
+    const result = await query<StudentCommunicationInputRow>(
+      `
+      select
+        student_communication_input_id,
+        communication_profile_id,
+        student_user_id,
+        category,
+        prompt_key,
+        question_text,
+        response_text,
+        sensitivity_level,
+        visibility_scope,
+        created_at,
+        updated_at
+      from student_communication_inputs
+      where communication_profile_id = $1
+        and ($2::uuid is null or student_user_id = $2::uuid)
+      order by updated_at desc, created_at desc
+      `,
+      [communicationProfileId, studentUserId ?? null]
+    );
+    return result.rows.map(mapStudentInput);
+  }
+
+  async upsertStudentInput(input: StudentCommunicationInputRecord): Promise<void> {
+    await query(
+      `
+      insert into student_communication_inputs (
+        student_communication_input_id,
+        communication_profile_id,
+        student_user_id,
+        category,
+        prompt_key,
+        question_text,
+        response_text,
+        sensitivity_level,
+        visibility_scope,
+        created_at,
+        updated_at
+      ) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,now(),now())
+      on conflict (communication_profile_id, student_user_id, prompt_key) do update set
+        category = excluded.category,
+        question_text = excluded.question_text,
+        response_text = excluded.response_text,
+        sensitivity_level = excluded.sensitivity_level,
+        visibility_scope = excluded.visibility_scope,
+        updated_at = now()
+      `,
+      [
+        input.studentCommunicationInputId,
+        input.communicationProfileId,
+        input.studentUserId,
+        input.category,
+        input.promptKey,
+        input.questionText,
+        input.responseText,
+        input.sensitivityLevel,
+        input.visibilityScope,
+      ]
+    );
+  }
+
+  async updateStudentInput(input: StudentCommunicationInputRecord): Promise<boolean> {
+    const result = await query(
+      `
+      update student_communication_inputs
+      set
+        category = $4,
+        question_text = $5,
+        response_text = $6,
+        sensitivity_level = $7,
+        visibility_scope = $8,
+        updated_at = now()
+      where student_communication_input_id = $1
+        and communication_profile_id = $2
+        and student_user_id = $3
+      `,
+      [
+        input.studentCommunicationInputId,
+        input.communicationProfileId,
+        input.studentUserId,
+        input.category,
+        input.questionText,
+        input.responseText,
+        input.sensitivityLevel,
+        input.visibilityScope,
+      ]
+    );
+    return (result.rowCount || 0) > 0;
+  }
+
+  async deleteStudentInput(input: {
+    studentCommunicationInputId: string;
+    communicationProfileId: string;
+    studentUserId: string;
+  }): Promise<boolean> {
+    const result = await query(
+      `
+      delete from student_communication_inputs
+      where student_communication_input_id = $1
+        and communication_profile_id = $2
+        and student_user_id = $3
+      `,
+      [input.studentCommunicationInputId, input.communicationProfileId, input.studentUserId]
+    );
+    return (result.rowCount || 0) > 0;
+  }
+
+  async listPromptProgress(communicationProfileId: string, userId: string, role: CommunicationPromptProgressRecord["role"]) {
+    const result = await query<CommunicationPromptProgressRow>(
+      `
+      select
+        communication_prompt_progress_id,
+        communication_profile_id,
+        user_id,
+        role,
+        prompt_key,
+        status,
+        last_prompted_at,
+        answered_at,
+        updated_at
+      from communication_prompt_progress
+      where communication_profile_id = $1
+        and user_id = $2
+        and role = $3
+      order by updated_at desc
+      `,
+      [communicationProfileId, userId, role]
+    );
+    return result.rows.map(mapPromptProgress);
+  }
+
+  async listPromptProgressForProfile(communicationProfileId: string) {
+    const result = await query<CommunicationPromptProgressRow>(
+      `
+      select
+        communication_prompt_progress_id,
+        communication_profile_id,
+        user_id,
+        role,
+        prompt_key,
+        status,
+        last_prompted_at,
+        answered_at,
+        updated_at
+      from communication_prompt_progress
+      where communication_profile_id = $1
+      order by updated_at desc
+      `,
+      [communicationProfileId]
+    );
+    return result.rows.map(mapPromptProgress);
+  }
+
+  async upsertPromptProgress(record: CommunicationPromptProgressRecord): Promise<void> {
+    await query(
+      `
+      insert into communication_prompt_progress (
+        communication_prompt_progress_id,
+        communication_profile_id,
+        user_id,
+        role,
+        prompt_key,
+        status,
+        last_prompted_at,
+        answered_at,
+        updated_at
+      ) values ($1,$2,$3,$4,$5,$6,$7,$8,now())
+      on conflict (communication_profile_id, user_id, prompt_key) do update set
+        status = excluded.status,
+        last_prompted_at = excluded.last_prompted_at,
+        answered_at = excluded.answered_at,
+        updated_at = now()
+      `,
+      [
+        record.communicationPromptProgressId,
+        record.communicationProfileId,
+        record.userId,
+        record.role,
+        record.promptKey,
+        record.status,
+        record.lastPromptedAt ?? null,
+        record.answeredAt ?? null,
+      ]
+    );
+  }
+
+  async createTranslationEvent(record: CommunicationTranslationEventRecord): Promise<void> {
+    await query(
+      `
+      insert into communication_translation_events (
+        communication_translation_event_id,
+        communication_profile_id,
+        source_role,
+        target_role,
+        original_text,
+        translated_text,
+        translation_goal,
+        tone,
+        context_used_json,
+        structured_result_json,
+        feedback_rating,
+        feedback_notes,
+        created_by_user_id,
+        created_at
+      ) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,now())
+      `,
+      [
+        record.communicationTranslationEventId,
+        record.communicationProfileId,
+        record.sourceRole,
+        record.targetRole,
+        record.originalText,
+        record.translatedText,
+        record.translationGoal,
+        record.tone ?? null,
+        JSON.stringify(record.contextUsedJson ?? null),
+        JSON.stringify(record.structuredResultJson ?? null),
+        record.feedbackRating ?? null,
+        record.feedbackNotes ?? null,
+        record.createdByUserId,
+      ]
+    );
+  }
+
+  async listTranslationEvents(communicationProfileId: string, limit = 20): Promise<CommunicationTranslationEventRecord[]> {
+    const result = await query<CommunicationTranslationEventRow>(
+      `
+      select
+        communication_translation_event_id,
+        communication_profile_id,
+        source_role,
+        target_role,
+        original_text,
+        translated_text,
+        translation_goal,
+        tone,
+        context_used_json,
+        structured_result_json,
+        feedback_rating,
+        feedback_notes,
+        created_by_user_id,
+        created_at
+      from communication_translation_events
+      where communication_profile_id = $1
+      order by created_at desc
+      limit $2
+      `,
+      [communicationProfileId, limit]
+    );
+    return result.rows.map(mapTranslationEvent);
+  }
+
+  async updateTranslationFeedback(input: {
+    communicationTranslationEventId: string;
+    feedbackRating: CommunicationTranslationEventRecord["feedbackRating"];
+    feedbackNotes?: string | null;
+  }): Promise<boolean> {
+    const result = await query(
+      `
+      update communication_translation_events
+      set
+        feedback_rating = $2,
+        feedback_notes = $3
+      where communication_translation_event_id = $1
+      `,
+      [input.communicationTranslationEventId, input.feedbackRating ?? null, input.feedbackNotes ?? null]
+    );
+    return (result.rowCount || 0) > 0;
+  }
+
+  async createLearningEvent(record: CommunicationLearningEventRecord): Promise<void> {
+    await query(
+      `
+      insert into communication_learning_events (
+        communication_learning_event_id,
+        communication_profile_id,
+        event_type,
+        source_role,
+        signal_json,
+        interpretation_json,
+        created_at
+      ) values ($1,$2,$3,$4,$5,$6,now())
+      `,
+      [
+        record.communicationLearningEventId,
+        record.communicationProfileId,
+        record.eventType,
+        record.sourceRole,
+        JSON.stringify(record.signalJson ?? null),
+        JSON.stringify(record.interpretationJson ?? null),
+      ]
+    );
+  }
+
+  async listLearningEvents(communicationProfileId: string, limit = 50): Promise<CommunicationLearningEventRecord[]> {
+    const result = await query<CommunicationLearningEventRow>(
+      `
+      select
+        communication_learning_event_id,
+        communication_profile_id,
+        event_type,
+        source_role,
+        signal_json,
+        interpretation_json,
+        created_at
+      from communication_learning_events
+      where communication_profile_id = $1
+      order by created_at desc
+      limit $2
+      `,
+      [communicationProfileId, limit]
+    );
+    return result.rows.map(mapLearningEvent);
+  }
+
+  async listInferredInsights(communicationProfileId: string): Promise<CommunicationInferredInsightRecord[]> {
+    const result = await query<CommunicationInferredInsightRow>(
+      `
+      select
+        communication_inferred_insight_id,
+        communication_profile_id,
+        insight_key,
+        insight_type,
+        title,
+        summary_text,
+        evidence_json,
+        confidence_label,
+        status,
+        reviewed_by_user_id,
+        reviewed_at,
+        review_notes,
+        last_derived_at,
+        created_at,
+        updated_at
+      from communication_inferred_insights
+      where communication_profile_id = $1
+      order by updated_at desc, created_at desc
+      `,
+      [communicationProfileId]
+    );
+    return result.rows.map(mapInferredInsight);
+  }
+
+  async upsertInferredInsight(record: CommunicationInferredInsightRecord): Promise<void> {
+    await query(
+      `
+      insert into communication_inferred_insights (
+        communication_inferred_insight_id,
+        communication_profile_id,
+        insight_key,
+        insight_type,
+        title,
+        summary_text,
+        evidence_json,
+        confidence_label,
+        status,
+        reviewed_by_user_id,
+        reviewed_at,
+        review_notes,
+        last_derived_at,
+        created_at,
+        updated_at
+      ) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,now(),now())
+      on conflict (communication_profile_id, insight_key) do update set
+        insight_type = excluded.insight_type,
+        title = excluded.title,
+        summary_text = excluded.summary_text,
+        evidence_json = excluded.evidence_json,
+        confidence_label = excluded.confidence_label,
+        last_derived_at = excluded.last_derived_at,
+        updated_at = now()
+      `,
+      [
+        record.communicationInferredInsightId,
+        record.communicationProfileId,
+        record.insightKey,
+        record.insightType,
+        record.title,
+        record.summaryText,
+        JSON.stringify(record.evidenceJson ?? null),
+        record.confidenceLabel,
+        record.status,
+        record.reviewedByUserId ?? null,
+        record.reviewedAt ?? null,
+        record.reviewNotes ?? null,
+        record.lastDerivedAt ?? null,
+      ]
+    );
+  }
+
+  async reviewInferredInsight(input: {
+    communicationInferredInsightId: string;
+    communicationProfileId: string;
+    status: CommunicationInferredInsightRecord["status"];
+    reviewedByUserId: string;
+    reviewNotes?: string | null;
+  }): Promise<boolean> {
+    const result = await query(
+      `
+      update communication_inferred_insights
+      set
+        status = $3,
+        reviewed_by_user_id = $4,
+        reviewed_at = now(),
+        review_notes = $5,
+        updated_at = now()
+      where communication_inferred_insight_id = $1
+        and communication_profile_id = $2
+      `,
+      [
+        input.communicationInferredInsightId,
+        input.communicationProfileId,
+        input.status,
+        input.reviewedByUserId,
+        input.reviewNotes ?? null,
+      ]
+    );
+    return (result.rowCount || 0) > 0;
   }
 }

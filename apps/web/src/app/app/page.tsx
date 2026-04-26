@@ -1,14 +1,15 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useApiData } from "../../hooks/useApiData";
+import { useAuthContext } from "../../hooks/useAuthContext";
 import { SessionGate } from "../../components/SessionGate";
 import { AppShell } from "../../components/layout/AppShell";
 
 function Redirector() {
   const router = useRouter();
-  const auth = useApiData("/auth/me");
+  const auth = useAuthContext();
 
   useEffect(() => {
     const role = auth.data?.context?.authenticatedRoleType;
@@ -16,8 +17,22 @@ function Redirector() {
     if (role === "parent") router.replace("/parent");
     else if (role === "student") router.replace("/student");
     else if (role === "coach") router.replace("/coach");
-    else router.replace("/onboarding");
+    else router.replace("/admin");
   }, [auth.data, router]);
+
+  useEffect(() => {
+    if (!auth.isAuthenticated || auth.loading || !auth.error) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      router.replace("/signup");
+    }, 250);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [auth.error, auth.isAuthenticated, auth.loading, router]);
 
   if (auth.loading) {
     return (
@@ -33,10 +48,20 @@ function Redirector() {
   if (auth.error) {
     return (
       <div style={{ display: "grid", gap: 10 }}>
-        <p style={{ color: "crimson", marginBottom: 0 }}>{auth.error}</p>
-        <p style={{ margin: 0, color: "#52657d", lineHeight: 1.6 }}>
-          We couldn&apos;t finish opening your workspace yet. Refresh after the API is available and your sign-in session is active.
+        <p style={{ color: "#92400e", marginBottom: 0, fontWeight: 700 }}>
+          We hit an account setup issue while opening your workspace.
         </p>
+        <p style={{ margin: 0, color: "#52657d", lineHeight: 1.6 }}>
+          Rising Senior is sending you to signup and household setup so you can finish the account wiring instead of getting stuck here.
+        </p>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <Link href="/signup" className="ui-button ui-button--primary">
+            Open signup and setup
+          </Link>
+          <button type="button" className="ui-button ui-button--secondary" onClick={() => auth.refresh()}>
+            Retry workspace check
+          </button>
+        </div>
       </div>
     );
   }

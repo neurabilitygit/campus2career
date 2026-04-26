@@ -1,6 +1,6 @@
 import { getSupabaseBrowserClient } from "./supabaseClient";
 import { demoAuthHeaders, readStoredDemoAuth } from "./demoAuth";
-import { getStoredTestContextRole } from "./testContext";
+import { getStoredTestContextRole, inferTestContextRoleFromPath } from "./testContext";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080";
@@ -37,7 +37,9 @@ export async function apiFetch(path: string, init: ApiRequestInit = {}) {
     headers.set("x-demo-email", demoHeaders["x-demo-email"]);
   }
 
-  const testContextRole = getStoredTestContextRole();
+  const testContextRole =
+    getStoredTestContextRole() ||
+    inferTestContextRoleFromPath(typeof window !== "undefined" ? window.location.pathname : null);
   if (testContextRole) {
     headers.set("x-test-context-role", testContextRole);
   }

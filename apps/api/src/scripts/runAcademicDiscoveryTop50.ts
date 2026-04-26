@@ -438,6 +438,9 @@ async function runSchoolCase(
   const discovery = await discoverInstitutionCatalog({
     institutionCanonicalName: institution.canonical_name,
     forceRefresh: options.forceRefresh,
+    preferredSeedUrls: [school.officialProgramsUrl, school.officialCatalogUrl].filter(
+      (value): value is string => !!value && !!value.trim()
+    ),
   });
 
   const after = await summarizeInstitution(institution.institution_id);

@@ -17,6 +17,23 @@ export const communicationTranslationModelOutputSchema = z.object({
 
 export type CommunicationTranslationModelOutput = z.infer<typeof communicationTranslationModelOutputSchema>;
 
+export const communicationBridgeOutputSchema = z.object({
+  rewrittenMessage: z.string().trim().min(1).max(2400),
+  shorterVersion: z.string().trim().min(1).max(1600),
+  softerVersion: z.string().trim().min(1).max(1600),
+  directVersion: z.string().trim().min(1).max(1600),
+  rationale: z.string().trim().min(1).max(1600),
+  riskFlags: z.array(z.string().trim().min(1).max(160)).max(8),
+  suggestedNextStep: z.string().trim().min(1).max(800),
+  confidence: z.enum(["low", "medium", "high"]),
+  sourceContextUsed: z.array(z.string().trim().min(1).max(200)).max(10),
+  privacyNotes: z.array(z.string().trim().min(1).max(200)).max(10),
+  likelyMeaning: z.string().trim().max(1200).nullable(),
+  suggestedResponse: z.string().trim().max(1600).nullable(),
+});
+
+export type CommunicationBridgeOutput = z.infer<typeof communicationBridgeOutputSchema>;
+
 export function communicationTranslationModelOutputJsonSchema() {
   return {
     type: "object",
@@ -63,6 +80,57 @@ export function communicationTranslationModelOutputJsonSchema() {
       humanReviewRecommended: { type: "boolean" },
       withholdDelivery: { type: "boolean" },
       withholdReason: {
+        anyOf: [{ type: "string" }, { type: "null" }],
+      },
+    },
+  } as const;
+}
+
+export function communicationBridgeOutputJsonSchema() {
+  return {
+    type: "object",
+    additionalProperties: false,
+    required: [
+      "rewrittenMessage",
+      "shorterVersion",
+      "softerVersion",
+      "directVersion",
+      "rationale",
+      "riskFlags",
+      "suggestedNextStep",
+      "confidence",
+      "sourceContextUsed",
+      "privacyNotes",
+      "likelyMeaning",
+      "suggestedResponse",
+    ],
+    properties: {
+      rewrittenMessage: { type: "string" },
+      shorterVersion: { type: "string" },
+      softerVersion: { type: "string" },
+      directVersion: { type: "string" },
+      rationale: { type: "string" },
+      riskFlags: {
+        type: "array",
+        items: { type: "string" },
+        maxItems: 8,
+      },
+      suggestedNextStep: { type: "string" },
+      confidence: { type: "string", enum: ["low", "medium", "high"] },
+      sourceContextUsed: {
+        type: "array",
+        items: { type: "string" },
+        maxItems: 10,
+      },
+      privacyNotes: {
+        type: "array",
+        items: { type: "string" },
+        maxItems: 10,
+      },
+      likelyMeaning: {
+        anyOf: [{ type: "string" }, { type: "null" }],
+      },
+      suggestedResponse: {
         anyOf: [{ type: "string" }, { type: "null" }],
       },
     },

@@ -12,6 +12,7 @@ export function useApiData<T = any>(
   const [data, setData] = useState<T | null>(null);
   const [loading, setLoading] = useState(enabled);
   const [error, setError] = useState<string | null>(null);
+  const [refreshNonce, setRefreshNonce] = useState(0);
   const requestKey = JSON.stringify(requestInit || {});
 
   useEffect(() => {
@@ -42,9 +43,9 @@ export function useApiData<T = any>(
     return () => {
       active = false;
     };
-  }, [path, enabled, refetchNonce, requestKey]);
+  }, [path, enabled, refetchNonce, refreshNonce, requestKey]);
 
-  return { data, loading, error };
+  return { data, loading, error, refresh: () => setRefreshNonce((current) => current + 1) };
 }
 
 /** POST JSON and parse response; re-runs when `body` shallow-serialization changes. */

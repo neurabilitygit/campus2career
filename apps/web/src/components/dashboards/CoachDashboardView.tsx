@@ -13,6 +13,8 @@ import { AcademicEvidenceSection } from "../academic/AcademicEvidenceSection";
 import { useApiData } from "../../hooks/useApiData";
 import { apiFetch } from "../../lib/apiClient";
 import { useSaveNavigation } from "../../lib/saveNavigation";
+import { ActiveCareerScenarioBanner } from "../career/ActiveCareerScenarioBanner";
+import { CareerScenarioComparisonSnapshot } from "../career/CareerScenarioComparisonSnapshot";
 
 type MappingDiagnosticsResponse = {
   ok?: boolean;
@@ -149,6 +151,39 @@ type CoachWorkspaceResponse = {
   };
 };
 
+type CommunicationSummaryResponse = {
+  summary?: {
+    sharedThemes?: string[];
+    frictionSignals?: string[];
+    coachSuggestions?: string[];
+  };
+  completion?: {
+    parent?: { completionPercent: number };
+    student?: { completionPercent: number };
+  };
+};
+
+type CareerScenarioActiveResponse = {
+  ok: boolean;
+  activeScenario?: {
+    careerScenarioId: string;
+    scenarioName: string;
+    status: string;
+    targetRole?: string | null;
+    targetProfession?: string | null;
+    lastRunAt?: string | null;
+    actionItems?: Array<{
+      title: string;
+      rationale?: string | null;
+      priority?: string;
+    }>;
+    analysisResult?: {
+      scenarioSpecificActions?: string[];
+      recommendedActions?: string[];
+    } | null;
+  } | null;
+};
+
 function titleCase(value: string | undefined | null): string {
   if (!value) return "Unknown";
   return value
@@ -235,6 +270,14 @@ export default function CoachDashboardView() {
     !!selectedStudentProfileId || !!roster.data?.roster?.length,
     nonce
   );
+  const activeCareerScenario = useApiData<CareerScenarioActiveResponse>(
+    selectedStudentProfileId
+      ? `/coaches/me/career-scenarios/active?studentProfileId=${encodeURIComponent(selectedStudentProfileId)}`
+      : "",
+    !!selectedStudentProfileId,
+    nonce
+  );
+  const communicationSummary = useApiData<CommunicationSummaryResponse>("/communication/summary", !!selectedStudentProfileId, nonce);
   const mappings = useApiData<MappingDiagnosticsResponse>("/v1/market/diagnostics/role-mappings");
   const fixtures = useApiData("/v1/market/fixtures/validate");
 
@@ -307,7 +350,36 @@ export default function CoachDashboardView() {
       subtitle="Move between authorized students, review the latest picture quickly, and turn your judgment into visible next steps."
     >
       <RequireRole expectedRoles={["coach", "admin"]} fallbackTitle="Coach sign-in required">
-        <SectionCard title="Coach roster" subtitle="Only assigned students appear here. Pick one to open the review workspace." tone="highlight">
+        <ActiveCareerScenarioBanner
+          scenario={activeCareerScenario.data?.activeScenario}
+          linkHref={selectedStudentProfileId ? `/career-scenarios?studentProfileId=${encodeURIComponent(selectedStudentProfileId)}` : "/career-scenarios"}
+          missingFallback="Create a Career Goal to compare this student against a specific role, profession, or pasted job description."
+        />
+
+        <CareerScenarioComparisonSnapshot
+          activeScenarioId={activeCareerScenario.data?.activeScenario?.careerScenarioId}
+          listPath={
+            selectedStudentProfileId
+              ? `/coaches/me/career-scenarios?studentProfileId=${encodeURIComponent(selectedStudentProfileId)}`
+              : ""
+          }
+          buildItemPath={(careerScenarioId) =>
+            selectedStudentProfileId
+              ? `/coaches/me/career-scenarios/item?studentProfileId=${encodeURIComponent(
+                  selectedStudentProfileId
+                )}&careerScenarioId=${encodeURIComponent(careerScenarioId)}`
+              : ""
+          }
+          linkHref={selectedStudentProfileId ? `/career-scenarios?studentProfileId=${encodeURIComponent(selectedStudentProfileId)}` : "/career-scenarios"}
+          subjectLabel={workspace.data?.workspace?.relationship.studentDisplayName || "this student"}
+        />
+
+        <SectionCard
+          title="Coach roster"
+          subtitle="Only assigned students appear here. Pick one to open the review workspace."
+          tone="highlight"
+          introTarget="coach-roster"
+        >
           <div style={{ display: "grid", gap: 14 }}>
             <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
               <label style={{ display: "grid", gap: 6, minWidth: 240, flex: "1 1 260px" }}>
@@ -1027,6 +1099,46 @@ export default function CoachDashboardView() {
             subjectLabel={selectedName}
             selectedStudentProfileId={selectedStudentProfileId}
           />
+        ) : null}
+
+        {workspaceData ? (
+          <SectionCard title="Communication context" subtitle="Use shared communication cues to reduce friction and keep outreach aligned to the selected student.">
+            <div style={{ display: "grid", gap: 10 }}>
+              <div className="ui-soft-panel">
+                <strong>Profile completion</strong>
+                <div style={{ marginTop: 6, color: "#334155" }}>
+                  Parent {communicationSummary.data?.completion?.parent?.completionPercent ?? 0}% · Student {communicationSummary.data?.completion?.student?.completionPercent ?? 0}%
+                </div>
+              </div>
+              {(communicationSummary.data?.summary?.sharedThemes || []).length ? (
+                <div className="ui-soft-panel">
+                  <strong>Shared themes</strong>
+                  <div style={{ marginTop: 6, color: "#334155" }}>{communicationSummary.data?.summary?.sharedThemes?.join(", ")}</div>
+                </div>
+              ) : null}
+              {(communicationSummary.data?.summary?.coachSuggestions || []).length ? (
+                <div className="ui-soft-panel">
+                  <strong>Friction-reduction suggestions</strong>
+                  <ul style={{ marginBottom: 0 }}>
+                    {communicationSummary.data?.summary?.coachSuggestions?.map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+              <div>
+                <Link
+                  href={
+                    selectedStudentProfileId
+                      ? `/communication?section=context&studentProfileId=${encodeURIComponent(selectedStudentProfileId)}`
+                      : "/communication?section=context"
+                  }
+                >
+                  Open Communication context
+                </Link>
+              </div>
+            </div>
+          </SectionCard>
         ) : null}
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16 }}>

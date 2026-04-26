@@ -1,8 +1,14 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { z } from "zod";
+import {
+  CURRENT_INTRO_ONBOARDING_VERSION,
+} from "../../../../packages/shared/src/contracts/introOnboarding";
+import { getAuthenticatedUser } from "../middleware/auth";
 import { AuthUserRepository } from "../repositories/auth/authUserRepository";
 import { buildIntroOnboardingView } from "../services/auth/introOnboarding";
 import { resolveRequestContext } from "../services/auth/resolveRequestContext";
+import { isReturningSuperUserIdentity } from "../services/auth/superAdminIdentity";
+import { syncAuthenticatedUser } from "../services/auth/syncAuthenticatedUser";
 import { readJsonBody } from "../utils/body";
 import { badRequest, unauthorized, json } from "../utils/http";
 
@@ -23,6 +29,48 @@ export async function authMeRoute(req: IncomingMessage, res: ServerResponse) {
     if (error?.message === "UNAUTHENTICATED") {
       return unauthorized(res);
     }
+    const auth = await getAuthenticatedUser(req);
+    if (auth && isReturningSuperUserIdentity(auth)) {
+      return json(res, 200, {
+        authenticated: true,
+        context: {
+          authenticatedUserId: auth.userId,
+          authenticatedRoleType: "admin",
+          primaryPersona: "admin",
+          householdId: null,
+          studentProfileId: null,
+          studentUserId: null,
+          accountStatus: "active",
+          authProvider: "demo-auth",
+          isSuperAdmin: true,
+          effectiveCapabilities: [
+            "access_admin_console",
+            "manage_household",
+            "manage_permissions",
+            "view_household_admin",
+          ],
+          deniedCapabilities: [],
+          activeMemberships: [],
+          email: auth.email,
+          authenticatedFirstName: auth.firstName ?? "Eric",
+          authenticatedLastName: auth.lastName ?? "Bass",
+          authenticatedPreferredName: auth.preferredName ?? "Eric",
+          hasCompletedIntroOnboarding: true,
+          introOnboardingCompletedAt: null,
+          introOnboardingSkippedAt: null,
+          introOnboardingVersion: 1,
+          introOnboardingStatus: "completed",
+          introOnboardingShouldAutoShow: false,
+          currentIntroOnboardingVersion: 1,
+          studentFirstName: null,
+          studentLastName: null,
+          studentPreferredName: null,
+          testContextSwitchingEnabled: true,
+          testContextAllowedRoles: ["student", "parent", "coach"],
+          testContextOverrideRole: null,
+        },
+      });
+    }
     throw error;
   }
 }
@@ -39,19 +87,36 @@ async function parseStatusBody(req: IncomingMessage) {
   }
 }
 
+async function getIntroOnboardingActor(req: IncomingMessage) {
+  const auth = await getAuthenticatedUser(req);
+  if (!auth) {
+    return null;
+  }
+
+  const canonicalUserId = await syncAuthenticatedUser(auth);
+
+  return {
+    auth,
+    canonicalUserId,
+  };
+}
+
 export async function introOnboardingCompleteRoute(req: IncomingMessage, res: ServerResponse) {
   try {
-    const ctx = await resolveRequestContext(req);
+    const actor = await getIntroOnboardingActor(req);
+    if (!actor) {
+      return unauthorized(res);
+    }
     const body = await parseStatusBody(req);
     if (body == null) {
       return badRequest(res, "Invalid onboarding update payload");
     }
 
     await repo.markIntroOnboardingCompleted(
-      ctx.authenticatedUserId,
-      body.introOnboardingVersion ?? ctx.currentIntroOnboardingVersion ?? 1
+      actor.canonicalUserId,
+      body.introOnboardingVersion ?? CURRENT_INTRO_ONBOARDING_VERSION
     );
-    const state = buildIntroOnboardingView(await repo.getIntroOnboardingState(ctx.authenticatedUserId));
+    const state = buildIntroOnboardingView(await repo.getIntroOnboardingState(actor.canonicalUserId));
     return json(res, 200, { ok: true, onboarding: state });
   } catch (error: any) {
     if (error?.message === "UNAUTHENTICATED") {
@@ -63,17 +128,20 @@ export async function introOnboardingCompleteRoute(req: IncomingMessage, res: Se
 
 export async function introOnboardingSkipRoute(req: IncomingMessage, res: ServerResponse) {
   try {
-    const ctx = await resolveRequestContext(req);
+    const actor = await getIntroOnboardingActor(req);
+    if (!actor) {
+      return unauthorized(res);
+    }
     const body = await parseStatusBody(req);
     if (body == null) {
       return badRequest(res, "Invalid onboarding update payload");
     }
 
     await repo.markIntroOnboardingSkipped(
-      ctx.authenticatedUserId,
-      body.introOnboardingVersion ?? ctx.currentIntroOnboardingVersion ?? 1
+      actor.canonicalUserId,
+      body.introOnboardingVersion ?? CURRENT_INTRO_ONBOARDING_VERSION
     );
-    const state = buildIntroOnboardingView(await repo.getIntroOnboardingState(ctx.authenticatedUserId));
+    const state = buildIntroOnboardingView(await repo.getIntroOnboardingState(actor.canonicalUserId));
     return json(res, 200, { ok: true, onboarding: state });
   } catch (error: any) {
     if (error?.message === "UNAUTHENTICATED") {
@@ -85,8 +153,11 @@ export async function introOnboardingSkipRoute(req: IncomingMessage, res: Server
 
 export async function introOnboardingReplayRoute(req: IncomingMessage, res: ServerResponse) {
   try {
-    const ctx = await resolveRequestContext(req);
-    const state = buildIntroOnboardingView(await repo.getIntroOnboardingState(ctx.authenticatedUserId));
+    const actor = await getIntroOnboardingActor(req);
+    if (!actor) {
+      return unauthorized(res);
+    }
+    const state = buildIntroOnboardingView(await repo.getIntroOnboardingState(actor.canonicalUserId));
     return json(res, 200, {
       ok: true,
       onboarding: state,

@@ -6,6 +6,8 @@ export function SectionCard(props: {
   eyebrow?: string;
   actions?: React.ReactNode;
   tone?: "default" | "highlight" | "warm" | "quiet";
+  testId?: string;
+  introTarget?: string;
   children: React.ReactNode;
 }) {
   const toneStyles =
@@ -33,6 +35,8 @@ export function SectionCard(props: {
 
   return (
     <section
+      data-testid={props.testId}
+      data-intro-target={props.introTarget}
       style={{
         ...toneStyles,
         borderRadius: 26,

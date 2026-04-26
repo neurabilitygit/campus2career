@@ -13,23 +13,18 @@ test("student completes a multi-screen intake flow and sees the dashboard reflec
 }) => {
   await openAs("studentMaya", "/onboarding/sectors");
   await expect(page.getByRole("heading", { name: "Choose starting career areas" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Student", exact: true })).toBeVisible();
+  await expect(page.getByLabel("Fintech")).toBeVisible();
 
   await page.getByLabel("Fintech").check();
   await page.getByRole("button", { name: "Save and continue" }).click();
 
   await expect(page).toHaveURL(/\/student\?section=strategy/);
-  await expect(page.getByText("Fintech", { exact: true })).toBeVisible();
+  await ensureSidebarGroupExpanded(page, "Student");
+  await page.getByRole("button", { name: "Expand Onboarding" }).click();
+  await page.getByRole("link", { name: "Important dates" }).click();
+  await expect(page).toHaveURL(/\/onboarding\/deadlines/);
 
-  await page.goto("/onboarding/network");
-  await page
-    .getByPlaceholder("Jordan Lee - VP Finance, family friend, open to a warm introduction")
-    .fill(
-    "Professor Lin - mentor - synthetic test contact\nTaylor Brooks - coach - weekly check-in"
-  );
-  await page.getByRole("button", { name: "Save and continue" }).click();
-  await expect(page).toHaveURL(/\/student\?section=strategy/);
-
-  await page.goto("/onboarding/deadlines");
   await page.getByPlaceholder("What is this date for?").fill("Synthetic internship deadline");
   await page.locator("select").first().selectOption("application_due");
   await page.locator('input[type="date"]').first().fill("2026-05-12");
@@ -40,7 +35,7 @@ test("student completes a multi-screen intake flow and sees the dashboard reflec
 
   await expect(page).toHaveURL(/\/student\?section=strategy/);
   await expect(page.getByRole("heading", { name: "Student dashboard" })).toBeVisible();
-  await expect(page.getByText("Business Analyst", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText("Finance Financial Services", { exact: true })).toBeVisible();
 });
 
 test("invalid coach form entries surface a useful validation message", async ({ page, openAs }) => {
@@ -60,8 +55,10 @@ test("student can update profile, use the communication tab, and see personalize
   await openAs("studentMaya", "/student");
   await expect(page.getByRole("heading", { name: "Student dashboard" })).toBeVisible();
 
-  await page.goto("/profile");
-  await expect(page.getByText("Student profile")).toBeVisible();
+  await ensureSidebarGroupExpanded(page, "Start");
+  await page.getByRole("link", { name: "Profile" }).click();
+  await expect(page).toHaveURL(/\/profile$/);
+  await expect(page.getByRole("heading", { name: "Student profile" })).toBeVisible();
   const profileSection = page.locator("section").filter({ hasText: "Student profile" }).first();
 
   await profileSection.locator("label").filter({ hasText: "Full name" }).locator("input").fill("Maya Jordan Rivera");
@@ -81,10 +78,10 @@ test("student can update profile, use the communication tab, and see personalize
   await expect(primaryNav.getByRole("button", { name: "Coach", exact: true })).toHaveCount(0);
 
   await ensureSidebarGroupExpanded(page, "Communication");
-  await expect(page.getByRole("link", { name: "Messages & chat" })).toBeVisible();
-  await page.getByRole("link", { name: "Messages & chat" }).click();
+  await expect(page.getByRole("link", { name: "Communication hub" })).toBeVisible();
+  await page.getByRole("link", { name: "Communication hub" }).click();
   await expect(page).toHaveURL(/\/communication/);
-  await expect(page.getByRole("heading", { name: "Messages & chat" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Communication", level: 1 })).toBeVisible();
 
   await page.goto("/student");
   await expect(
@@ -101,7 +98,8 @@ test("student can update profile, use the communication tab, and see personalize
 test("student cannot open parent-only routes directly", async ({ page, openAs }) => {
   await openAs("studentMaya", "/parent");
 
-  await expect(page.getByText("This page is for a different account view")).toBeVisible();
+  await expect(page).toHaveURL(/\/student(\?section=strategy)?/);
+  await expect(page.getByRole("heading", { name: "Student dashboard" })).toBeVisible();
 });
 
 test("school search is visible by default and can be reopened with Change college", async ({
@@ -113,6 +111,7 @@ test("school search is visible by default and can be reopened with Change colleg
 
   const schoolSearch = page.getByPlaceholder("Start typing a school name");
   await expect(schoolSearch).toBeVisible();
+  await expect(page.getByPlaceholder("What kind of role or trajectory are you aiming for?")).toHaveCount(0);
   await schoolSearch.fill("synthetic");
   await page.getByRole("button", { name: "Synthetic State University" }).click();
 
@@ -122,6 +121,9 @@ test("school search is visible by default and can be reopened with Change colleg
 
   await page.getByRole("button", { name: "Change college" }).click();
   await expect(page.getByPlaceholder("Start typing a school name")).toBeVisible();
+
+  await page.getByRole("button", { name: /Next: Profile details/i }).click();
+  await expect(page.getByPlaceholder("What kind of role or trajectory are you aiming for?")).toBeVisible();
 });
 
 test("dashboard shows missing curriculum alert and allows a population request", async ({ page, openAs }) => {
@@ -191,6 +193,7 @@ test("happy-path synthetic student journey updates the outcome timeline and dash
   await openAs("studentMaya", "/onboarding/profile");
   await expect(page.getByRole("heading", { name: "Build your academic path" })).toBeVisible();
 
+  await page.getByRole("button", { name: /Next: Profile details/i }).click();
   await page.getByPlaceholder("What kind of role or trajectory are you aiming for?").fill(
     "I want to move toward business analyst internships with a fintech focus."
   );
@@ -201,6 +204,7 @@ test("happy-path synthetic student journey updates the outcome timeline and dash
       "Add context that the structured catalog does not capture, such as unofficial plans, transfer details, pre-professional tracks, or advisor guidance."
     )
     .fill("Synthetic profile update for Playwright coverage.");
+  await page.getByRole("button", { name: /Next: Guidance preferences/i }).click();
   await page.getByRole("button", { name: "Save academic path" }).click();
   await expect(page).toHaveURL(/\/student$/);
 
@@ -222,4 +226,64 @@ test("happy-path synthetic student journey updates the outcome timeline and dash
   await expect(page).toHaveURL(/\/student\?section=outcomes/);
   await expect(page.getByText("Brightpath Capital")).toBeVisible();
   await expect(page.getByText("Offers received")).toBeVisible();
+});
+
+test("student can create, save as new, switch, and delete Career Goals from the new top-level workspace", async ({
+  page,
+  openAs,
+}) => {
+  await openAs("studentMaya", "/career-scenarios");
+  await expect(page.getByRole("heading", { name: "Career Goal", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Student", exact: true })).toBeVisible();
+  await expect(page.getByTestId("career-goal-workspace-card")).toBeVisible();
+
+  const primaryNav = page.getByLabel("Primary navigation");
+  await expect(primaryNav.getByRole("button", { name: "Career Goal", exact: true })).toBeVisible();
+
+  const editorCard = page.getByTestId("career-goal-editor-card");
+  await editorCard.locator("label").filter({ hasText: "Career Goal name" }).locator("input").fill("Pfizer data analyst");
+  await editorCard.locator("label").filter({ hasText: "Target role or profession" }).locator("input").fill("Data Analyst");
+  await editorCard
+    .locator("label")
+    .filter({ hasText: "Pasted job description" })
+    .locator("textarea")
+    .fill("Use SQL, Excel, Tableau, and stakeholder communication to analyze healthcare operations data.");
+  await page.getByRole("button", { name: "Save Career Goal" }).click();
+
+  await expect(page.getByText("Career Goal saved")).toBeVisible();
+  await expect(page.getByText("Active career goal: Pfizer data analyst", { exact: false })).toBeVisible();
+
+  await page.locator("label").filter({ hasText: "Career Goal name" }).locator("input").fill("Pfizer analytics consultant");
+  await page.getByRole("button", { name: "Save as new Career Goal" }).click();
+  await expect(page.getByText("Career Goal saved as new")).toBeVisible();
+  await expect(page.getByText("Active career goal: Pfizer analytics consultant", { exact: false })).toBeVisible();
+  await expect(page.getByTestId("career-goal-compare-card")).toBeVisible();
+  await expect(page.getByTestId("career-goal-compare-card").getByText("Overall score change")).toBeVisible();
+
+  await page.goto("/student");
+  await expect(page.getByTestId("career-goal-comparison-snapshot-card")).toBeVisible();
+  await expect(page.getByTestId("career-goal-comparison-snapshot-card").getByText("Overall score change")).toBeVisible();
+  await page.goto("/career-scenarios");
+
+  await page.getByRole("button", { name: "Set as active" }).first().click();
+  await expect(page.getByText("Active Career Goal updated")).toBeVisible();
+
+  page.once("dialog", (dialog) => dialog.accept());
+  await page.getByRole("button", { name: "Delete Career Goal" }).first().click();
+  await expect(page.getByText("Career Goal deleted")).toBeVisible();
+
+  await page.goto("/student");
+  await expect(page.getByTestId("career-goal-banner-card")).toBeVisible();
+  await expect(
+    page.getByTestId("career-goal-banner-card").getByRole("heading", { name: "Career Goal" })
+  ).toBeVisible();
+});
+
+test("student is redirected back to the student workspace when opening the coach workspace URL directly", async ({
+  page,
+  openAs,
+}) => {
+  await openAs("studentMaya", "/coach");
+  await expect(page).toHaveURL(/\/student(\?section=strategy)?/);
+  await expect(page.getByRole("heading", { name: "Student dashboard" })).toBeVisible();
 });

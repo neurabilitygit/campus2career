@@ -38,6 +38,7 @@ import {
 } from "../services/academic/academicEvidenceService";
 import { resolveCoachRelationshipOrThrow } from "../services/coach/workspace";
 import { extractCatalogRequirementsFromArtifact } from "../services/academic/catalogArtifactExtractionService";
+import { careerScenarioService } from "../services/career/careerScenarioService";
 import {
   autoMatchTranscriptToPrimaryCatalog,
   getLatestStudentTranscriptGraphForStudent,
@@ -298,6 +299,7 @@ export async function studentCatalogAssignmentRoute(req: IncomingMessage, res: S
       assignmentSource: parsed.data.assignmentSource ?? "student_selected",
       isPrimary: parsed.data.isPrimary ?? true,
     });
+    await careerScenarioService.markStudentScenariosNeedsRerun(ctx.studentProfileId);
 
     return json(res, 200, {
       ok: true,

@@ -60,7 +60,7 @@ export function IntroWelcomeSplash(props: {
             <span key={dot} className="intro-welcome__orbit" style={{ ["--orbit-index" as string]: dot }} />
           ))}
         </div>
-        <h2 id="intro-welcome-title">Welcome to Campus2Career</h2>
+        <h2 id="intro-welcome-title">Welcome to Rising Senior</h2>
         <p>
           A guided workspace for turning student information into clearer next steps toward graduation,
           employment, and independence.

@@ -1,18 +1,34 @@
 import crypto from "node:crypto";
 import type { IncomingMessage } from "node:http";
+import type { CapabilityKey, Persona } from "../../../../../packages/shared/src/capabilities";
 import { getAuthenticatedUser } from "../../middleware/auth";
+import { permissionRepository } from "../../repositories/auth/permissionRepository";
 import { UserContextRepository } from "../../repositories/auth/userContextRepository";
 import { StudentWriteRepository } from "../../repositories/student/studentWriteRepository";
 import { AppError } from "../../utils/appError";
 import { buildIntroOnboardingView } from "./introOnboarding";
+import { buildEffectivePermissions, resolvePrimaryMembership } from "./permissions";
 import { syncAuthenticatedUser } from "./syncAuthenticatedUser";
 
 export interface RequestContext {
   authenticatedUserId: string;
   authenticatedRoleType: "student" | "parent" | "coach" | "admin";
+  primaryPersona: Persona;
   householdId: string | null;
   studentProfileId: string | null;
   studentUserId: string | null;
+  accountStatus?: string;
+  authProvider?: string | null;
+  isSuperAdmin?: boolean;
+  effectiveCapabilities?: CapabilityKey[];
+  deniedCapabilities?: CapabilityKey[];
+  activeMemberships?: Array<{
+    householdId: string;
+    householdName: string | null;
+    roleInHousehold: string;
+    membershipStatus: string;
+    isPrimary: boolean;
+  }>;
   email?: string;
   authenticatedFirstName?: string | null;
   authenticatedLastName?: string | null;
@@ -85,12 +101,36 @@ export async function resolveRequestContext(req: IncomingMessage): Promise<Reque
   }
 
   // keep this awaited to ensure user is synced before downstream queries
-  await syncAuthenticatedUser(auth);
+  const canonicalUserId = await syncAuthenticatedUser(auth);
 
-  const resolvedRoleRaw =
-    (await repo.resolveApplicationRoleForUser(auth.userId)) || auth.roleType;
+  await permissionRepository.ensureCapabilityCatalogSynced();
 
-  const defaultRole = normalizeRole(resolvedRoleRaw);
+  const [account, memberships] = await Promise.all([
+    permissionRepository.getUserAccount(canonicalUserId),
+    permissionRepository.listMembershipsForUser(canonicalUserId),
+  ]);
+
+  if (!account) {
+    throw new AppError({
+      status: 503,
+      code: "auth_user_sync_failed",
+      message: "Authenticated user could not be loaded after sync.",
+      details: { authenticatedUserId: canonicalUserId, upstreamAuthenticatedUserId: auth.userId },
+    });
+  }
+
+  const primaryMembership = resolvePrimaryMembership(memberships);
+  const overrides = await permissionRepository.listCapabilityOverridesForUser(
+    canonicalUserId,
+    primaryMembership?.householdId ?? null
+  );
+  const effectivePermissions = buildEffectivePermissions({
+    account,
+    memberships,
+    overrides,
+  });
+
+  const defaultRole = normalizeRole(effectivePermissions.primaryPersona);
   if (!defaultRole) {
     throw new AppError({
       status: 503,
@@ -99,8 +139,9 @@ export async function resolveRequestContext(req: IncomingMessage): Promise<Reque
         "Authenticated role could not be resolved from the current user and household wiring.",
       details: {
         authenticatedUserId: auth.userId,
+        upstreamAuthenticatedUserId: auth.userId,
         upstreamRoleType: auth.roleType || null,
-        resolvedRoleRaw: resolvedRoleRaw || null,
+        resolvedRoleRaw: effectivePermissions.primaryPersona || null,
       },
     });
   }
@@ -109,39 +150,68 @@ export async function resolveRequestContext(req: IncomingMessage): Promise<Reque
   const resolvedRole = requestedTestRole ?? defaultRole;
 
   // run shared lookup once
-  const householdPromise = repo.resolveHouseholdStudentContextForUser(auth.userId);
-  const studentProfilePromise = repo.resolveStudentProfileForStudentUser(auth.userId);
-  const authenticatedUserPromise = repo.resolveUserBasicInfo(auth.userId);
+  const householdPromise = repo.resolveHouseholdStudentContextForUser(canonicalUserId);
+  const studentProfilePromise = repo.resolveStudentProfileForStudentUser(canonicalUserId);
+  const authenticatedUserPromise = repo.resolveUserBasicInfo(canonicalUserId);
+  const previewStudentContextPromise =
+    testContextAllowed && requestedTestRole ? repo.resolveDefaultPreviewStudentContext() : Promise.resolve(null);
 
   if (resolvedRole === "student") {
-    let [student, household, authenticatedUser] = await Promise.all([
+    let [student, household, authenticatedUser, previewStudentContext] = await Promise.all([
       studentProfilePromise,
       householdPromise,
       authenticatedUserPromise,
+      previewStudentContextPromise,
     ]);
+
+    if (!student?.studentProfileId && requestedTestRole === "student" && previewStudentContext?.studentProfileId) {
+      student = { studentProfileId: previewStudentContext.studentProfileId };
+      household = {
+        householdId: previewStudentContext.householdId ?? null,
+        studentProfileId: previewStudentContext.studentProfileId ?? null,
+        studentUserId: previewStudentContext.studentUserId ?? null,
+        roleInHousehold: "student",
+        studentFirstName: previewStudentContext.studentFirstName ?? null,
+        studentLastName: previewStudentContext.studentLastName ?? null,
+        studentPreferredName: previewStudentContext.studentPreferredName ?? null,
+      };
+    }
 
     if (!student?.studentProfileId) {
       const studentProfileId = stableId("student_profile", auth.userId);
       await studentWriteRepo.upsertStudentProfile({
         studentProfileId,
-        userId: auth.userId,
+        userId: canonicalUserId,
         householdId: household?.householdId ?? null,
       });
 
-      student = await repo.resolveStudentProfileForStudentUser(auth.userId);
+      student = await repo.resolveStudentProfileForStudentUser(canonicalUserId);
     }
 
     const introOnboarding = buildIntroOnboardingView(authenticatedUser);
 
     return {
-      authenticatedUserId: auth.userId,
+      authenticatedUserId: canonicalUserId,
       authenticatedRoleType: resolvedRole,
+      primaryPersona: effectivePermissions.primaryPersona,
       householdId: household?.householdId ?? null,
       studentProfileId:
         student?.studentProfileId ??
         household?.studentProfileId ??
         null,
-      studentUserId: auth.userId,
+      studentUserId: household?.studentUserId ?? canonicalUserId,
+      accountStatus: account.accountStatus,
+      authProvider: account.authProvider,
+      isSuperAdmin: account.isSuperAdmin,
+      effectiveCapabilities: effectivePermissions.grantedCapabilities,
+      deniedCapabilities: effectivePermissions.deniedCapabilities,
+      activeMemberships: memberships.map((membership) => ({
+        householdId: membership.householdId,
+        householdName: membership.householdName,
+        roleInHousehold: membership.roleInHousehold,
+        membershipStatus: membership.membershipStatus,
+        isPrimary: membership.isPrimary,
+      })),
       email: auth.email,
       authenticatedFirstName: authenticatedUser?.firstName ?? null,
       authenticatedLastName: authenticatedUser?.lastName ?? null,
@@ -162,19 +232,52 @@ export async function resolveRequestContext(req: IncomingMessage): Promise<Reque
     };
   }
 
-  const [household, student, authenticatedUser] = await Promise.all([
+  let [household, student, authenticatedUser, previewStudentContext] = await Promise.all([
     householdPromise,
     studentProfilePromise,
     authenticatedUserPromise,
+    previewStudentContextPromise,
   ]);
+
+  if (!household?.studentProfileId && requestedTestRole && previewStudentContext?.studentProfileId) {
+    household = {
+      householdId: previewStudentContext.householdId ?? null,
+      studentProfileId: previewStudentContext.studentProfileId ?? null,
+      studentUserId: previewStudentContext.studentUserId ?? null,
+      roleInHousehold:
+        requestedTestRole === "parent" ? "parent" : requestedTestRole === "coach" ? "coach" : "student",
+      studentFirstName: previewStudentContext.studentFirstName ?? null,
+      studentLastName: previewStudentContext.studentLastName ?? null,
+      studentPreferredName: previewStudentContext.studentPreferredName ?? null,
+    };
+  }
+
+  if (!student?.studentProfileId && requestedTestRole === "student" && previewStudentContext?.studentProfileId) {
+    student = {
+      studentProfileId: previewStudentContext.studentProfileId,
+    };
+  }
   const introOnboarding = buildIntroOnboardingView(authenticatedUser);
 
   return {
-    authenticatedUserId: auth.userId,
+    authenticatedUserId: canonicalUserId,
     authenticatedRoleType: resolvedRole,
+    primaryPersona: effectivePermissions.primaryPersona,
     householdId: household?.householdId ?? null,
     studentProfileId: household?.studentProfileId ?? student?.studentProfileId ?? null,
-    studentUserId: household?.studentUserId ?? auth.userId,
+    studentUserId: household?.studentUserId ?? canonicalUserId,
+    accountStatus: account.accountStatus,
+    authProvider: account.authProvider,
+    isSuperAdmin: account.isSuperAdmin,
+    effectiveCapabilities: effectivePermissions.grantedCapabilities,
+    deniedCapabilities: effectivePermissions.deniedCapabilities,
+    activeMemberships: memberships.map((membership) => ({
+      householdId: membership.householdId,
+      householdName: membership.householdName,
+      roleInHousehold: membership.roleInHousehold,
+      membershipStatus: membership.membershipStatus,
+      isPrimary: membership.isPrimary,
+    })),
     email: auth.email,
     authenticatedFirstName: authenticatedUser?.firstName ?? null,
     authenticatedLastName: authenticatedUser?.lastName ?? null,

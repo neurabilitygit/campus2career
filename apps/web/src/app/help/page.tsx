@@ -6,6 +6,7 @@ import { AppShell } from "../../components/layout/AppShell";
 import { SectionCard } from "../../components/layout/SectionCard";
 import { useAuthContext } from "../../hooks/useAuthContext";
 import { launchIntroOnboardingReplay } from "../../lib/introOnboarding";
+import { launchRoleIntroOnboardingReplay } from "../../lib/roleIntroOnboarding";
 
 type HelpTopic = {
   category: string;
@@ -27,19 +28,84 @@ const topics: HelpTopic[] = [
     title: "Take the introductory tour",
     role: "shared",
     status: "available",
-    summary: "Newly registered users see a lightweight introduction once so they can find the dashboard, profile, curriculum review, communication tools, and help.",
-    whenToUse: "Use this after first registration or anytime you want to replay the orientation.",
-    youNeed: "A signed-in account. Existing users can replay it manually from Help or the account menu.",
+    summary: "Newly registered users see a shared introduction first, then a shorter role walkthrough once the system knows whether the account is currently operating as a student, parent, or coach.",
+    whenToUse: "Use this after first registration or anytime you want to replay the shared overview or your role walkthrough.",
+    youNeed: "A signed-in account. Existing users can replay both tours manually from Help or the account menu.",
     howToUse: [
-      "After a brand-new registration, the welcome splash appears before the interactive tour.",
+      "After a brand-new registration, the welcome splash appears before the shared orientation.",
+      "The shared orientation now covers the workspace shell, navigation, profile, household setup, academic path, documents and evidence, Career Goal, communication, and help.",
+      "After the shared orientation finishes, a shorter role walkthrough explains the most important student, parent, or coach features for the current workspace.",
       "Use Next, Back, Skip, or Finish to move at your own pace.",
-      "Replay intro from Help or the account menu whenever you want the overview again.",
-      "The tour stays general and uses only the features available to your current role.",
+      "Replay intro for the shared overview, or replay role walkthrough for the role-specific tour.",
     ],
-    output: "A quick orientation to the main app areas without forcing a role-specific training flow.",
+    output: "A lighter first-run experience that starts broad, then becomes role-aware after sign-in context resolves.",
     mistakes: [
       "Expecting the intro to appear after every normal login.",
-      "Skipping the tour and forgetting that it can be relaunched later from Help.",
+      "Skipping the tour and forgetting that both versions can be relaunched later from Help.",
+    ],
+  },
+  {
+    category: "Getting started",
+    title: "Understand roles and household setup",
+    role: "shared",
+    status: "available",
+    summary: "Rising Senior uses a parent-created household model with invitation and request-based access for students and coaches.",
+    whenToUse: "Use this when you want to understand why the same sign-in can lead to different workspaces and how household membership drives permissions.",
+    youNeed: "A signed-in account helps because role-aware navigation and workspace routing depend on resolved account context.",
+    howToUse: [
+      "Parents create households and become the first household administrators.",
+      "Students and coaches join by invitation, or by requesting access to an existing parent-managed household.",
+      "After sign-in, the system resolves the current workspace role from active household membership first and falls back to the account role only when membership wiring is incomplete.",
+      "A household usually centers on one student and can include a parent or guardian plus an optional coach relationship.",
+      "Open Household administration to manage invitations, join requests, persona assignments, and feature-level permissions.",
+    ],
+    output: "A clearer understanding of how parent, student, coach, and admin access relate to the same underlying student record without exposing unrelated household data.",
+    mistakes: [
+      "Assuming one account should freely open every workspace without a matching role.",
+      "Assuming hidden navigation means a broken UI; it often means the capability is not enabled for the current role or household.",
+    ],
+  },
+  {
+    category: "Getting started",
+    title: "Choose the correct signup flow",
+    role: "shared",
+    status: "available",
+    summary: "Signup now branches into parent household creation, student household access requests, or coach household access requests.",
+    whenToUse: "Use this when you are creating a new account or accepting an invitation.",
+    youNeed: "Google sign-in works today. Apple sign-in and email/password are visible as future options but are not active yet.",
+    howToUse: [
+      "Parents sign in and create the household first.",
+      "Students use an invitation link when possible. If no invitation exists, they request access using the parent email tied to the household.",
+      "Coaches use an invitation link when possible. If no invitation exists, they request access to the parent-managed household.",
+      "If an invitation link is present, Rising Senior validates the token, checks expiration, and then attaches the signed-in account to the correct household and persona.",
+    ],
+    output: "A cleaner first-run experience that wires the account into the correct household and permission model before normal work begins.",
+    mistakes: [
+      "Expecting students or coaches to create households directly.",
+      "Using an invitation link while signed in as a different email than the invited address.",
+    ],
+  },
+  {
+    category: "Administration",
+    title: "Manage household permissions",
+    role: "shared",
+    status: "available",
+    summary: "Household administration shows members, pending invitations, pending join requests, and feature-level capability controls.",
+    whenToUse: "Use this when you need to invite a student or coach, review a join request, or change what a user can see and do.",
+    youNeed: "A parent household administrator or a platform administrator account.",
+    howToUse: [
+      "Open Household administration from the left navigation or account menu.",
+      "Invite a student or coach by email to generate a secure, expiring invite link.",
+      "If SendGrid invitation delivery is configured, the system emails the invite directly. In local development, the secure invite link is logged instead.",
+      "Review join requests and approve only the users who should join the household.",
+      "Change a user’s primary persona and feature-level permissions with the capability checkboxes.",
+      "If a capability is denied, the related navigation item, page access, and API access are all removed or blocked together.",
+      "The super administrator also sees a read-only cross-household user directory for platform-level troubleshooting.",
+    ],
+    output: "A single place to manage household membership and explain why certain features appear or disappear for a user.",
+    mistakes: [
+      "Granting a feature without its dependent context and expecting it to work in isolation.",
+      "Assuming a hidden navigation item is still usable by direct URL; denied routes are blocked.",
     ],
   },
   {
@@ -95,7 +161,7 @@ const topics: HelpTopic[] = [
     howToUse: [
       "Start in Big picture to see the current status and next move.",
       "Open Evidence to see what the system can actually verify.",
-      "Open Next steps to review risks, actions, and scenario guidance.",
+      "Open Next steps to review risks, actions, and Career Goal guidance.",
     ],
     output: "A transparent readiness read, not a hidden prediction.",
     mistakes: [
@@ -186,6 +252,29 @@ const topics: HelpTopic[] = [
     privacy: "Verification records keep source attribution and review timing so the platform can distinguish confirmed curriculum from provisional curriculum.",
   },
   {
+    category: "Career Goal",
+    title: "Compare real job targets with Career Goal",
+    role: "shared",
+    status: "available",
+    summary: "Career Goal lets you save multiple named job-target goals, paste a real job description, and compare the student record against each one without overwriting the general baseline.",
+    whenToUse: "Use this when you want role-specific guidance instead of only a broad readiness view.",
+    youNeed: "A saved student record and, ideally, a pasted job description or a clear target profession.",
+    howToUse: [
+      "Open Career Goal from the left navigation.",
+      "Create a unique Career Goal name, then paste a job description or define a manual target.",
+      "Adjust role, sector, geography, or other assumptions that should travel with that Career Goal.",
+      "Save the Career Goal to make it active, then review the result summary, strengths, gaps, missing evidence, and next actions.",
+      "Use the comparison view to place two saved Career Goals side by side before deciding which target should stay active.",
+      "Use duplicate, save as new, re-run, or delete when you want to compare alternative directions without losing student data.",
+    ],
+    output: "A job-specific readiness view that can change the active dashboard context and make recommendations more targeted.",
+    mistakes: [
+      "Assuming the active Career Goal replaces the student record itself; it only changes the current job-target frame.",
+      "Forgetting to re-run a Career Goal after major, curriculum, or evidence changes.",
+    ],
+    privacy: "Deleting a Career Goal removes the saved Career Goal record only. It does not delete student profile, academic evidence, uploads, or household data.",
+  },
+  {
     category: "Career readiness score",
     title: "Understand the score",
     role: "shared",
@@ -226,25 +315,92 @@ const topics: HelpTopic[] = [
     privacy: "Uploaded documents become part of the auditable student evidence record used by the current account context.",
   },
   {
-    category: "Communication translator",
-    title: "Translate family concerns constructively",
+    category: "Communication",
+    title: "Build the communication profile over time",
+    role: "shared",
+    status: "available",
+    summary: "Communication is now a core workspace where parent insight, student preferences, translation help, and coach-visible summaries all live together.",
+    whenToUse: "Use this when family support is getting lost in friction, shutdown, defensiveness, or repeated misunderstandings.",
+    youNeed: "A signed-in role with Communication access. Prompts can be answered gradually.",
+    howToUse: [
+      "Open Communication from the left navigation.",
+      "Parents can add deeper context about worries, strengths, friction points, and what has or has not worked before.",
+      "Students can answer shorter prompts about reminders, tone, stress triggers, and what adults misunderstand.",
+      "Edit or delete saved responses when your understanding changes instead of leaving outdated context behind.",
+      "Review system-learned communication patterns and confirm or reject them so future guidance stays accurate.",
+      "Use the translation helper when you want the system to rewrite a message more clearly and with less friction.",
+      "Rate translations as helpful, too direct, too soft, or off-target so future guidance improves.",
+      "Check the Communication analytics cards to see which prompts are getting answered, skipped, or flagged for revisit and how translation feedback is trending.",
+    ],
+    output: "Role-aware communication profiles, translation history, and clearer tone guidance across the system.",
+    mistakes: [
+      "Treating inferred communication themes as if the user explicitly said them.",
+      "Using the translator to hide who a message came from.",
+      "Assuming every saved note is visible to every household role.",
+    ],
+    privacy: "Each communication response has a visibility scope. Private or system-only items may guide tone without being shown directly to another person.",
+  },
+  {
+    category: "Communication",
+    title: "Use the parent-to-student translator respectfully",
     role: "parent",
     status: "available",
-    summary: "The communication area now has its own navigation entry so parents can find the translator, history, and communication drafts more easily.",
+    summary: "Parents can rewrite reminders, worries, and check-ins so they are more likely to land without pressure, shame, or escalation.",
     whenToUse: "Use this when a topic matters, but the usual wording tends to create friction or defensiveness.",
-    youNeed: "A saved parent communication baseline plus the concern, context, and desired outcome.",
+    youNeed: "The concern you want to raise plus enough communication context for the system to understand how this family dynamic usually works.",
     howToUse: [
-      "Open Messages & chat in the left navigation, then open the translator workspace.",
-      "Save the concern first, even if it is context only.",
-      "Generate a translation strategy and review the what-not-to-say guidance.",
-      "Only save or send a draft when consent and review conditions allow it.",
+      "Open Communication and choose the translator section.",
+      "Paste what you actually want to say first.",
+      "Review the rewritten, shorter, softer, and more direct versions.",
+      "Check the rationale, risk flags, and suggested next step before using the message.",
     ],
-    output: "A communication strategy, message draft, and audit trail.",
+    output: "A clearer student-facing message plus an explanation of why the wording changed.",
     mistakes: [
       "Using the tool to disguise parent involvement.",
-      "Skipping consent and sensitivity checks because the draft sounds calmer.",
+      "Ignoring risk flags when the system is telling you the message may still escalate conflict.",
     ],
-    privacy: "Parent-originated content should remain transparent and may be withheld when consent or sensitivity rules require it.",
+    privacy: "Parent-originated content should remain transparent and may be softened for clarity, but not used to manipulate the student.",
+  },
+  {
+    category: "Communication",
+    title: "Tell the system what actually helps you",
+    role: "student",
+    status: "available",
+    summary: "Students can answer low-friction prompts that help the system and adults communicate in ways that feel more useful and less annoying.",
+    whenToUse: "Use this whenever reminders, pressure, or planning conversations are landing badly.",
+    youNeed: "Only your own perspective. Short answers are enough.",
+    howToUse: [
+      "Open Communication and use My Communication Preferences or What I Wish Adults Understood.",
+      "Answer only the prompts that feel useful right now.",
+      "Choose a visibility level so private responses can stay private or summary-only.",
+      "Use the Parent Message Helper when you want help saying something clearly to an adult.",
+    ],
+    output: "Saved student communication preferences, visibility-scoped insights, and better tone guidance in later support.",
+    mistakes: [
+      "Assuming skipped prompts must be answered now.",
+      "Forgetting that visibility controls affect what other people may see directly.",
+    ],
+    privacy: "Private student responses can guide system tone without automatically becoming visible to a parent or coach.",
+  },
+  {
+    category: "Communication",
+    title: "Use coach-visible communication context carefully",
+    role: "coach",
+    status: "available",
+    summary: "Coaches can see authorized communication summaries and friction-reduction cues for the currently selected student.",
+    whenToUse: "Use this before drafting outreach, giving accountability feedback, or stepping into a tense family dynamic.",
+    youNeed: "A coach relationship that includes Communication access for the selected student.",
+    howToUse: [
+      "Open Communication and review the Communication Context section.",
+      "Use shared themes and friction signals to choose calmer phrasing and timing.",
+      "Do not assume missing profile data means there is no communication issue; it may simply be incomplete.",
+    ],
+    output: "A limited, role-safe communication summary with coach suggestions and missing-profile alerts.",
+    mistakes: [
+      "Expecting raw private family notes to appear in coach view.",
+      "Treating coach-visible summaries as permission to override household boundaries.",
+    ],
+    privacy: "Coach view is limited to authorized summaries and permitted details only for the selected student context.",
   },
   {
     category: "Parent briefs",
@@ -275,7 +431,7 @@ const topics: HelpTopic[] = [
     howToUse: [
       "Start with the top recommendation before trying to optimize everything at once.",
       "Use deadlines and network notes to make actions more concrete.",
-      "Use scenario guidance when a real decision needs a short plan.",
+      "Use Career Goal guidance when a real decision needs a short plan.",
     ],
     output: "A smaller set of actions that match the student’s current evidence and target.",
     mistakes: [
@@ -381,13 +537,24 @@ export default function HelpPage() {
         tone="highlight"
         actions={
           auth.isAuthenticated ? (
-            <button
-              type="button"
-              className="ui-button ui-button--primary"
-              onClick={launchIntroOnboardingReplay}
-            >
-              Replay intro
-            </button>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <button
+                type="button"
+                className="ui-button ui-button--primary"
+                onClick={launchIntroOnboardingReplay}
+              >
+                Replay intro
+              </button>
+              {auth.data?.context?.authenticatedRoleType ? (
+                <button
+                  type="button"
+                  className="ui-button ui-button--secondary"
+                  onClick={launchRoleIntroOnboardingReplay}
+                >
+                  Replay role walkthrough
+                </button>
+              ) : null}
+            </div>
           ) : null
         }
       >

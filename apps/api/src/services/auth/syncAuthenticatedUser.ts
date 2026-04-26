@@ -3,10 +3,10 @@ import type { AuthenticatedUser } from "../../types/auth";
 
 const repo = new AuthUserRepository();
 
-export async function syncAuthenticatedUser(user: AuthenticatedUser): Promise<void> {
-  if (!user.email) return;
+export async function syncAuthenticatedUser(user: AuthenticatedUser): Promise<string> {
+  if (!user.email) return user.userId;
 
-  await repo.upsertUserFromAuth({
+  return repo.upsertUserFromAuth({
     userId: user.userId,
     email: user.email,
     firstName: user.firstName,

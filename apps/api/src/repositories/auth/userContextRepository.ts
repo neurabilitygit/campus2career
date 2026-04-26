@@ -11,6 +11,15 @@ export interface HouseholdStudentContext {
   studentPreferredName?: string | null;
 }
 
+export interface PreviewStudentContext {
+  householdId: string | null;
+  studentProfileId: string | null;
+  studentUserId: string | null;
+  studentFirstName?: string | null;
+  studentLastName?: string | null;
+  studentPreferredName?: string | null;
+}
+
 export interface UserBasicInfo extends IntroOnboardingState {
   firstName: string | null;
   lastName: string | null;
@@ -27,7 +36,10 @@ export class UserContextRepository {
           uhr.role_in_household
         from user_household_roles uhr
         where uhr.user_id = $1
-        order by uhr.created_at asc
+          and uhr.membership_status = 'active'
+        order by
+          case when uhr.is_primary then 0 else 1 end,
+          uhr.created_at asc
         limit 1
       )
       select
@@ -64,6 +76,30 @@ export class UserContextRepository {
     return result.rows[0] || null;
   }
 
+  async resolveDefaultPreviewStudentContext(): Promise<PreviewStudentContext | null> {
+    const result = await query<PreviewStudentContext>(
+      `
+      select
+        h.household_id as "householdId",
+        sp.student_profile_id as "studentProfileId",
+        sp.user_id as "studentUserId",
+        su.first_name as "studentFirstName",
+        su.last_name as "studentLastName",
+        su.preferred_name as "studentPreferredName"
+      from households h
+      join student_profiles sp on sp.user_id = h.primary_student_user_id
+      join users su on su.user_id = sp.user_id
+      where h.primary_student_user_id is not null
+      order by
+        h.household_name asc nulls last,
+        h.created_at asc
+      limit 1
+      `
+    );
+
+    return result.rows[0] || null;
+  }
+
   async resolveApplicationRoleForUser(userId: string): Promise<"student" | "parent" | "coach" | "admin" | null> {
     const householdRole = await query<{ role: "student" | "parent" | "coach" | null }>(
       `
@@ -76,7 +112,10 @@ export class UserContextRepository {
         end as role
       from user_household_roles
       where user_id = $1
-      order by created_at asc
+        and membership_status = 'active'
+      order by
+        case when is_primary then 0 else 1 end,
+        created_at asc
       limit 1
       `,
       [userId]

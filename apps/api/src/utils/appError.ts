@@ -18,7 +18,17 @@ export class AppError extends Error {
 }
 
 export function isAppError(error: unknown): error is AppError {
-  return error instanceof AppError;
+  if (!error || typeof error !== "object") {
+    return false;
+  }
+  return (
+    "status" in error &&
+    typeof (error as { status?: unknown }).status === "number" &&
+    "code" in error &&
+    typeof (error as { code?: unknown }).code === "string" &&
+    "message" in error &&
+    typeof (error as { message?: unknown }).message === "string"
+  );
 }
 
 export function toAppErrorResponse(error: AppError) {

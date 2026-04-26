@@ -211,8 +211,14 @@ export default function HomePage() {
 
             <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
               <Link
-                href="/app"
+                href="/signup"
                 className="ui-button ui-button--primary"
+              >
+                Create account
+              </Link>
+              <Link
+                href="/app"
+                className="ui-button ui-button--secondary"
               >
                 Open my workspace
               </Link>

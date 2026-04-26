@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { AppShell } from "../layout/AppShell";
@@ -14,6 +15,8 @@ import { useApiData, useApiJsonPost } from "../../hooks/useApiData";
 import { apiFetch } from "../../lib/apiClient";
 import { OutcomeTrackingSection } from "../outcomes/OutcomeTrackingSection";
 import { VisibleCoachFeedSection } from "../coach/VisibleCoachFeedSection";
+import { ActiveCareerScenarioBanner } from "../career/ActiveCareerScenarioBanner";
+import { CareerScenarioComparisonSnapshot } from "../career/CareerScenarioComparisonSnapshot";
 import { listTargetRoleOptions } from "../../../../../packages/shared/src/market/targetRoleSeeds";
 import type { JobTargetNormalizationResult, StudentJobTargetRecord } from "../../../../../packages/shared/src/contracts/career";
 import { buildDirectAddressName } from "../../lib/personalization";
@@ -233,6 +236,37 @@ type StudentCommunicationMessagesResponse = {
   }>;
 };
 
+type CommunicationSummaryResponse = {
+  summary?: {
+    sharedThemes?: string[];
+    frictionSignals?: string[];
+  };
+  completion?: {
+    student?: { completionPercent: number };
+  };
+};
+
+type CareerScenarioActiveResponse = {
+  ok: boolean;
+  activeScenario?: {
+    careerScenarioId: string;
+    scenarioName: string;
+    status: string;
+    targetRole?: string | null;
+    targetProfession?: string | null;
+    lastRunAt?: string | null;
+    actionItems?: Array<{
+      title: string;
+      rationale?: string | null;
+      priority?: string;
+    }>;
+    analysisResult?: {
+      scenarioSpecificActions?: string[];
+      recommendedActions?: string[];
+    } | null;
+  } | null;
+};
+
 function titleCase(value: string | undefined | null): string {
   if (!value) return "Unknown";
   return value
@@ -376,6 +410,8 @@ export default function StudentDashboardView() {
     "/students/me/communication-messages",
     true
   );
+  const communicationSummary = useApiData<CommunicationSummaryResponse>("/communication/summary", true);
+  const activeCareerScenario = useApiData<CareerScenarioActiveResponse>("/students/me/career-scenarios/active", true);
 
   const scenarioBody = useMemo(
     () => ({
@@ -538,6 +574,22 @@ export default function StudentDashboardView() {
       activeSecondaryNavKey={activeSection}
     >
       <RequireRole expectedRoles={["student", "admin"]} fallbackTitle="Student sign-in required">
+        <ActiveCareerScenarioBanner
+          scenario={activeCareerScenario.data?.activeScenario}
+          linkHref="/career-scenarios"
+          missingFallback="Create a Career Goal to see job-specific readiness guidance tied to a saved role or pasted job description."
+        />
+
+        <CareerScenarioComparisonSnapshot
+          activeScenarioId={activeCareerScenario.data?.activeScenario?.careerScenarioId}
+          listPath="/students/me/career-scenarios"
+          buildItemPath={(careerScenarioId) =>
+            `/students/me/career-scenarios/item?careerScenarioId=${encodeURIComponent(careerScenarioId)}`
+          }
+          linkHref="/career-scenarios"
+          subjectLabel={directName}
+        />
+
         {activeSection === "strategy" ? (
           <>
             <div data-intro-target="dashboard-overview">
@@ -823,38 +875,18 @@ export default function StudentDashboardView() {
             </div>
 
             <SectionCard
-              title="Save the exact job you want"
-              subtitle="Save a real target job here. When no temporary override is selected below, scoring will use this saved target by default."
+              title="Career Goal focus"
+              subtitle="Saved exact targets and pasted job descriptions now live in Career Goal so you can compare multiple options without overwriting your baseline."
             >
               <div style={{ display: "grid", gap: 16 }}>
-                {jobTargets.loading ? <p style={{ margin: 0 }}>Loading saved job targets...</p> : null}
-                {jobTargets.error ? <p style={{ margin: 0, color: "crimson" }}>{jobTargets.error}</p> : null}
-                {primaryJobTarget ? (
-                  <div
-                    style={{
-                      borderRadius: 18,
-                      padding: 18,
-                      background: "rgba(255, 255, 255, 0.9)",
-                      border: "1px solid rgba(148, 163, 184, 0.18)",
-                      display: "grid",
-                      gap: 10,
-                    }}
-                  >
-                    <div style={{ color: "#5f728a", fontSize: 12, fontWeight: 800, textTransform: "uppercase", letterSpacing: 0.05 }}>
-                      Current saved target
-                    </div>
-                    <div style={{ fontSize: 24, fontWeight: 800 }}>{primaryJobTarget.title}</div>
-                    <div style={{ color: "#52657d" }}>
-                      {[primaryJobTarget.employer, primaryJobTarget.location].filter(Boolean).join(" · ") || "No employer or location added"}
-                    </div>
-                    <KeyValueList
-                      items={[
-                        { label: "Mapped role family", value: titleCase(primaryJobTarget.normalizedRoleFamily) },
-                        { label: "Mapped sector", value: titleCase(primaryJobTarget.normalizedSectorCluster) },
-                        { label: "O*NET code", value: primaryJobTarget.onetCode || "Unknown" },
-                        { label: "Match confidence", value: confidenceLabel(primaryJobTarget.normalizationConfidence) },
-                      ]}
-                    />
+                {activeCareerScenario.data?.activeScenario ? (
+                  <div className="ui-soft-panel">
+                    <strong>{activeCareerScenario.data.activeScenario.scenarioName}</strong>
+                    <p style={{ margin: "6px 0 0 0", color: "#475569", lineHeight: 1.6 }}>
+                      {activeCareerScenario.data.activeScenario.targetRole ||
+                        activeCareerScenario.data.activeScenario.targetProfession ||
+                        "Target role not yet defined"}
+                    </p>
                   </div>
                 ) : (
                   <div
@@ -867,140 +899,19 @@ export default function StudentDashboardView() {
                       lineHeight: 1.6,
                     }}
                   >
-                    No exact target job is saved yet. If a sector has been selected, the platform can still score against the matching broad role family. Otherwise scoring will pause until a target is chosen.
+                    No active career goal exists yet. Create one to save a real job description, compare multiple roles, and make the dashboard more job-specific.
                   </div>
                 )}
-
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
-                    gap: 14,
-                  }}
-                >
-                  <label style={{ display: "grid", gap: 6 }}>
-                    <FieldInfoLabel
-                      label="Job title"
-                      info="Name the exact role you want the system to map and score."
-                      example="Corporate Finance Analyst"
-                    />
-                    <input
-                      value={jobTargetDraft.title}
-                      onChange={(e) => setJobTargetDraft((current) => ({ ...current, title: e.target.value }))}
-                      placeholder="Example: Corporate Finance Analyst"
-                    />
-                  </label>
-                  <label style={{ display: "grid", gap: 6 }}>
-                    <FieldInfoLabel
-                      label="Employer"
-                      info="Add the company if you already have a specific target in mind."
-                      example="JPMorgan Chase"
-                    />
-                    <input
-                      value={jobTargetDraft.employer}
-                      onChange={(e) => setJobTargetDraft((current) => ({ ...current, employer: e.target.value }))}
-                      placeholder="Optional"
-                    />
-                  </label>
-                  <label style={{ display: "grid", gap: 6 }}>
-                    <FieldInfoLabel
-                      label="Location"
-                      info="Add the city, region, or remote preference tied to this role."
-                      example="New York, NY"
-                    />
-                    <input
-                      value={jobTargetDraft.location}
-                      onChange={(e) => setJobTargetDraft((current) => ({ ...current, location: e.target.value }))}
-                      placeholder="Optional"
-                    />
-                  </label>
-                </div>
-                <label style={{ display: "grid", gap: 6 }}>
-                  <FieldInfoLabel
-                    label="Job description or posting notes"
-                    info="Paste responsibilities, skills, or details that make this target more specific."
-                    example="SQL, dashboards, stakeholder reporting, internship preferred"
-                  />
-                  <textarea
-                    value={jobTargetDraft.jobDescriptionText}
-                    onChange={(e) => setJobTargetDraft((current) => ({ ...current, jobDescriptionText: e.target.value }))}
-                    rows={5}
-                    placeholder="Paste responsibilities, required skills, or anything specific about the role if you have it."
-                    style={{
-                      width: "100%",
-                      fontFamily: "inherit",
-                      borderRadius: 18,
-                      border: "1px solid rgba(73, 102, 149, 0.18)",
-                      padding: "14px 16px",
-                      background: "rgba(255,255,255,0.82)",
-                    }}
-                  />
-                </label>
-                <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
-                  <button
-                    type="button"
-                    onClick={handleSaveJobTarget}
-                    className="ui-button ui-button--primary"
-                  >
-                    {jobTargetAction.saving ? "Saving target..." : "Save exact target job"}
-                  </button>
-                  {jobTargetAction.success ? <span style={{ color: "#166534" }}>{jobTargetAction.success}</span> : null}
-                  {jobTargetAction.error ? <span style={{ color: "crimson" }}>{jobTargetAction.error}</span> : null}
-                </div>
-                {jobTargetAction.normalization ? (
-                  <div
-                    style={{
-                      border: "1px solid #dbe4f0",
-                      borderRadius: 14,
-                      padding: "14px 16px",
-                      background: "#f8fbff",
-                      color: "#475569",
-                      lineHeight: 1.6,
-                    }}
-                  >
-                    Saved target mapped to {titleCase(jobTargetAction.normalization.normalizedRoleFamily)} in {titleCase(jobTargetAction.normalization.normalizedSectorCluster)}.
-                    {" "}
-                    Confidence: {jobTargetAction.normalization.confidenceLabel || confidenceLabel(jobTargetAction.normalization.normalizationConfidence)}.
+                {primaryJobTarget ? (
+                  <div style={{ color: "#64748b", lineHeight: 1.6 }}>
+                    Legacy saved target on file: <strong>{primaryJobTarget.title}</strong>. You can bring that into Career Goal as a fuller, named career goal without losing the older record.
                   </div>
                 ) : null}
-                {savedJobTargets.length > 1 ? (
-                  <div style={{ display: "grid", gap: 10 }}>
-                    <strong>Other saved targets</strong>
-                    {savedJobTargets.filter((jobTarget) => !jobTarget.isPrimary).map((jobTarget) => (
-                      <div
-                        key={jobTarget.jobTargetId}
-                        style={{
-                          border: "1px solid #dbe4f0",
-                          borderRadius: 14,
-                          padding: 14,
-                          background: "#fbfdff",
-                          display: "flex",
-                          justifyContent: "space-between",
-                          gap: 12,
-                          alignItems: "center",
-                          flexWrap: "wrap",
-                        }}
-                      >
-                        <div style={{ display: "grid", gap: 4 }}>
-                          <div style={{ fontWeight: 800 }}>{jobTarget.title}</div>
-                          <div style={{ color: "#475569" }}>
-                            {[jobTarget.employer, jobTarget.location].filter(Boolean).join(" · ") || "No employer or location added"}
-                          </div>
-                          <div style={{ color: "#64748b", fontSize: 14 }}>
-                            {titleCase(jobTarget.normalizedRoleFamily)} · {titleCase(jobTarget.normalizedSectorCluster)}
-                          </div>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => handleSetPrimaryJobTarget(jobTarget.jobTargetId)}
-                          className="ui-button ui-button--secondary"
-                        >
-                          {jobTargetAction.settingPrimary === jobTarget.jobTargetId ? "Updating..." : "Use for scoring"}
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                ) : null}
+                <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+                  <Link href="/career-scenarios" className="ui-button ui-button--primary">
+                    Open Career Goal
+                  </Link>
+                </div>
               </div>
             </SectionCard>
 
@@ -1300,6 +1211,28 @@ export default function StudentDashboardView() {
               title="Ask for guidance"
               subtitle="Ask about a real decision or concern and the platform will turn the current student context into practical advice."
             >
+              <div
+                style={{
+                  marginBottom: 18,
+                  padding: 16,
+                  borderRadius: 16,
+                  background: "#f8fbff",
+                  border: "1px solid #dbe4f0",
+                  display: "grid",
+                  gap: 8,
+                }}
+              >
+                <strong>Communication preferences snapshot</strong>
+                <div style={{ color: "#334155", lineHeight: 1.6 }}>
+                  Profile completion: {communicationSummary.data?.completion?.student?.completionPercent ?? 0}%.
+                  {(communicationSummary.data?.summary?.sharedThemes || []).length
+                    ? ` Shared themes: ${communicationSummary.data?.summary?.sharedThemes?.join(", ")}.`
+                    : " Add a few communication responses to help the system adapt its tone."}
+                </div>
+                <div>
+                  <Link href="/communication?section=preferences">Open Communication preferences</Link>
+                </div>
+              </div>
               {(communicationMessages.data?.messages || []).length ? (
                 <div
                   style={{
@@ -1323,7 +1256,7 @@ export default function StudentDashboardView() {
                       : ""}
                   </small>
                   <div>
-                    <a href="/student/messages">Open full message history</a>
+                    <Link href="/student/messages">Open full message history</Link>
                   </div>
                 </div>
               ) : null}
@@ -1384,10 +1317,10 @@ export default function StudentDashboardView() {
               {scenario.loading ? "Processing…" : "Get guidance"}
             </button>
               </div>
-              {scenario.loading ? <p>Processing scenario guidance...</p> : null}
+              {scenario.loading ? <p>Processing Career Goal guidance...</p> : null}
               {scenario.error ? <p style={{ color: "crimson" }}>{scenario.error}</p> : null}
               {!scenario.loading && !scenario.error && !scenario.data?.response && requestedScenario ? (
-                <p style={{ color: "#475569" }}>No scenario response was returned.</p>
+                <p style={{ color: "#475569" }}>No Career Goal response was returned.</p>
               ) : null}
               {!scenario.loading && !scenario.error && scenario.data?.response ? (
                 <div style={{ display: "grid", gap: 16 }}>

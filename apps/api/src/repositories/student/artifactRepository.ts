@@ -1,4 +1,4 @@
-import { query } from "../../db/client";
+import { executeQuery, query, type DbExecutor } from "../../db/client";
 
 export interface CreateAcademicArtifactInput {
   academicArtifactId: string;
@@ -128,8 +128,9 @@ export class ArtifactRepository {
     return result.rows[0] || null;
   }
 
-  async markUploadTargetConsumed(uploadTargetId: string): Promise<void> {
-    await query(
+  async markUploadTargetConsumed(uploadTargetId: string, executor?: DbExecutor): Promise<void> {
+    await executeQuery(
+      executor,
       `
       update upload_targets
       set consumed_at = coalesce(consumed_at, now())
@@ -139,8 +140,9 @@ export class ArtifactRepository {
     );
   }
 
-  async createAcademicArtifact(input: CreateAcademicArtifactInput): Promise<void> {
-    await query(
+  async createAcademicArtifact(input: CreateAcademicArtifactInput, executor?: DbExecutor): Promise<void> {
+    await executeQuery(
+      executor,
       `
       insert into academic_artifacts (
         academic_artifact_id,
@@ -183,8 +185,9 @@ export class ArtifactRepository {
     );
   }
 
-  async createArtifactParseJob(input: CreateArtifactParseJobInput): Promise<void> {
-    await query(
+  async createArtifactParseJob(input: CreateArtifactParseJobInput, executor?: DbExecutor): Promise<void> {
+    await executeQuery(
+      executor,
       `
       insert into artifact_parse_jobs (
         artifact_parse_job_id,

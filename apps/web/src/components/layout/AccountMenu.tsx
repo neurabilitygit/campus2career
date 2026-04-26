@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { clearStoredDemoAuth } from "../../lib/demoAuth";
 import { launchIntroOnboardingReplay } from "../../lib/introOnboarding";
+import { launchRoleIntroOnboardingReplay } from "../../lib/roleIntroOnboarding";
 import { getSupabaseBrowserClient, getSupabaseConfigError } from "../../lib/supabaseClient";
 import {
   getStoredTestContextRole,
@@ -14,7 +15,7 @@ import {
 import { useAuthContext } from "../../hooks/useAuthContext";
 
 type WorkspaceItem = {
-  key: "student" | "parent" | "coach";
+  key: "student" | "parent" | "coach" | "admin";
   label: string;
   href: string;
 };
@@ -23,6 +24,7 @@ const workspaceItems: WorkspaceItem[] = [
   { key: "student", label: "Student", href: "/student?section=strategy" },
   { key: "parent", label: "Parent", href: "/parent" },
   { key: "coach", label: "Coach", href: "/coach" },
+  { key: "admin", label: "Administration", href: "/admin" },
 ];
 
 function displayName(input: {
@@ -88,6 +90,7 @@ export function AccountMenu() {
   }, [open]);
 
   const context = auth.data?.context;
+  const capabilities = context?.effectiveCapabilities || [];
   const allowedPreviewRoles = context?.testContextAllowedRoles || [];
   const canPreview = !!context?.testContextSwitchingEnabled && allowedPreviewRoles.length > 0;
   const currentRole = context?.authenticatedRoleType || null;
@@ -98,7 +101,7 @@ export function AccountMenu() {
       );
     }
 
-    if (currentRole === "student" || currentRole === "parent" || currentRole === "coach") {
+    if (currentRole === "student" || currentRole === "parent" || currentRole === "coach" || currentRole === "admin") {
       return workspaceItems.filter((item) => item.key === currentRole);
     }
 
@@ -226,9 +229,21 @@ export function AccountMenu() {
                   <Link href="/profile" className="account-menu__link" role="menuitem" onClick={() => setOpen(false)}>
                     Profile
                   </Link>
-                  <Link href="/communication" className="account-menu__link" role="menuitem" onClick={() => setOpen(false)}>
-                    Messages & chat
-                  </Link>
+                  {capabilities.includes("view_household_admin") ? (
+                    <Link href="/household-setup" className="account-menu__link" role="menuitem" onClick={() => setOpen(false)}>
+                      Household setup
+                    </Link>
+                  ) : null}
+                  {capabilities.includes("view_household_admin") ? (
+                    <Link href="/admin" className="account-menu__link" role="menuitem" onClick={() => setOpen(false)}>
+                      Household administration
+                    </Link>
+                  ) : null}
+                  {capabilities.includes("view_communication") ? (
+                    <Link href="/communication" className="account-menu__link" role="menuitem" onClick={() => setOpen(false)}>
+                      Messages & chat
+                    </Link>
+                  ) : null}
                 </div>
               </div>
 
@@ -277,6 +292,18 @@ export function AccountMenu() {
                 >
                   Replay intro
                 </button>
+                {currentRole ? (
+                  <button
+                    type="button"
+                    className="ui-button ui-button--secondary"
+                    onClick={() => {
+                      launchRoleIntroOnboardingReplay();
+                      setOpen(false);
+                    }}
+                  >
+                    Replay role walkthrough
+                  </button>
+                ) : null}
                 <button
                   type="button"
                   className="ui-button ui-button--ghost"

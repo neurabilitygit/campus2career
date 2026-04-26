@@ -532,7 +532,15 @@ details summary {
   display: flex;
   align-items: center;
   gap: 12px;
-  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.app-topbar__leading {
+  flex: 1 1 auto;
+}
+
+.app-topbar__actions {
+  flex: 0 0 auto;
 }
 
 .app-topbar__menu-button {
@@ -544,6 +552,109 @@ details summary {
   background: rgba(255, 255, 255, 0.88);
   color: var(--ink-strong);
   box-shadow: var(--shadow-soft);
+}
+
+.app-topbar__contexts,
+.app-topbar__shortcuts {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.app-topbar__contexts {
+  flex: 1 1 auto;
+  overflow: hidden;
+}
+
+.app-topbar__shortcuts {
+  justify-content: flex-end;
+}
+
+.app-topbar__chip,
+.app-topbar__shortcut,
+.app-help-button {
+  min-height: 42px;
+}
+
+.app-topbar__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  max-width: min(100%, 280px);
+  padding: 9px 13px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.78);
+  background: rgba(255, 255, 255, 0.88);
+  color: var(--ink-strong);
+  box-shadow: var(--shadow-soft);
+}
+
+.app-topbar__chip--link {
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease,
+    border-color 160ms ease;
+}
+
+.app-topbar__chip--link:hover,
+.app-topbar__chip--link:focus-visible {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--role-accent, var(--accent-blue)) 24%, white);
+  box-shadow: 0 16px 28px rgba(15, 23, 42, 0.1);
+}
+
+.app-topbar__chip--attention {
+  background: linear-gradient(180deg, #fff9ef 0%, #fff4dd 100%);
+  border-color: rgba(245, 185, 77, 0.42);
+}
+
+.app-topbar__chip-label {
+  color: var(--ink-muted);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.app-topbar__chip-value,
+.app-topbar__action-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-topbar__chip-value {
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.app-topbar__badge {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--role-accent, var(--accent-blue)) 16%, white);
+  color: var(--role-accent, var(--accent-blue));
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.app-topbar__shortcut,
+.app-help-button {
+  width: fit-content;
+  white-space: nowrap;
+}
+
+.app-topbar__shortcut {
+  padding-inline: 14px;
 }
 
 .app-topbar__workspace-chip {
@@ -606,6 +717,18 @@ details summary {
   min-width: 0;
   display: grid;
   gap: 16px;
+}
+
+.app-detail__footer-nav {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  padding-top: 4px;
+}
+
+.app-detail__footer-back {
+  width: fit-content;
+  max-width: 100%;
 }
 
 .account-menu {
@@ -1004,6 +1127,10 @@ details summary {
     justify-content: center;
   }
 
+  .app-topbar [data-priority="low"] {
+    display: none;
+  }
+
   .intro-tour {
     position: relative;
     inset: auto;
@@ -1035,6 +1162,16 @@ details summary {
     justify-content: flex-start;
   }
 
+  .app-topbar__contexts,
+  .app-topbar__shortcuts {
+    flex-wrap: nowrap;
+    overflow: hidden;
+  }
+
+  .app-topbar__contexts {
+    justify-content: flex-start;
+  }
+
   .app-topbar__actions {
     display: grid;
     grid-template-columns: auto minmax(0, 1fr);
@@ -1043,8 +1180,16 @@ details summary {
     width: 100%;
   }
 
-  .app-topbar__actions > .ui-button {
-    width: fit-content;
+  .app-topbar__shortcuts {
+    justify-content: flex-end;
+  }
+
+  .app-topbar [data-priority="medium"] {
+    display: none;
+  }
+
+  .app-topbar__chip {
+    max-width: 100%;
   }
 
   .account-menu__trigger {

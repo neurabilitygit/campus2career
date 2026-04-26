@@ -18,14 +18,14 @@ export default defineConfig({
   },
   webServer: [
     {
-      command: "PORT=8180 pnpm --dir apps/api dev:test",
+      command: "node tests/e2e/preparePlaywrightEnv.mjs 8180 && PORT=8180 pnpm --dir apps/api dev:test",
       url: "http://localhost:8180/health",
       reuseExistingServer: false,
       timeout: 120_000,
     },
     {
       command:
-        "PORT=3100 NEXT_DIST_DIR=.next-dev-e2e NEXT_PUBLIC_API_BASE_URL=http://localhost:8180 NEXT_PUBLIC_ENABLE_TEST_DEMO_AUTH=true pnpm --dir apps/web dev",
+        "node tests/e2e/preparePlaywrightEnv.mjs 3100 && PORT=3100 NEXT_DIST_DIR=.next-dev-e2e NEXT_PUBLIC_API_BASE_URL=http://localhost:8180 NEXT_PUBLIC_ENABLE_TEST_DEMO_AUTH=true pnpm --dir apps/web dev",
       url: "http://localhost:3100",
       reuseExistingServer: false,
       timeout: 120_000,

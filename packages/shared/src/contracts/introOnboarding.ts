@@ -8,4 +8,4 @@ export type IntroOnboardingState = {
   introOnboardingStatus: IntroOnboardingStatus;
 };
 
-export const CURRENT_INTRO_ONBOARDING_VERSION = 1;
+export const CURRENT_INTRO_ONBOARDING_VERSION = 2;

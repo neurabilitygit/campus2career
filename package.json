@@ -6,7 +6,7 @@
   "scripts": {
     "typecheck": "pnpm -r typecheck",
     "test:api": "pnpm --dir apps/api test",
-    "test:unit": "pnpm exec tsx --test 'tests/unit/**/*.test.ts' && pnpm --dir apps/api exec node --import tsx/esm --test --test-concurrency=1 'src/services/**/*.test.ts'",
+    "test:unit": "pnpm exec tsx --test 'tests/unit/**/*.test.ts' && pnpm --dir apps/api exec node --import tsx/esm --test --test-concurrency=1 'src/services/**/*.test.ts' 'src/http/**/*.test.ts' 'src/db/**/*.test.ts'",
     "test:integration": "pnpm db:migrate && pnpm test:e2e:seed && pnpm exec tsx --env-file apps/api/.env.local --test --test-concurrency=1 'tests/integration/**/*.test.ts' && pnpm --dir apps/api test:integration",
     "test:e2e:seed": "pnpm --dir apps/api test:seed:e2e",
     "test:e2e": "pnpm db:migrate && pnpm test:e2e:seed && playwright test",
@@ -25,7 +25,8 @@
     "academic:discover:seed:ivy-suny": "pnpm --dir apps/api academic:discover:seed",
     "academic:discover:seed:top50": "pnpm --dir apps/api academic:discover:top50",
     "academic:review:top50": "pnpm --dir apps/api academic:review:top50",
-    "verify:ci": "pnpm typecheck && pnpm db:migrate && pnpm db:seed:ci && pnpm synthetic:run"
+    "verify:ci": "pnpm typecheck && pnpm db:migrate && pnpm db:seed:ci && pnpm synthetic:run",
+    "export:codebase": "node scripts/create-codebase-archive.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.54.2",

@@ -105,8 +105,8 @@ test("coach can update profile, keep coach-only navigation, and see the selected
   await expect(page.getByRole("heading", { name: /Maya Rivera review workspace/i })).toBeVisible();
 
   await ensureSidebarGroupExpanded(page, "Communication");
-  await expect(page.getByRole("link", { name: "Messages & chat" })).toBeVisible();
-  await page.getByRole("link", { name: "Messages & chat" }).click();
+  await expect(page.getByRole("link", { name: "Communication hub" })).toBeVisible();
+  await page.getByRole("link", { name: "Communication hub" }).click();
   await expect(page).toHaveURL(/\/communication/);
   await expect(page.getByRole("heading", { name: "Communication", level: 1 })).toBeVisible();
 });
@@ -114,7 +114,8 @@ test("coach can update profile, keep coach-only navigation, and see the selected
 test("coach cannot open parent-only routes directly", async ({ page, openAs }) => {
   await openAs("coachTaylor", "/parent");
 
-  await expect(page.getByText("This page is for a different account view")).toBeVisible();
+  await expect(page).toHaveURL(/\/coach$/);
+  await expect(page.getByRole("heading", { name: "Coach workspace" })).toBeVisible();
 });
 
 test("coach can review curriculum for the selected student but cannot family-verify it", async ({
@@ -134,4 +135,26 @@ test("coach can review curriculum for the selected student but cannot family-ver
   await expect(curriculumSection.getByRole("button", { name: "Mark reviewed by coach" })).toBeVisible();
   await expect(curriculumSection.getByRole("button", { name: "Save curriculum verification" })).toHaveCount(0);
   await expect(curriculumSection.getByRole("link", { name: "Upload a PDF" })).toHaveCount(0);
+});
+
+test("coach can open Career Goal for a selected student and stays scoped to that student", async ({
+  page,
+  openAs,
+}) => {
+  await openAs(
+    "coachTaylor",
+    `/career-scenarios?studentProfileId=${encodeURIComponent(SYNTHETIC_STUDENTS.maya.studentProfileId)}`
+  );
+
+  await expect(page.getByRole("heading", { name: "Career Goal", exact: true })).toBeVisible();
+  await expect(page.getByText("Selected student")).toBeVisible();
+  await expect(page.getByRole("combobox").first()).toHaveValue(SYNTHETIC_STUDENTS.maya.studentProfileId);
+  await expect(page.getByTestId("career-goal-workspace-card")).toBeVisible();
+  await expect(page.getByTestId("career-goal-saved-list-card")).toBeVisible();
+  await expect(
+    page.getByText(
+      "Active career goal: I want to break into business analysis and fintech internships.",
+      { exact: false }
+    )
+  ).toBeVisible();
 });

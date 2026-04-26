@@ -17,6 +17,20 @@ import {
 
 export type IntroOnboardingStage = "hidden" | "splash" | "tour" | "skip_confirm";
 
+function formatIntroOnboardingError(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+
+  if (message.startsWith("API request failed:")) {
+    return "We could not save your intro progress yet. Try again in a moment with your session still active.";
+  }
+
+  if (message.startsWith("API request timed out")) {
+    return "Saving your intro progress took too long. Try again in a moment.";
+  }
+
+  return message;
+}
+
 function useResolvedSteps(
   steps: IntroTourStepConfig[],
   role: IntroOnboardingRole | null,
@@ -40,22 +54,51 @@ export function useIntroOnboarding(options: {
   pathname: string;
   authenticated: boolean;
   authResolved: boolean;
+  userId?: string | null;
   role: IntroOnboardingRole | null;
   introOnboardingStatus?: IntroOnboardingStatus | null;
   introOnboardingVersion?: number | null;
   introOnboardingShouldAutoShow?: boolean | null;
   steps: IntroTourStepConfig[];
 }) {
+  const storageKey = options.userId ? `rising-senior:intro-onboarding:${options.userId}` : null;
   const [stage, setStage] = useState<IntroOnboardingStage>("hidden");
   const [skipOrigin, setSkipOrigin] = useState<"splash" | "tour">("tour");
   const [currentIndex, setCurrentIndex] = useState(0);
   const [pending, setPending] = useState<"complete" | "skip" | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [lastDismissal, setLastDismissal] = useState<"completed" | "skipped" | null>(null);
   const [localStatus, setLocalStatus] = useState<{
     status: IntroOnboardingStatus;
     version: number;
     shouldAutoShow: boolean;
-  } | null>(null);
+  } | null>(() => {
+    if (!storageKey || typeof window === "undefined") {
+      return null;
+    }
+    try {
+      const raw = window.sessionStorage.getItem(storageKey);
+      if (!raw) {
+        return null;
+      }
+      const parsed = JSON.parse(raw) as {
+        status?: IntroOnboardingStatus;
+        version?: number;
+        shouldAutoShow?: boolean;
+      };
+      if (!parsed.status || typeof parsed.version !== "number") {
+        return null;
+      }
+      return {
+        status: parsed.status,
+        version: parsed.version,
+        shouldAutoShow: !!parsed.shouldAutoShow,
+      };
+    } catch {
+      return null;
+    }
+  });
+  const [localStatusHydrated, setLocalStatusHydrated] = useState(() => !storageKey);
   const autoShownRef = useRef(false);
   const steps = useResolvedSteps(options.steps, options.role, stage, options.pathname);
 
@@ -77,6 +120,42 @@ export function useIntroOnboarding(options: {
 
   const activeStep = steps[currentIndex] || null;
   const target = useMemo(() => (activeStep ? findIntroTarget(activeStep) : null), [activeStep, stage]);
+
+  useEffect(() => {
+    if (!storageKey || typeof window === "undefined") {
+      setLocalStatus(null);
+      setLocalStatusHydrated(true);
+      return;
+    }
+    setLocalStatusHydrated(false);
+    try {
+      const raw = window.sessionStorage.getItem(storageKey);
+      if (!raw) {
+        setLocalStatus(null);
+        setLocalStatusHydrated(true);
+        return;
+      }
+      const parsed = JSON.parse(raw) as {
+        status?: IntroOnboardingStatus;
+        version?: number;
+        shouldAutoShow?: boolean;
+      };
+      if (!parsed.status || typeof parsed.version !== "number") {
+        setLocalStatus(null);
+        setLocalStatusHydrated(true);
+        return;
+      }
+      setLocalStatus({
+        status: parsed.status,
+        version: parsed.version,
+        shouldAutoShow: !!parsed.shouldAutoShow,
+      });
+      setLocalStatusHydrated(true);
+    } catch {
+      setLocalStatus(null);
+      setLocalStatusHydrated(true);
+    }
+  }, [storageKey]);
 
   useEffect(() => {
     if (stage !== "tour" || !target) {
@@ -113,7 +192,26 @@ export function useIntroOnboarding(options: {
   }, [stage, steps.length, target]);
 
   useEffect(() => {
-    if (!options.authResolved || !options.authenticated || options.pathname === "/app" || !steps.length) {
+    if (!storageKey || typeof window === "undefined") {
+      return;
+    }
+
+    if (!localStatus) {
+      window.sessionStorage.removeItem(storageKey);
+      return;
+    }
+
+    window.sessionStorage.setItem(storageKey, JSON.stringify(localStatus));
+  }, [localStatus, storageKey]);
+
+  useEffect(() => {
+    if (
+      !options.authResolved ||
+      !options.authenticated ||
+      options.pathname === "/app" ||
+      !steps.length ||
+      (storageKey && !localStatusHydrated)
+    ) {
       return;
     }
 
@@ -122,7 +220,15 @@ export function useIntroOnboarding(options: {
       setCurrentIndex(0);
       setStage("splash");
     }
-  }, [onboardingState.shouldAutoShow, options.authResolved, options.authenticated, options.pathname, steps.length]);
+  }, [
+    localStatusHydrated,
+    onboardingState.shouldAutoShow,
+    options.authResolved,
+    options.authenticated,
+    options.pathname,
+    steps.length,
+    storageKey,
+  ]);
 
   useEffect(() => {
     function handleReplay() {
@@ -176,7 +282,7 @@ export function useIntroOnboarding(options: {
     setCurrentIndex((value) => Math.min(value + 1, Math.max(steps.length - 1, 0)));
   }, [steps.length]);
 
-  async function persist(path: string, nextStatus: IntroOnboardingStatus) {
+  async function persist(path: string, nextStatus: "completed" | "skipped") {
     setPending(nextStatus === "completed" ? "complete" : "skip");
     setError(null);
 
@@ -193,17 +299,22 @@ export function useIntroOnboarding(options: {
         };
       };
 
-      setLocalStatus({
+      const persistedState = {
         status: result.onboarding?.introOnboardingStatus ?? nextStatus,
         version:
           result.onboarding?.introOnboardingVersion ??
           CURRENT_INTRO_ONBOARDING_VERSION,
         shouldAutoShow: false,
-      });
+      };
+      setLocalStatus(persistedState);
+      if (storageKey && typeof window !== "undefined") {
+        window.sessionStorage.setItem(storageKey, JSON.stringify(persistedState));
+      }
+      setLastDismissal(nextStatus);
       autoShownRef.current = true;
       close();
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause));
+      setError(formatIntroOnboardingError(cause));
     } finally {
       setPending(null);
     }
@@ -215,6 +326,9 @@ export function useIntroOnboarding(options: {
     currentIndex,
     activeStep,
     target,
+    onboardingStatus: onboardingState.status,
+    onboardingVersion: onboardingState.version,
+    lastDismissal,
     pending,
     error,
     canGoBack: currentIndex > 0,

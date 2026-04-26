@@ -183,7 +183,7 @@
         "scoring": {
           "targetRoleFamily": "data analyst",
           "trajectoryStatusOneOf": ["watch", "at_risk"],
-          "overallScoreRange": [48, 68]
+          "overallScoreRange": [70, 76]
         }
       }
     },
@@ -249,7 +249,7 @@
         "scoring": {
           "targetRoleFamily": "healthcare analyst",
           "trajectoryStatusOneOf": ["at_risk", "watch"],
-          "overallScoreRange": [28, 48]
+          "overallScoreRange": [53, 59]
         }
       }
     },
@@ -340,7 +340,7 @@
         "scoring": {
           "targetRoleFamily": "healthcare analyst",
           "trajectoryStatusOneOf": ["at_risk", "watch"],
-          "overallScoreRange": [44, 62]
+          "overallScoreRange": [65, 71]
         }
       }
     },
@@ -421,7 +421,7 @@
         "scoring": {
           "targetRoleFamily": "financial analyst",
           "trajectoryStatusOneOf": ["at_risk", "watch"],
-          "overallScoreRange": [44, 62]
+          "overallScoreRange": [62, 66]
         }
       }
     },
@@ -480,7 +480,7 @@
         "scoring": {
           "targetRoleFamily": "financial analyst",
           "trajectoryStatusOneOf": ["at_risk", "watch"],
-          "overallScoreRange": [28, 45]
+          "overallScoreRange": [51, 57]
         }
       }
     },
@@ -544,7 +544,7 @@
         "scoring": {
           "targetRoleFamily": "financial analyst",
           "trajectoryStatusOneOf": ["watch", "at_risk"],
-          "overallScoreRange": [30, 48],
+          "overallScoreRange": [53, 59],
           "comparisonHint": "Should score more naturally for staff accountant than for financial analyst."
         }
       }
@@ -773,7 +773,7 @@
         "scoring": {
           "targetRoleFamily": "data analyst",
           "trajectoryStatusOneOf": ["watch", "at_risk"],
-          "overallScoreRange": [36, 54]
+          "overallScoreRange": [55, 61]
         }
       }
     },
@@ -852,7 +852,7 @@
         "scoring": {
           "targetRoleFamily": "healthcare analyst",
           "trajectoryStatusOneOf": ["at_risk", "watch"],
-          "overallScoreRange": [44, 60]
+          "overallScoreRange": [63, 69]
         }
       }
     },
@@ -936,7 +936,7 @@
         "scoring": {
           "targetRoleFamily": "financial analyst",
           "trajectoryStatusOneOf": ["at_risk", "watch"],
-          "overallScoreRange": [44, 60],
+          "overallScoreRange": [63, 69],
           "comparisonTargets": [
             {
               "targetRoleFamily": "financial analyst",

@@ -37,6 +37,15 @@ export type SyntheticCoachRelationship = {
 };
 
 export const SYNTHETIC_USERS: Record<string, SyntheticUser> = {
+  adminEric: {
+    key: "adminEric",
+    userId: "99999999-9999-4999-8999-999999999999",
+    roleType: "admin",
+    firstName: "Eric",
+    lastName: "Bass",
+    preferredName: "Eric",
+    email: "eric.bassman@gmail.com",
+  },
   studentMaya: {
     key: "studentMaya",
     userId: "11111111-1111-4111-8111-111111111111",
@@ -90,6 +99,26 @@ export const SYNTHETIC_USERS: Record<string, SyntheticUser> = {
     lastName: "Lane",
     preferredName: "Nova",
     email: "nova.lane@synthetic.rising-senior.local",
+    seed: false,
+  },
+  parentAvery: {
+    key: "parentAvery",
+    userId: "55555555-5555-4555-8555-555555555555",
+    roleType: "parent",
+    firstName: "Avery",
+    lastName: "Stone",
+    preferredName: "Avery",
+    email: "avery.stone@synthetic.rising-senior.local",
+    seed: false,
+  },
+  coachRobin: {
+    key: "coachRobin",
+    userId: "66666666-6666-4666-8666-666666666666",
+    roleType: "coach",
+    firstName: "Robin",
+    lastName: "Kline",
+    preferredName: "Robin",
+    email: "robin.kline@synthetic.rising-senior.local",
     seed: false,
   },
 } as const;

@@ -5,12 +5,14 @@ import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { useAuthContext } from "../../hooks/useAuthContext";
 import { useIntroOnboarding } from "../../hooks/useIntroOnboarding";
+import { useRoleIntroOnboarding } from "../../hooks/useRoleIntroOnboarding";
 import { rememberSaveNavigationRoute } from "../../lib/saveNavigation";
 import { IntroTourOverlay } from "../onboarding/IntroTourOverlay";
 import { IntroWelcomeSplash } from "../onboarding/IntroWelcomeSplash";
-import { INTRO_TOUR_STEPS } from "../onboarding/introTourConfig";
-import { AccountMenu } from "./AccountMenu";
+import { INTRO_TOUR_STEPS, ROLE_INTRO_TOUR_STEPS } from "../onboarding/introTourConfig";
+import { buildBottomBackAction, type BottomBackAction } from "./backNavigation";
 import { buildNavigationGroups, type ShellNavGroup, type ShellNavItem } from "./navigation";
+import { TopBarNavigation } from "./TopBarNavigation";
 
 const SIDEBAR_WIDTH_STORAGE_KEY = "rising-senior:sidebar-width";
 const DEFAULT_SIDEBAR_WIDTH = 272;
@@ -77,25 +79,36 @@ export function AppShell(props: {
     description?: string;
   }>;
   activeSecondaryNavKey?: string;
+  backAction?: BottomBackAction | null | false;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
   const auth = useAuthContext();
   const currentRole = auth.data?.context?.authenticatedRoleType || null;
+  const currentCapabilities = auth.data?.context?.effectiveCapabilities || [];
   const theme = resolveTheme(pathname, currentRole);
   const navGroups = useMemo(
-    () => buildNavigationGroups(currentRole),
-    [currentRole]
+    () => buildNavigationGroups(currentRole, currentCapabilities),
+    [currentCapabilities, currentRole]
   );
   const introOnboarding = useIntroOnboarding({
     pathname,
     authenticated: auth.isAuthenticated,
     authResolved: !auth.loading && !!auth.data?.context,
+    userId: auth.data?.context?.authenticatedUserId || null,
     role: currentRole,
     introOnboardingStatus: auth.data?.context?.introOnboardingStatus,
     introOnboardingVersion: auth.data?.context?.introOnboardingVersion,
     introOnboardingShouldAutoShow: auth.data?.context?.introOnboardingShouldAutoShow,
     steps: INTRO_TOUR_STEPS,
+  });
+  const roleIntroOnboarding = useRoleIntroOnboarding({
+    pathname,
+    authenticated: auth.isAuthenticated,
+    authResolved: !auth.loading && !!auth.data?.context,
+    userId: auth.data?.context?.authenticatedUserId || null,
+    role: currentRole,
+    steps: ROLE_INTRO_TOUR_STEPS,
   });
   const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_SIDEBAR_WIDTH);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -192,6 +205,32 @@ export function AppShell(props: {
     });
   }, [pathname, props.activeSecondaryNavKey]);
 
+  useEffect(() => {
+    if (introOnboarding.stage !== "hidden") {
+      return;
+    }
+
+    if (roleIntroOnboarding.stage !== "hidden") {
+      return;
+    }
+
+    if (introOnboarding.lastDismissal !== "completed") {
+      return;
+    }
+
+    if (!roleIntroOnboarding.canAutoLaunch) {
+      return;
+    }
+
+    roleIntroOnboarding.startTour();
+  }, [
+    introOnboarding.lastDismissal,
+    introOnboarding.stage,
+    roleIntroOnboarding.canAutoLaunch,
+    roleIntroOnboarding.stage,
+    roleIntroOnboarding.startTour,
+  ]);
+
   const currentWorkspace = useMemo(() => {
     if (pathname === "/") {
       return "Home";
@@ -203,6 +242,21 @@ export function AppShell(props: {
 
     return props.title || titleCase(pathname.split("/").filter(Boolean)[0] || "Workspace");
   }, [pathname, props.title]);
+
+  const bottomBackAction = useMemo(() => {
+    if (props.backAction === false) {
+      return null;
+    }
+
+    if (props.backAction) {
+      return props.backAction;
+    }
+
+    return buildBottomBackAction({
+      pathname,
+      role: currentRole,
+    });
+  }, [currentRole, pathname, props.backAction]);
 
   const showSecondaryGroup = !!props.secondaryNavItems?.length && pathname !== "/student";
 
@@ -386,33 +440,11 @@ export function AppShell(props: {
 
       <section className="app-detail" aria-label="Detail workspace">
         <header className="app-topbar">
-          <div className="app-topbar__leading">
-            <button
-              type="button"
-              className="app-topbar__menu-button"
-              data-intro-target="nav-open"
-              aria-label="Open navigation"
-              onClick={() => setMobileNavOpen(true)}
-            >
-              ☰
-            </button>
-            <div className="app-topbar__workspace-chip">
-              <span className="app-topbar__workspace-label">Workspace</span>
-              <strong>{currentWorkspace}</strong>
-            </div>
-          </div>
-
-          <div className="app-topbar__actions">
-            <Link
-              href="/help"
-              className="ui-button ui-button--secondary app-help-button"
-              aria-label="Help"
-              data-intro-target="help"
-            >
-              <span className="app-help-button__icon" aria-hidden="true">?</span>
-            </Link>
-            <AccountMenu />
-          </div>
+          <TopBarNavigation
+            currentWorkspace={currentWorkspace}
+            authContext={auth.data?.context}
+            onOpenNavigation={() => setMobileNavOpen(true)}
+          />
         </header>
 
         <header className="app-detail__header">
@@ -429,7 +461,21 @@ export function AppShell(props: {
           {props.subtitle ? <p>{props.subtitle}</p> : null}
         </header>
 
-        <div className="app-detail__content">{props.children}</div>
+        <div className="app-detail__content">
+          {props.children}
+          {bottomBackAction ? (
+            <div className="app-detail__footer-nav">
+              <Link
+                href={bottomBackAction.href}
+                className="ui-button ui-button--secondary app-detail__footer-back"
+                aria-label={bottomBackAction.ariaLabel || bottomBackAction.label}
+                data-testid="app-bottom-back"
+              >
+                ← {bottomBackAction.label}
+              </Link>
+            </div>
+          ) : null}
+        </div>
       </section>
 
       {introOnboarding.stage === "splash" ? (
@@ -456,6 +502,22 @@ export function AppShell(props: {
         />
       ) : null}
 
+      {roleIntroOnboarding.stage === "tour" && roleIntroOnboarding.activeStep ? (
+        <IntroTourOverlay
+          step={roleIntroOnboarding.activeStep}
+          stepIndex={roleIntroOnboarding.currentIndex}
+          totalSteps={roleIntroOnboarding.steps.length}
+          target={roleIntroOnboarding.target}
+          canGoBack={roleIntroOnboarding.canGoBack}
+          isLastStep={roleIntroOnboarding.isLastStep}
+          error={roleIntroOnboarding.error}
+          onBack={roleIntroOnboarding.goBack}
+          onNext={roleIntroOnboarding.goNext}
+          onSkip={roleIntroOnboarding.openSkipConfirmation}
+          onFinish={roleIntroOnboarding.complete}
+        />
+      ) : null}
+
       {introOnboarding.stage === "skip_confirm" ? (
         <div className="intro-onboarding intro-onboarding--confirm" role="dialog" aria-modal="true" aria-labelledby="intro-skip-title">
           <div className="intro-onboarding__scrim" aria-hidden="true" />
@@ -474,6 +536,25 @@ export function AppShell(props: {
                 disabled={introOnboarding.pending === "skip"}
               >
                 {introOnboarding.pending === "skip" ? "Skipping..." : "Skip intro"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {roleIntroOnboarding.stage === "skip_confirm" ? (
+        <div className="intro-onboarding intro-onboarding--confirm" role="dialog" aria-modal="true" aria-labelledby="role-intro-skip-title">
+          <div className="intro-onboarding__scrim" aria-hidden="true" />
+          <div className="intro-confirm">
+            <h2 id="role-intro-skip-title">Skip the role walkthrough?</h2>
+            <p>You can restart it later from Help or the account menu.</p>
+            {roleIntroOnboarding.error ? <div className="intro-tour__error">{roleIntroOnboarding.error}</div> : null}
+            <div className="intro-confirm__actions">
+              <button type="button" className="ui-button ui-button--ghost" onClick={roleIntroOnboarding.cancelSkipConfirmation}>
+                Keep walkthrough
+              </button>
+              <button type="button" className="ui-button ui-button--primary" onClick={roleIntroOnboarding.skip}>
+                Skip walkthrough
               </button>
             </div>
           </div>

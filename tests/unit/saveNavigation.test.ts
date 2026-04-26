@@ -91,3 +91,22 @@ test("resolveSaveReturnRoute ignores generic launch pages", () => {
     (globalThis as typeof globalThis & { window?: any }).window = originalWindow;
   }
 });
+
+test("resolveSaveReturnRoute prefers the remembered current route when the save page has not been recorded yet", () => {
+  const originalWindow = globalThis.window;
+  const sessionStorage = makeSessionStorage();
+  sessionStorage.setItem(SAVE_NAVIGATION_CURRENT_ROUTE_KEY, "/student?section=strategy");
+  sessionStorage.setItem(SAVE_NAVIGATION_PREVIOUS_ROUTE_KEY, "/onboarding/network");
+  (globalThis as typeof globalThis & { window: any }).window = {
+    sessionStorage,
+  };
+
+  try {
+    assert.equal(
+      resolveSaveReturnRoute("/onboarding/deadlines", "/student?section=strategy"),
+      "/student?section=strategy"
+    );
+  } finally {
+    (globalThis as typeof globalThis & { window?: any }).window = originalWindow;
+  }
+});

@@ -120,6 +120,7 @@ export function AcademicEvidenceSection(props: {
       title="Academic Evidence"
       subtitle="This is where the system tracks school selection, program discovery, degree requirement quality, and whether the curriculum is ready to support scoring."
       tone="quiet"
+      introTarget="academic-evidence"
     >
       {data.loading ? <p style={{ margin: 0 }}>Loading academic evidence...</p> : null}
       {data.error ? <p style={{ margin: 0, color: "crimson" }}>{data.error}</p> : null}

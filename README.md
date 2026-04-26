@@ -48,6 +48,19 @@ Default local ports:
 - Combined CI-style local verification:
   `pnpm verify:ci`
 
+## Canonical Source Archive
+If you need to share the codebase as a zip for review, do not manually zip an arbitrary working folder or unrelated data export.
+
+Use:
+- `pnpm export:codebase`
+
+This script:
+- validates that core source trees like `apps/web/src` and `apps/api/src` are present and non-empty
+- creates a source-focused zip in `exports/`
+- verifies that the finished archive actually contains required frontend and backend source files
+
+This is the safe way to avoid false reports like “`apps/web/src` is empty” when the real repository is intact but the uploaded archive was incomplete or incorrect.
+
 ## Stack
 - Frontend: Vercel-ready Next.js app in `apps/web`
 - Backend API: Railway-ready Node/TypeScript app in `apps/api`
@@ -76,6 +89,10 @@ Default local ports:
 - `POST /v1/briefs/generate` — scoring + LLM + upsert for that same reporting month
 - `GET /v1/parents/me/briefs/latest` — latest persisted `parent_monthly_briefs` row for the resolved household student (any month; parent / coach / admin)
 - `POST /v1/chat/scenario/live` — JSON `{ "scenarioQuestion": string, "communicationStyle"?: string }` (style defaults to `"direct"`)
+- `GET /communication/profile` — role-aware communication profile data, completion status, and visible communication inputs for the current household student context
+- `GET /communication/prompts/next` — next parent or student communication prompt for the current role
+- `POST /communication/translate` — parent-to-student or student-to-parent translation helper with structured JSON output and feedback support
+- `GET /communication/summary` — shared communication summary, friction cues, and coach-safe communication context for the selected student
 
 
 ## Demo auth headers
@@ -94,6 +111,7 @@ When enabled, current live-style routes may accept:
 The starter repo now includes:
 - frontend Supabase client
 - Google OAuth sign-in button
+- signup flow at `/signup`
 - auth callback page
 - API-side Bearer token verification using `SUPABASE_JWT_SECRET`
 
@@ -114,14 +132,48 @@ Required frontend env:
 - `NEXT_PUBLIC_API_BASE_URL`
 - optional `NEXT_PUBLIC_APP_URL` (defaults to `APP_BASE_URL` or `http://localhost:3000`)
 
+Required/important API env:
+- `APP_BASE_URL`
+- optional `API_ALLOWED_ORIGINS` as a comma-separated allowlist of browser origins for credentialed API access
+
 
 ## Frontend product shell
 Added:
 - role-aware redirect page at `/app`
 - desktop-style two-column shell with a fixed navigation pane and flexible detail pane
 - parent, student, and coach dashboard shells
+- first-run shared intro plus role-specific walkthroughs
+- household administration page at `/admin`
+- household explanation page at `/household-setup`
 - onboarding pages
 - upload flow pages
+
+## Intro and role model
+- New users first see a shared introduction that explains the workspace shell, profile, household model, academic path, documents and evidence, Career Goal, communication, and Help.
+- After the shared intro completes, the app can launch a shorter role walkthrough for the resolved role.
+- Role resolution happens after sign-in when the API resolves the current account context:
+  - first from active `user_household_roles` membership
+  - then from `users.role_type` as a fallback
+- Parents create households and become the initial household administrators.
+- Students and coaches join households by invitation or by a parent-approved access request.
+- Navigation and API access are now filtered by centralized capabilities, not only by hidden UI.
+- Users can replay the shared intro and the role walkthrough later from Help or the account menu.
+
+## Household and permission flows
+- Super admin:
+  - the canonical `Eric Bass` / `eric.bassman@gmail.com` account is normalized to the initial super administrator
+- Parent flow:
+  - sign in with Google
+  - create a household
+  - invite a student or coach from Household administration
+- Student or coach flow:
+  - accept an invitation link, or
+  - request household access by parent email
+- Admin flow:
+  - `/admin` lists household members, invitations, join requests, and capability overrides
+  - the super administrator also gets a read-only cross-household user directory at the same admin surface
+  - feature-level permissions are applied to navigation, page guards, and API routes together
+  - invitation emails use SendGrid when configured; otherwise local development safely logs the invite link instead of pretending email delivery happened
 
 
 ## UI forms wired to backend
@@ -183,6 +235,10 @@ Convenience command:
 
 GitHub Actions runs the same sequence against a fresh local Postgres service in
 `.github/workflows/ci.yml`.
+
+The current synthetic score bands were re-baselined in April 2026 after the
+evidence-integrity scoring layer raised several Career Goal scores without changing
+their expected trajectory status.
 
 ## Hardening notes
 - Unknown or invalid resolved auth roles now fail explicitly instead of silently defaulting to `student`.

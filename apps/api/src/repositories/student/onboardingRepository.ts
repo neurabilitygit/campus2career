@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import { query } from "../../db/client";
+import { executeQuery, query, type DbExecutor } from "../../db/client";
 
 export interface OnboardingStateRow {
   onboarding_state_id: string;
@@ -37,8 +37,9 @@ export class OnboardingRepository {
     return result.rows[0] || null;
   }
 
-  async ensureState(studentProfileId: string, onboardingStateId: string) {
-    await query(
+  async ensureState(studentProfileId: string, onboardingStateId: string, executor?: DbExecutor) {
+    await executeQuery(
+      executor,
       `
       insert into onboarding_states (
         onboarding_state_id,
@@ -52,7 +53,7 @@ export class OnboardingRepository {
     );
   }
 
-  async updateFlags(studentProfileId: string, flags: Record<string, boolean>) {
+  async updateFlags(studentProfileId: string, flags: Record<string, boolean>, executor?: DbExecutor) {
     const allowed = [
       "profile_completed",
       "sectors_completed",
@@ -68,7 +69,8 @@ export class OnboardingRepository {
     const sets = pairs.map(([k], idx) => `${k} = $${idx + 2}`);
     const values = pairs.map(([, v]) => v);
 
-    await query(
+    await executeQuery(
+      executor,
       `
       update onboarding_states
       set ${sets.join(", ")},

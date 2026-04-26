@@ -308,16 +308,32 @@ async function fetchBinaryDocument(url: string): Promise<{ url: string; buffer: 
   }
 }
 
-function buildCatalogSeedUrls(websiteUrl: string): string[] {
+export function buildCatalogSeedUrls(websiteUrl: string, preferredSeedUrls: string[] = []): string[] {
   let base: URL;
   try {
     base = new URL(websiteUrl);
   } catch {
-    return [];
+    const preferredOnly = new Set<string>();
+    for (const preferredUrl of preferredSeedUrls) {
+      try {
+        preferredOnly.add(new URL(preferredUrl).toString());
+      } catch {
+        // Ignore malformed preferred seed URLs.
+      }
+    }
+    return Array.from(preferredOnly);
   }
 
   const registrable = approximateRegistrableDomain(base.hostname);
   const seeds = new Set<string>();
+
+  for (const preferredUrl of preferredSeedUrls) {
+    try {
+      seeds.add(new URL(preferredUrl, base).toString());
+    } catch {
+      // Ignore malformed preferred seed URLs and continue with generic seeds.
+    }
+  }
 
   seeds.add(base.toString());
   seeds.add(`https://bulletin.${registrable}/`);
@@ -669,8 +685,12 @@ export function assessDiscoveredProgramQuality(program: Pick<DiscoveredProgram, 
     sourceUrl.includes("majors") ||
     sourceUrl.includes("minors") ||
     sourceUrl.includes("programs") ||
+    sourceUrl.includes("academic-") ||
+    sourceUrl.includes("/academic/") ||
     sourceUrl.includes("academics") ||
     sourceUrl.includes("department") ||
+    sourceUrl.includes("/undergraduate/") ||
+    sourceUrl.includes("/students/gencat/program/") ||
     sourceUrl.includes("study")
   ) {
     score += 14;
@@ -680,15 +700,7 @@ export function assessDiscoveredProgramQuality(program: Pick<DiscoveredProgram, 
   }
 
   if (
-    sourceUrl.includes("student-life") ||
-    sourceUrl.includes("alumni") ||
-    sourceUrl.includes("community") ||
-    sourceUrl.includes("stories") ||
-    sourceUrl.includes("story") ||
-    sourceUrl.includes("profile") ||
-    sourceUrl.includes("chapter") ||
-    sourceUrl.includes("activities") ||
-    sourceUrl.includes("recreation")
+    /(?:^|\/)(student-life|alumni|community|stories?|profile|chapter|activities|recreation)(?:\/|$)/.test(sourceUrl)
   ) {
     score -= 20;
     reasons.push("The source URL looks more like student-life, alumni, or marketing content than a catalog page.");
@@ -793,6 +805,7 @@ function isProgramLikeHref(sourceUrl: string, programLabel: string): boolean {
   const slug = slugify(programLabel);
   const slugTokens = slug.split("-").filter((token) => token.length > 3);
   return (
+    path.includes("/students/gencat/program/") ||
     slugTokens.some((token) => path.includes(token)) ||
     path.includes("program") ||
     path.includes("degree") ||
@@ -1414,6 +1427,7 @@ async function persistDiscoveredPrograms(input: {
 export async function discoverInstitutionCatalog(input: {
   institutionCanonicalName: string;
   forceRefresh?: boolean;
+  preferredSeedUrls?: string[];
 }) {
   const institution = await repo.getInstitutionByCanonicalName(input.institutionCanonicalName);
   if (!institution) {
@@ -1526,7 +1540,7 @@ export async function discoverInstitutionCatalog(input: {
     };
   }
 
-  const initialSeedUrls = buildCatalogSeedUrls(institution.website_url);
+  const initialSeedUrls = buildCatalogSeedUrls(institution.website_url, input.preferredSeedUrls || []);
   const seedPages = (
     await Promise.all(initialSeedUrls.map((url) => fetchHtmlPage(url)))
   ).filter((page): page is HtmlPage => !!page);

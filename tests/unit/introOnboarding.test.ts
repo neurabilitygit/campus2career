@@ -5,7 +5,10 @@ import {
   filterIntroOnboardingSteps,
   shouldAutoLaunchIntroOnboarding,
 } from "../../apps/web/src/lib/introOnboarding";
-import { INTRO_TOUR_STEPS } from "../../apps/web/src/components/onboarding/introTourConfig";
+import {
+  INTRO_TOUR_STEPS,
+  ROLE_INTRO_TOUR_STEPS,
+} from "../../apps/web/src/components/onboarding/introTourConfig";
 
 test("intro onboarding auto-launches for a new authenticated user", () => {
   assert.equal(
@@ -44,16 +47,28 @@ test("step filtering removes missing optional targets", () => {
   const filtered = filterIntroOnboardingSteps(INTRO_TOUR_STEPS, {
     role: "student",
     availableTargets: {
-      dashboard: true,
+      "workspace-home": true,
+      navigation: true,
       profile: true,
-      curriculum: true,
-      scoring: false,
-      actions: true,
-      communication: true,
-      help: true,
+      household: true,
+      "academic-path": true,
+      "career-goal": true,
+      "communication-help": true,
     },
   });
 
-  assert.equal(filtered.some((step) => step.id === "scoring"), false);
-  assert.equal(filtered.length, 6);
+  assert.equal(filtered.length, INTRO_TOUR_STEPS.length);
+});
+
+test("shared and role walkthroughs now cover at least twelve key feature stops together", () => {
+  assert.equal(INTRO_TOUR_STEPS.length + ROLE_INTRO_TOUR_STEPS.filter((step) => step.rolesAllowed?.includes("student")).length >= 12, true);
+});
+
+test("role walkthrough filters to the active role only", () => {
+  const parentSteps = filterIntroOnboardingSteps(ROLE_INTRO_TOUR_STEPS, {
+    role: "parent",
+  });
+
+  assert.equal(parentSteps.some((step) => step.id === "coach-roster"), false);
+  assert.equal(parentSteps.some((step) => step.id === "parent-dashboard"), true);
 });

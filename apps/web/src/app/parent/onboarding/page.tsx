@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { AppShell } from "../../../components/layout/AppShell";
 import { SectionCard } from "../../../components/layout/SectionCard";
+import { StepFlowFooter, StepFlowHeader } from "../../../components/layout/StepFlow";
 import { RequireRole } from "../../../components/RequireRole";
 import { FieldInfoLabel } from "../../../components/forms/FieldInfoLabel";
 import { useApiData } from "../../../hooks/useApiData";
@@ -38,6 +39,19 @@ const labelStyle: React.CSSProperties = {
   color: "#183153",
 };
 
+const parentOnboardingSteps = [
+  {
+    key: "overview",
+    label: "How this works",
+    description: "Start with the purpose and guardrails so the feature feels supportive rather than intrusive.",
+  },
+  {
+    key: "profile",
+    label: "Parent profile",
+    description: "Capture the context that helps the system translate concerns more calmly and more clearly.",
+  },
+] as const;
+
 export default function ParentOnboardingPage() {
   const saveNavigation = useSaveNavigation();
   const profile = useApiData<ParentProfileResponse>("/parents/me/communication-profile", true);
@@ -53,6 +67,7 @@ export default function ParentOnboardingPage() {
   });
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
+  const [currentStep, setCurrentStep] = useState<(typeof parentOnboardingSteps)[number]["key"]>("overview");
 
   useEffect(() => {
     if (profile.loading || didHydrate) return;
@@ -90,6 +105,15 @@ export default function ParentOnboardingPage() {
       subtitle="Tell the system what you are worried about and what tends not to work so it can coach the interaction more carefully."
     >
       <RequireRole expectedRoles={["parent", "admin"]} fallbackTitle="Parent sign-in required">
+        <StepFlowHeader
+          title="Parent communication setup"
+          subtitle="This flow now breaks the baseline into smaller screens so it is easier to complete without a long scroll."
+          steps={parentOnboardingSteps.map((step) => ({ ...step }))}
+          currentStepKey={currentStep}
+          onStepSelect={(stepKey) => setCurrentStep(stepKey as (typeof parentOnboardingSteps)[number]["key"])}
+        />
+
+        {currentStep === "overview" ? (
         <SectionCard
           title="How you want this used"
           subtitle="This tool is designed to improve communication, not to hide parent involvement or pressure the student."
@@ -100,8 +124,17 @@ export default function ParentOnboardingPage() {
             <div>Parent-originated messages should only be delivered when the student has consented.</div>
             <div>The system may rephrase for tone and clarity, but it should stay transparent about the parent origin.</div>
           </div>
+          <div style={{ marginTop: 16 }}>
+            <StepFlowFooter
+              steps={parentOnboardingSteps.map((step) => ({ ...step }))}
+              currentStepKey={currentStep}
+              onStepSelect={(stepKey) => setCurrentStep(stepKey as (typeof parentOnboardingSteps)[number]["key"])}
+            />
+          </div>
         </SectionCard>
+        ) : null}
 
+        {currentStep === "profile" ? (
         <SectionCard
           title="Parent profile"
           subtitle="These answers help the translator understand how communication has been landing so far."
@@ -225,9 +258,15 @@ export default function ParentOnboardingPage() {
               </button>
               {status ? <p style={{ margin: 0, color: "#155eef" }}>{status}</p> : null}
               {error ? <p style={{ margin: 0, color: "crimson" }}>{error}</p> : null}
+              <StepFlowFooter
+                steps={parentOnboardingSteps.map((step) => ({ ...step }))}
+                currentStepKey={currentStep}
+                onStepSelect={(stepKey) => setCurrentStep(stepKey as (typeof parentOnboardingSteps)[number]["key"])}
+              />
             </div>
           </div>
         </SectionCard>
+        ) : null}
       </RequireRole>
     </AppShell>
   );

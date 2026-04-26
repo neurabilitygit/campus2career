@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import type { DbExecutor } from "../../db/client";
 import { ArtifactRepository } from "../../repositories/student/artifactRepository";
 import { OnboardingRepository } from "../../repositories/student/onboardingRepository";
 
@@ -43,7 +44,7 @@ export async function persistArtifactAndQueueParse(input: {
   studentProfileId: string;
   artifactType: string;
   objectPath: string;
-}) {
+}, executor?: DbExecutor) {
   const academicArtifactId = stableId(
     "academic_artifact",
     `${input.studentProfileId}:${input.artifactType}:${input.objectPath}`
@@ -63,7 +64,7 @@ export async function persistArtifactAndQueueParse(input: {
     parsedStatus: "pending",
     parseTruthStatus: "unresolved",
     parseNotes: "Artifact uploaded successfully. Structured extraction has not been reviewed yet.",
-  });
+  }, executor);
 
   await artifactRepo.createArtifactParseJob({
     artifactParseJobId,
@@ -71,12 +72,12 @@ export async function persistArtifactAndQueueParse(input: {
     studentProfileId: input.studentProfileId,
     artifactType: input.artifactType,
     parserType: inferParserType(input.artifactType),
-  });
+  }, executor);
 
-  await onboardingRepo.ensureState(input.studentProfileId, onboardingStateId);
+  await onboardingRepo.ensureState(input.studentProfileId, onboardingStateId, executor);
   await onboardingRepo.updateFlags(input.studentProfileId, {
     uploads_completed: true,
-  });
+  }, executor);
   const parseExpectation = describeParseExpectation(input.artifactType);
 
   return {

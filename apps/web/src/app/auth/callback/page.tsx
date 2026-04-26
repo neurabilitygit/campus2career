@@ -48,7 +48,7 @@ export default function AuthCallbackPage() {
       if (data.session) {
         setMessage("Signed in. Redirecting you into the app...");
         await refreshSession({ force: true });
-        window.location.replace("/app");
+        window.location.replace("/signup");
       } else {
         setMessage("No active session found.");
       }

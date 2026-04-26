@@ -73,9 +73,20 @@ export function resolveSaveReturnRoute(
   }
 
   const normalizedCurrent = normalizeRoute(currentRoute);
+  const rememberedCurrentRoute = normalizeRoute(
+    window.sessionStorage.getItem(SAVE_NAVIGATION_CURRENT_ROUTE_KEY)
+  );
   const previousRoute = normalizeRoute(
     window.sessionStorage.getItem(SAVE_NAVIGATION_PREVIOUS_ROUTE_KEY)
   );
+
+  if (
+    rememberedCurrentRoute &&
+    rememberedCurrentRoute !== normalizedCurrent &&
+    !GENERIC_SAVE_RETURN_ROUTES.has(rememberedCurrentRoute)
+  ) {
+    return rememberedCurrentRoute;
+  }
 
   if (
     previousRoute &&
@@ -93,6 +104,29 @@ export function navigateToSavedReturnRoute(
   fallbackRoute: string
 ) {
   const targetRoute = resolveSaveReturnRoute(currentRoute, fallbackRoute);
+  const normalizedCurrent = normalizeRoute(currentRoute) || "/";
+  const previousRoute = normalizeRoute(
+    window.sessionStorage.getItem(SAVE_NAVIGATION_PREVIOUS_ROUTE_KEY)
+  );
+
+  if (
+    window.history.length > 1 &&
+    previousRoute &&
+    previousRoute !== normalizedCurrent &&
+    !GENERIC_SAVE_RETURN_ROUTES.has(previousRoute)
+  ) {
+    window.history.back();
+    window.setTimeout(() => {
+      const liveRoute = normalizeRoute(
+        `${window.location.pathname}${window.location.search}`
+      );
+      if (liveRoute === normalizedCurrent) {
+        window.location.assign(targetRoute);
+      }
+    }, 150);
+    return;
+  }
+
   window.location.assign(targetRoute);
 }
 

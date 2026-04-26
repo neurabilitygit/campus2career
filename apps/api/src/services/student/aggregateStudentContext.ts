@@ -1,5 +1,6 @@
 import { StudentReadRepository } from "../../repositories/student/studentReadRepository";
 import { JobTargetRepository } from "../../repositories/career/jobTargetRepository";
+import { CareerScenarioRepository } from "../../repositories/career/careerScenarioRepository";
 import { OutcomeRepository } from "../../repositories/outcomes/outcomeRepository";
 import type { StudentScoringInput } from "../../../../../packages/shared/src/scoring/types";
 import {
@@ -14,6 +15,7 @@ export interface AggregatedStudentContext {
   studentName: string;
   targetGoal: string;
   targetGoalSource:
+    | "active_career_scenario"
     | "career_goal_summary"
     | "primary_job_target_title"
     | "major_fallback"
@@ -26,6 +28,7 @@ export interface AggregatedStudentContext {
 
 const repo = new StudentReadRepository();
 const jobTargetRepo = new JobTargetRepository();
+const careerScenarioRepo = new CareerScenarioRepository();
 const outcomeRepo = new OutcomeRepository();
 
 const sectorToRole = new Map(
@@ -230,12 +233,13 @@ function buildScoringInputQualityNotes(input: {
 }
 
 export async function aggregateStudentContext(studentProfileId: string): Promise<AggregatedStudentContext> {
-  const [profile, insights, deadlines, accomplishments, primaryJobTarget] = await Promise.all([
+  const [profile, insights, deadlines, accomplishments, primaryJobTarget, activeScenario] = await Promise.all([
     repo.getStudentProfile(studentProfileId),
     repo.getParentVisibleInsights(studentProfileId),
     repo.getUpcomingDeadlines(studentProfileId),
     repo.getRecentAccomplishments(studentProfileId),
     jobTargetRepo.getPrimaryForStudent(studentProfileId),
+    careerScenarioRepo.getActiveForStudent(studentProfileId),
   ]);
 
   if (!profile) {
@@ -244,12 +248,16 @@ export async function aggregateStudentContext(studentProfileId: string): Promise
 
   const targetGoalParts = [profile.major_primary, profile.major_secondary].filter(Boolean).join(" / ");
   const targetGoal =
+    activeScenario?.scenarioName ||
+    activeScenario?.targetRole ||
     profile.career_goal_summary ||
     primaryJobTarget?.title ||
     targetGoalParts ||
     "Career target not yet defined";
   const targetGoalSource =
-    profile.career_goal_summary
+    activeScenario?.careerScenarioId
+      ? "active_career_scenario"
+      : profile.career_goal_summary
       ? "career_goal_summary"
       : primaryJobTarget?.title
         ? "primary_job_target_title"
@@ -257,7 +265,9 @@ export async function aggregateStudentContext(studentProfileId: string): Promise
           ? "major_fallback"
           : "unresolved";
   const targetGoalTruthStatus =
-    targetGoalSource === "career_goal_summary" || targetGoalSource === "primary_job_target_title"
+    targetGoalSource === "active_career_scenario" ||
+    targetGoalSource === "career_goal_summary" ||
+    targetGoalSource === "primary_job_target_title"
       ? "direct"
       : targetGoalSource === "major_fallback"
         ? "fallback"
@@ -284,21 +294,29 @@ export async function buildStudentScoringInput(
   options?: {
     targetRoleFamily?: string;
     targetSectorCluster?: string;
+    preferredGeographies?: string[];
   }
 ): Promise<StudentScoringInput> {
   const profile = await repo.getStudentProfile(studentProfileId);
   if (!profile) throw new Error(`Student profile not found for ${studentProfileId}`);
 
-  const [sectors, primaryJobTarget] = await Promise.all([
+  const [sectors, primaryJobTarget, activeScenario] = await Promise.all([
     repo.getSelectedSectors(studentProfileId),
     jobTargetRepo.getPrimaryForStudent(studentProfileId),
+    careerScenarioRepo.getActiveForStudent(studentProfileId),
   ]);
   const selectedSector = sectors[0]?.sector_cluster;
+  const scenarioPreferredGeographies =
+    activeScenario?.assumptions?.preferredGeographies?.length
+      ? activeScenario.assumptions.preferredGeographies
+      : activeScenario?.targetGeography
+        ? [activeScenario.targetGeography]
+        : [];
   const resolvedTarget = resolveTargetRole({
     selectedSector,
     primaryJobTarget,
-    overrideTargetRoleFamily: options?.targetRoleFamily,
-    overrideTargetSectorCluster: options?.targetSectorCluster,
+    overrideTargetRoleFamily: options?.targetRoleFamily || activeScenario?.targetRole || undefined,
+    overrideTargetSectorCluster: options?.targetSectorCluster || activeScenario?.targetSector || undefined,
   });
   if (!resolvedTarget) {
     throw new AppError({
@@ -421,13 +439,22 @@ export async function buildStudentScoringInput(
         truthStatus: summarizeRequirementTruthStatus(academicEvidence.requirementProgress),
       }
     : undefined;
+  const activeScenarioNote =
+    activeScenario?.careerScenarioId && !options?.targetRoleFamily
+      ? [`Scoring is currently aligned to the active career scenario "${activeScenario.scenarioName}".`]
+      : [];
 
   return {
     studentId: studentProfileId,
     targetRoleFamily,
     targetSectorCluster,
     targetResolution,
-    preferredGeographies: profile.preferred_geographies || [],
+    preferredGeographies:
+      options?.preferredGeographies?.length
+        ? options.preferredGeographies
+        : scenarioPreferredGeographies.length
+          ? scenarioPreferredGeographies
+          : profile.preferred_geographies || [],
     occupationMetadata: occupationMetadata
       ? {
           onetCode: occupationMetadata.onet_code || undefined,
@@ -439,7 +466,7 @@ export async function buildStudentScoringInput(
     requirementProgress,
     occupationSkillTruth,
     marketSignalTruth,
-    dataQualityNotes,
+    dataQualityNotes: [...activeScenarioNote, ...dataQualityNotes],
     occupationSkills,
     marketSignals: marketSignals.map((signal) => ({
       signalType: signal.signal_type,

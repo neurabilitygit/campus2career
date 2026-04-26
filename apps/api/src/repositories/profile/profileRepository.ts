@@ -1,4 +1,4 @@
-import { query } from "../../db/client";
+import { executeQuery, query, type DbExecutor } from "../../db/client";
 import type {
   CoachEditableProfile,
   ParentEditableProfile,
@@ -24,8 +24,9 @@ export class ProfileRepository {
     firstName: string;
     lastName: string;
     preferredName?: string | null;
-  }) {
-    await query(
+  }, executor?: DbExecutor) {
+    await executeQuery(
+      executor,
       `
       update users
       set
@@ -97,8 +98,9 @@ export class ProfileRepository {
   async updateStudentEditableProfile(input: {
     studentProfileId: string;
     profile: StudentEditableProfile;
-  }) {
-    await query(
+  }, executor?: DbExecutor) {
+    await executeQuery(
+      executor,
       `
       update student_profiles
       set
@@ -191,8 +193,9 @@ export class ProfileRepository {
     userId: string;
     householdId?: string | null;
     profile: ParentEditableProfile;
-  }) {
-    await query(
+  }, executor?: DbExecutor) {
+    await executeQuery(
+      executor,
       `
       insert into parent_profiles (
         parent_profile_id,
@@ -289,8 +292,9 @@ export class ProfileRepository {
     profileId: string;
     userId: string;
     profile: CoachEditableProfile;
-  }) {
-    await query(
+  }, executor?: DbExecutor) {
+    await executeQuery(
+      executor,
       `
       insert into coach_profiles (
         coach_profile_id,

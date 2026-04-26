@@ -107,6 +107,7 @@ Create a Supabase project and capture:
 Then:
 
 1. Enable Google auth if you want the current sign-in flow.
+2. Set the Google redirect URL to include `/auth/callback`.
 2. Create the storage bucket named by `SUPABASE_STORAGE_BUCKET`.
 
 Recommended default:
@@ -137,7 +138,14 @@ SUPABASE_JWT_SECRET=
 SUPABASE_STORAGE_BUCKET=rising-senior
 
 APP_BASE_URL=
+API_ALLOWED_ORIGINS=
 BRIEF_MONTH_TZ=UTC
+INVITATION_EMAIL_PROVIDER=auto
+INVITATION_EMAIL_FROM=
+INVITATION_EMAIL_FROM_NAME=Rising Senior
+SENDGRID_API_KEY=
+SENDGRID_FROM_EMAIL=
+SENDGRID_REPLY_TO_EMAIL=
 
 ONET_DATABASE_DIR=
 BLS_API_KEY=
@@ -153,6 +161,7 @@ Post-deploy checks:
 2. Verify the service can connect to Postgres.
 3. Verify the service starts with no missing env errors.
 4. Verify demo auth headers are rejected unless `ALLOW_DEMO_AUTH=true`.
+5. If household invitations should send real email, verify the SendGrid env vars are set and an invite arrives in the recipient inbox.
 
 ## 5. Deploy Web
 
@@ -263,8 +272,10 @@ After all three apps are deployed, run this end-to-end check:
 10. Open `/diagnostic`
 11. Open `/student`
 12. Open `/parent`
+13. Open `/signup` and verify the parent household creation / student request flow renders
+14. Open `/admin` with a household-admin or super-admin account and verify invitations plus permission controls load
 13. Generate a parent brief
-14. Trigger scenario chat
+14. Trigger Career Goal guidance chat
 
 ## Common failure cases
 
@@ -314,6 +325,7 @@ Suggested local defaults:
 
 ```env
 APP_BASE_URL=http://localhost:3000
+API_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:3100
 NEXT_PUBLIC_API_BASE_URL=http://localhost:8080
 PORT=8080
 BRIEF_MONTH_TZ=UTC

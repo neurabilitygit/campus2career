@@ -1,42 +1,129 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { scoringRoute } from "./routes/scoring";
+import { resolveCorsOrigin } from "./http/cors";
+import { isAppError, toAppErrorResponse } from "./utils/appError";
+import { shouldLogServerError } from "./utils/errorLogging";
 
 function applyCors(req: IncomingMessage, res: ServerResponse) {
-  const origin = req.headers.origin || "*";
-  res.setHeader("access-control-allow-origin", origin);
   res.setHeader("vary", "origin");
+  const allowedOrigin = resolveCorsOrigin(req.headers);
+  if (allowedOrigin) {
+    res.setHeader("access-control-allow-origin", allowedOrigin);
+    res.setHeader("access-control-allow-credentials", "true");
+  }
   res.setHeader(
     "access-control-allow-headers",
     "authorization, content-type, x-demo-user-id, x-demo-role-type, x-demo-email, x-test-context-role"
   );
-  res.setHeader("access-control-allow-methods", "GET, POST, PATCH, OPTIONS");
-  res.setHeader("access-control-allow-credentials", "true");
+  res.setHeader("access-control-allow-methods", "GET, POST, PATCH, DELETE, OPTIONS");
 }
 
 export async function router(req: IncomingMessage, res: ServerResponse) {
-  applyCors(req, res);
-  res.setHeader("content-type", "application/json");
+  try {
+    applyCors(req, res);
+    res.setHeader("content-type", "application/json");
 
-  if (req.method === "OPTIONS") {
-    res.statusCode = 204;
-    res.end();
-    return;
-  }
+    if (req.method === "OPTIONS") {
+      res.statusCode = 204;
+      res.end();
+      return;
+    }
 
-  const requestUrl = new URL(req.url || "/", "http://localhost");
-  const url = requestUrl.pathname;
+    const requestUrl = new URL(req.url || "/", "http://localhost");
+    const url = requestUrl.pathname;
 
-  if (url === "/health") {
-    res.statusCode = 200;
-    res.end(JSON.stringify({ ok: true, service: "api" }));
-    return;
-  }
+    const { authorizeApiRequest } = await import("./services/auth/apiAuthorization");
+    await authorizeApiRequest(req, url);
 
-  if (url === "/auth/me") {
-    const { authMeRoute } = await import("./routes/auth");
-    await authMeRoute(req, res);
-    return;
-  }
+    if (url === "/health") {
+      res.statusCode = 200;
+      res.end(JSON.stringify({ ok: true, service: "api" }));
+      return;
+    }
+
+    if (url === "/auth/me") {
+      const { authMeRoute } = await import("./routes/auth");
+      await authMeRoute(req, res);
+      return;
+    }
+
+    if (url === "/communication/profile" && req.method === "GET") {
+      const { communicationProfileRoute } = await import("./routes/communication");
+      await communicationProfileRoute(req, res);
+      return;
+    }
+
+    if (url === "/communication/prompts/next" && req.method === "GET") {
+      const { communicationNextPromptRoute } = await import("./routes/communication");
+      await communicationNextPromptRoute(req, res);
+      return;
+    }
+
+    if (url === "/communication/prompts/skip" && req.method === "POST") {
+      const { communicationPromptProgressRoute } = await import("./routes/communication");
+      await communicationPromptProgressRoute(req, res);
+      return;
+    }
+
+    if (url === "/communication/parent-inputs" && req.method === "POST") {
+      const { communicationParentInputUpsertRoute } = await import("./routes/communication");
+      await communicationParentInputUpsertRoute(req, res);
+      return;
+    }
+
+    if (url.startsWith("/communication/parent-inputs/") && req.method === "PATCH") {
+      const { communicationParentInputUpdateRoute } = await import("./routes/communication");
+      await communicationParentInputUpdateRoute(req, res);
+      return;
+    }
+
+    if (url.startsWith("/communication/parent-inputs/") && req.method === "DELETE") {
+      const { communicationParentInputDeleteRoute } = await import("./routes/communication");
+      await communicationParentInputDeleteRoute(req, res);
+      return;
+    }
+
+    if (url === "/communication/student-inputs" && req.method === "POST") {
+      const { communicationStudentInputUpsertRoute } = await import("./routes/communication");
+      await communicationStudentInputUpsertRoute(req, res);
+      return;
+    }
+
+    if (url.startsWith("/communication/student-inputs/") && req.method === "PATCH") {
+      const { communicationStudentInputUpdateRoute } = await import("./routes/communication");
+      await communicationStudentInputUpdateRoute(req, res);
+      return;
+    }
+
+    if (url.startsWith("/communication/student-inputs/") && req.method === "DELETE") {
+      const { communicationStudentInputDeleteRoute } = await import("./routes/communication");
+      await communicationStudentInputDeleteRoute(req, res);
+      return;
+    }
+
+    if (url === "/communication/translate" && req.method === "POST") {
+      const { communicationTranslateRoute } = await import("./routes/communication");
+      await communicationTranslateRoute(req, res);
+      return;
+    }
+
+    if (url === "/communication/feedback" && req.method === "POST") {
+      const { communicationFeedbackRoute } = await import("./routes/communication");
+      await communicationFeedbackRoute(req, res);
+      return;
+    }
+
+    if (url === "/communication/summary" && req.method === "GET") {
+      const { communicationSummaryRoute } = await import("./routes/communication");
+      await communicationSummaryRoute(req, res);
+      return;
+    }
+
+    if (url.startsWith("/communication/insights/") && url.endsWith("/review") && req.method === "POST") {
+      const { communicationInferredInsightReviewRoute } = await import("./routes/communication");
+      await communicationInferredInsightReviewRoute(req, res);
+      return;
+    }
 
   if (url === "/auth/intro-onboarding/complete" && req.method === "POST") {
     const { introOnboardingCompleteRoute } = await import("./routes/auth");
@@ -53,6 +140,72 @@ export async function router(req: IncomingMessage, res: ServerResponse) {
   if (url === "/auth/intro-onboarding/replay" && req.method === "POST") {
     const { introOnboardingReplayRoute } = await import("./routes/auth");
     await introOnboardingReplayRoute(req, res);
+    return;
+  }
+
+  if (url === "/auth/signup/decision" && req.method === "GET") {
+    const { signupDecisionRoute } = await import("./routes/householdAdmin");
+    await signupDecisionRoute(req, res);
+    return;
+  }
+
+  if (url === "/auth/signup/create-household" && req.method === "POST") {
+    const { signupCreateHouseholdRoute } = await import("./routes/householdAdmin");
+    await signupCreateHouseholdRoute(req, res);
+    return;
+  }
+
+  if (url === "/auth/signup/request-household-access" && req.method === "POST") {
+    const { signupRequestHouseholdAccessRoute } = await import("./routes/householdAdmin");
+    await signupRequestHouseholdAccessRoute(req, res);
+    return;
+  }
+
+  if (url === "/auth/invitations/preview" && req.method === "GET") {
+    const { invitationPreviewRoute } = await import("./routes/householdAdmin");
+    await invitationPreviewRoute(req, res);
+    return;
+  }
+
+  if (url === "/auth/invitations/accept" && req.method === "POST") {
+    const { invitationAcceptRoute } = await import("./routes/householdAdmin");
+    await invitationAcceptRoute(req, res);
+    return;
+  }
+
+  if (url === "/households/me/admin" && req.method === "GET") {
+    const { householdAdminOverviewRoute } = await import("./routes/householdAdmin");
+    await householdAdminOverviewRoute(req, res);
+    return;
+  }
+
+  if (url === "/households/me/invitations" && req.method === "POST") {
+    const { householdInvitationCreateRoute } = await import("./routes/householdAdmin");
+    await householdInvitationCreateRoute(req, res);
+    return;
+  }
+
+  if (url === "/households/me/join-requests/approve" && req.method === "POST") {
+    const { householdJoinRequestApproveRoute } = await import("./routes/householdAdmin");
+    await householdJoinRequestApproveRoute(req, res);
+    return;
+  }
+
+  if (url === "/households/me/join-requests/deny" && req.method === "POST") {
+    const { householdJoinRequestDenyRoute } = await import("./routes/householdAdmin");
+    await householdJoinRequestDenyRoute(req, res);
+    return;
+  }
+
+  if (url === "/households/me/permissions" && req.method === "POST") {
+    const { householdPermissionUpdateRoute } = await import("./routes/householdAdmin");
+    await householdPermissionUpdateRoute(req, res);
+    return;
+  }
+
+  if (url === "/admin/users" && req.method === "GET") {
+    const { superAdminUserDirectoryRoute } = await import("./routes/householdAdmin");
+    await superAdminUserDirectoryRoute(req, res);
     return;
   }
 
@@ -148,6 +301,60 @@ export async function router(req: IncomingMessage, res: ServerResponse) {
   if (url === "/students/me/job-targets/primary" && req.method === "PATCH") {
     const { studentJobTargetSetPrimaryRoute } = await import("./routes/jobTargets");
     await studentJobTargetSetPrimaryRoute(req, res);
+    return;
+  }
+
+  if (url === "/students/me/career-scenarios" && req.method === "GET") {
+    const { studentCareerScenarioListRoute } = await import("./routes/careerScenarios");
+    await studentCareerScenarioListRoute(req, res);
+    return;
+  }
+
+  if (url === "/students/me/career-scenarios" && req.method === "POST") {
+    const { studentCareerScenarioCreateRoute } = await import("./routes/careerScenarios");
+    await studentCareerScenarioCreateRoute(req, res);
+    return;
+  }
+
+  if (url === "/students/me/career-scenarios/active" && req.method === "GET") {
+    const { studentCareerScenarioActiveRoute } = await import("./routes/careerScenarios");
+    await studentCareerScenarioActiveRoute(req, res);
+    return;
+  }
+
+  if (url === "/students/me/career-scenarios/item" && req.method === "GET") {
+    const { studentCareerScenarioGetRoute } = await import("./routes/careerScenarios");
+    await studentCareerScenarioGetRoute(req, res);
+    return;
+  }
+
+  if (url === "/students/me/career-scenarios/update" && req.method === "POST") {
+    const { studentCareerScenarioUpdateRoute } = await import("./routes/careerScenarios");
+    await studentCareerScenarioUpdateRoute(req, res);
+    return;
+  }
+
+  if (url === "/students/me/career-scenarios/duplicate" && req.method === "POST") {
+    const { studentCareerScenarioDuplicateRoute } = await import("./routes/careerScenarios");
+    await studentCareerScenarioDuplicateRoute(req, res);
+    return;
+  }
+
+  if (url === "/students/me/career-scenarios/delete" && req.method === "POST") {
+    const { studentCareerScenarioDeleteRoute } = await import("./routes/careerScenarios");
+    await studentCareerScenarioDeleteRoute(req, res);
+    return;
+  }
+
+  if (url === "/students/me/career-scenarios/set-active" && req.method === "POST") {
+    const { studentCareerScenarioSetActiveRoute } = await import("./routes/careerScenarios");
+    await studentCareerScenarioSetActiveRoute(req, res);
+    return;
+  }
+
+  if (url === "/students/me/career-scenarios/analyze" && req.method === "POST") {
+    const { studentCareerScenarioAnalyzeRoute } = await import("./routes/careerScenarios");
+    await studentCareerScenarioAnalyzeRoute(req, res);
     return;
   }
 
@@ -464,6 +671,24 @@ export async function router(req: IncomingMessage, res: ServerResponse) {
     return;
   }
 
+  if (url === "/parents/me/career-scenarios" && req.method === "GET") {
+    const { parentCareerScenarioListRoute } = await import("./routes/careerScenarios");
+    await parentCareerScenarioListRoute(req, res);
+    return;
+  }
+
+  if (url === "/parents/me/career-scenarios/active" && req.method === "GET") {
+    const { parentCareerScenarioActiveRoute } = await import("./routes/careerScenarios");
+    await parentCareerScenarioActiveRoute(req, res);
+    return;
+  }
+
+  if (url === "/parents/me/career-scenarios/item" && req.method === "GET") {
+    const { parentCareerScenarioGetRoute } = await import("./routes/careerScenarios");
+    await parentCareerScenarioGetRoute(req, res);
+    return;
+  }
+
   if (url === "/coaches/me/outcomes" && req.method === "GET") {
     const { coachOutcomesListRoute } = await import("./routes/outcomes");
     await coachOutcomesListRoute(req, res);
@@ -509,6 +734,60 @@ export async function router(req: IncomingMessage, res: ServerResponse) {
   if (url === "/coaches/me/workspace" && req.method === "GET") {
     const { coachWorkspaceRoute } = await import("./routes/coach");
     await coachWorkspaceRoute(req, res);
+    return;
+  }
+
+  if (url === "/coaches/me/career-scenarios" && req.method === "GET") {
+    const { coachCareerScenarioListRoute } = await import("./routes/careerScenarios");
+    await coachCareerScenarioListRoute(req, res);
+    return;
+  }
+
+  if (url === "/coaches/me/career-scenarios" && req.method === "POST") {
+    const { coachCareerScenarioCreateRoute } = await import("./routes/careerScenarios");
+    await coachCareerScenarioCreateRoute(req, res);
+    return;
+  }
+
+  if (url === "/coaches/me/career-scenarios/active" && req.method === "GET") {
+    const { coachCareerScenarioActiveRoute } = await import("./routes/careerScenarios");
+    await coachCareerScenarioActiveRoute(req, res);
+    return;
+  }
+
+  if (url === "/coaches/me/career-scenarios/item" && req.method === "GET") {
+    const { coachCareerScenarioGetRoute } = await import("./routes/careerScenarios");
+    await coachCareerScenarioGetRoute(req, res);
+    return;
+  }
+
+  if (url === "/coaches/me/career-scenarios/update" && req.method === "POST") {
+    const { coachCareerScenarioUpdateRoute } = await import("./routes/careerScenarios");
+    await coachCareerScenarioUpdateRoute(req, res);
+    return;
+  }
+
+  if (url === "/coaches/me/career-scenarios/duplicate" && req.method === "POST") {
+    const { coachCareerScenarioDuplicateRoute } = await import("./routes/careerScenarios");
+    await coachCareerScenarioDuplicateRoute(req, res);
+    return;
+  }
+
+  if (url === "/coaches/me/career-scenarios/delete" && req.method === "POST") {
+    const { coachCareerScenarioDeleteRoute } = await import("./routes/careerScenarios");
+    await coachCareerScenarioDeleteRoute(req, res);
+    return;
+  }
+
+  if (url === "/coaches/me/career-scenarios/set-active" && req.method === "POST") {
+    const { coachCareerScenarioSetActiveRoute } = await import("./routes/careerScenarios");
+    await coachCareerScenarioSetActiveRoute(req, res);
+    return;
+  }
+
+  if (url === "/coaches/me/career-scenarios/analyze" && req.method === "POST") {
+    const { coachCareerScenarioAnalyzeRoute } = await import("./routes/careerScenarios");
+    await coachCareerScenarioAnalyzeRoute(req, res);
     return;
   }
 
@@ -618,6 +897,23 @@ export async function router(req: IncomingMessage, res: ServerResponse) {
     return;
   }
 
-  res.statusCode = 404;
-  res.end(JSON.stringify({ error: "not_found" }));
+    res.statusCode = 404;
+    res.end(JSON.stringify({ error: "not_found" }));
+  } catch (error) {
+    if (shouldLogServerError(error)) {
+      console.error("Unhandled API error", error);
+    }
+    if ((error as { message?: string } | null)?.message === "UNAUTHENTICATED") {
+      res.statusCode = 401;
+      res.end(JSON.stringify({ error: "unauthorized" }));
+      return;
+    }
+    if (isAppError(error)) {
+      res.statusCode = error.status;
+      res.end(JSON.stringify(toAppErrorResponse(error)));
+      return;
+    }
+    res.statusCode = 500;
+    res.end(JSON.stringify({ error: "internal_server_error" }));
+  }
 }

@@ -1,4 +1,5 @@
-import { closeDbPool, query } from "../../apps/api/src/db/client";
+import { closeDbPool, getDbPool, query } from "../../apps/api/src/db/client";
+import { CURRENT_INTRO_ONBOARDING_VERSION } from "../../packages/shared/src/contracts/introOnboarding";
 import {
   SYNTHETIC_COACH_RELATIONSHIPS,
   SYNTHETIC_STUDENTS,
@@ -62,6 +63,8 @@ const seedIds = {
 const STUDENT_PROFILE_IDS = listSyntheticStudents().map((student) => student.studentProfileId);
 const HOUSEHOLD_IDS = listSyntheticStudents().map((student) => student.householdId);
 const USER_IDS = listSyntheticUsers().map((user) => user.userId);
+const SYNTHETIC_EMAILS = listSyntheticUsers().map((user) => user.email);
+const SYNTHETIC_SEED_LOCK_KEY = 42424201;
 
 async function cleanupTable(table: string, column: string, ids: string[]) {
   if (!ids.length) return;
@@ -69,15 +72,66 @@ async function cleanupTable(table: string, column: string, ids: string[]) {
 }
 
 export async function resetSyntheticTestData() {
-  await query(`delete from student_curriculum_reviews where student_profile_id = any($1::uuid[])`, [
+  const existingSyntheticUsers = await query<{ user_id: string }>(
+    `
+    select user_id
+    from users
+    where user_id = any($1::uuid[])
+       or email = any($2::text[])
+    `,
+    [USER_IDS, SYNTHETIC_EMAILS]
+  );
+  const targetUserIds = Array.from(new Set([...USER_IDS, ...existingSyntheticUsers.rows.map((row) => row.user_id)]));
+
+  await query(`delete from career_scenario_action_items where student_profile_id = any($1::uuid[])`, [
     STUDENT_PROFILE_IDS,
   ]);
+  await query(`delete from career_scenarios where student_profile_id = any($1::uuid[])`, [
+    STUDENT_PROFILE_IDS,
+  ]);
+  await query(
+    `
+    delete from student_curriculum_reviews
+    where student_profile_id = any($1::uuid[])
+       or curriculum_verified_by_user_id = any($2::uuid[])
+       or coach_reviewed_by_user_id = any($2::uuid[])
+    `,
+    [STUDENT_PROFILE_IDS, targetUserIds]
+  );
   await query(`delete from student_sector_selections where student_profile_id = any($1::uuid[])`, [
     STUDENT_PROFILE_IDS,
   ]);
   await query(`delete from onboarding_states where student_profile_id = any($1::uuid[])`, [
     STUDENT_PROFILE_IDS,
   ]);
+  await query(
+    `
+    delete from household_join_requests
+    where requesting_user_id = any($1::uuid[])
+       or reviewed_by_user_id = any($1::uuid[])
+       or household_id = any($2::uuid[])
+    `,
+    [targetUserIds, HOUSEHOLD_IDS]
+  );
+  await query(
+    `
+    delete from household_invitations
+    where household_id = any($1::uuid[])
+       or invited_by_user_id = any($2::uuid[])
+       or accepted_by_user_id = any($2::uuid[])
+       or invited_email = any($3::text[])
+    `,
+    [HOUSEHOLD_IDS, targetUserIds, SYNTHETIC_EMAILS]
+  );
+  await query(
+    `
+    delete from user_capability_overrides
+    where user_id = any($1::uuid[])
+       or household_id = any($2::uuid[])
+       or created_by_user_id = any($1::uuid[])
+    `,
+    [targetUserIds, HOUSEHOLD_IDS]
+  );
   await cleanupTable("student_catalog_assignments", "student_catalog_assignment_id", [
     seedIds.studentCatalogAssignmentMaya,
   ]);
@@ -142,12 +196,12 @@ export async function resetSyntheticTestData() {
   await query(`delete from student_profiles where student_profile_id = any($1::uuid[])`, [STUDENT_PROFILE_IDS]);
   await query(`delete from user_household_roles where household_id = any($1::uuid[]) or user_id = any($2::uuid[])`, [
     HOUSEHOLD_IDS,
-    USER_IDS,
+    targetUserIds,
   ]);
   await query(`delete from households where household_id = any($1::uuid[])`, [HOUSEHOLD_IDS]);
   await query(`delete from users where user_id = any($1::uuid[]) or email = any($2::text[])`, [
-    USER_IDS,
-    listSyntheticUsers().map((user) => user.email),
+    targetUserIds,
+    SYNTHETIC_EMAILS,
   ]);
 }
 
@@ -165,6 +219,13 @@ export async function seedSyntheticTestData() {
       city,
       website_url
     ) values ($1,'synthetic_state_university','Synthetic State University','US','NY','New York','https://synthetic-state.example.edu')
+    on conflict (institution_id) do update
+    set canonical_name = excluded.canonical_name,
+        display_name = excluded.display_name,
+        country_code = excluded.country_code,
+        state_region = excluded.state_region,
+        city = excluded.city,
+        website_url = excluded.website_url
     `,
     [seedIds.institutionSyntheticState]
   );
@@ -326,6 +387,8 @@ export async function seedSyntheticTestData() {
         last_name,
         preferred_name,
         email,
+        auth_provider,
+        is_super_admin,
         has_completed_intro_onboarding,
         intro_onboarding_completed_at,
         intro_onboarding_version,
@@ -335,9 +398,35 @@ export async function seedSyntheticTestData() {
         account_status,
         created_at,
         updated_at
-      ) values ($1,$2,$3,$4,$5,$6,true,now(),1,'completed','America/New_York','en','active',now(),now())
+      ) values ($1,$2,$3,$4,$5,$6,'supabase_google',$7,true,now(),$8,'completed','America/New_York','en','active',now(),now())
+      on conflict (user_id) do update
+      set
+        role_type = excluded.role_type,
+        first_name = excluded.first_name,
+        last_name = excluded.last_name,
+        preferred_name = excluded.preferred_name,
+        email = excluded.email,
+        auth_provider = excluded.auth_provider,
+        is_super_admin = excluded.is_super_admin,
+        has_completed_intro_onboarding = excluded.has_completed_intro_onboarding,
+        intro_onboarding_completed_at = excluded.intro_onboarding_completed_at,
+        intro_onboarding_version = excluded.intro_onboarding_version,
+        intro_onboarding_status = excluded.intro_onboarding_status,
+        timezone = excluded.timezone,
+        preferred_language = excluded.preferred_language,
+        account_status = excluded.account_status,
+        updated_at = now()
       `,
-      [user.userId, user.roleType, user.firstName, user.lastName, user.preferredName ?? null, user.email]
+      [
+        user.userId,
+        user.roleType,
+        user.firstName,
+        user.lastName,
+        user.preferredName ?? null,
+        user.email,
+        user.email === "eric.bassman@gmail.com",
+        CURRENT_INTRO_ONBOARDING_VERSION,
+      ]
     );
   }
 
@@ -349,12 +438,13 @@ export async function seedSyntheticTestData() {
       insert into households (
         household_id,
         household_name,
+        created_by_parent_user_id,
         primary_student_user_id,
         created_at,
         updated_at
-      ) values ($1,$2,$3,now(),now())
+      ) values ($1,$2,$3,$4,now(),now())
       `,
-      [student.householdId, student.householdName, studentUser.userId]
+      [student.householdId, student.householdName, parentUser.userId, studentUser.userId]
     );
 
     await query(
@@ -365,10 +455,13 @@ export async function seedSyntheticTestData() {
         user_id,
         role_in_household,
         is_primary,
+        membership_status,
+        approved_by_user_id,
+        approved_at,
         created_at
       ) values
-        ($1,$2,$3,'student',true,now()),
-        ($4,$2,$5,'parent',true,now())
+        ($1,$2,$3,'student',true,'active',$5,now(),now()),
+        ($4,$2,$5,'parent',true,'active',$5,now(),now())
       `,
       [
         student.key === "maya" ? seedIds.householdRoleMayaStudent : seedIds.householdRoleLeoStudent,
@@ -504,10 +597,13 @@ export async function seedSyntheticTestData() {
       user_id,
       role_in_household,
       is_primary,
+      membership_status,
+      approved_by_user_id,
+      approved_at,
       created_at
     ) values
-      ($1,$2,$3,'coach',false,now()),
-      ($4,$5,$3,'coach',false,now())
+      ($1,$2,$3,'coach',false,'active',$3,now(),now()),
+      ($4,$5,$3,'coach',false,'active',$3,now(),now())
     `,
     [
       seedIds.householdRoleCoachMaya,
@@ -955,9 +1051,16 @@ export async function seedSyntheticTestData() {
 }
 
 export async function seedAndCloseSyntheticTestData() {
+  const lockClient = await getDbPool().connect();
   try {
+    await lockClient.query(`select pg_advisory_lock($1)`, [SYNTHETIC_SEED_LOCK_KEY]);
     await seedSyntheticTestData();
   } finally {
+    try {
+      await lockClient.query(`select pg_advisory_unlock($1)`, [SYNTHETIC_SEED_LOCK_KEY]);
+    } finally {
+      lockClient.release();
+    }
     await closeDbPool();
   }
 }

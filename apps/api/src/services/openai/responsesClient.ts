@@ -12,8 +12,11 @@ import {
   type ScenarioModelOutput,
 } from "../chat/scenarioSchema";
 import {
+  communicationBridgeOutputJsonSchema,
+  communicationBridgeOutputSchema,
   communicationTranslationModelOutputJsonSchema,
   communicationTranslationModelOutputSchema,
+  type CommunicationBridgeOutput,
   type CommunicationTranslationModelOutput,
 } from "../communication/translationSchema";
 
@@ -673,6 +676,58 @@ export async function runStructuredCommunicationTranslation(input: {
   const parsed = communicationTranslationModelOutputSchema.safeParse(decoded);
   if (!parsed.success) {
     throw new Error("Communication translation response did not match the required schema");
+  }
+
+  return {
+    output: parsed.data,
+    llmRunId,
+  };
+}
+
+export async function runStructuredCommunicationBridge(input: {
+  systemPrompt: string;
+  userPrompt: string;
+} & OpenAiTelemetryOptions): Promise<{
+  output: CommunicationBridgeOutput;
+  llmRunId?: string;
+}> {
+  const model = process.env.OPENAI_MODEL || "gpt-5.4";
+  const { response, llmRunId } = await createLoggedResponse({
+    model,
+    telemetry: input.telemetry,
+    timeoutMs: input.timeoutMs ?? COMMUNICATION_TRANSLATION_TIMEOUT_MS,
+    requestBody: {
+      model,
+      text: {
+        format: {
+          type: "json_schema",
+          name: "communication_bridge",
+          strict: true,
+          schema: communicationBridgeOutputJsonSchema(),
+        },
+      },
+      input: [
+        { role: "system", content: [{ type: "input_text", text: input.systemPrompt }] },
+        { role: "user", content: [{ type: "input_text", text: input.userPrompt }] },
+      ],
+    },
+  });
+
+  const raw = response.output_text?.trim();
+  if (!raw) {
+    throw new Error("No communication bridge response was returned");
+  }
+
+  let decoded: unknown;
+  try {
+    decoded = JSON.parse(raw);
+  } catch {
+    throw new Error("Communication bridge response was not valid JSON");
+  }
+
+  const parsed = communicationBridgeOutputSchema.safeParse(decoded);
+  if (!parsed.success) {
+    throw new Error("Communication bridge response did not match the required schema");
   }
 
   return {

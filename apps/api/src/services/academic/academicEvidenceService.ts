@@ -661,18 +661,65 @@ export async function discoverDegreeRequirementsForSelection(input: {
     };
   }
 
-  const result = await withTimeout(
-    discoverProgramRequirements({
-      institutionCanonicalName: assignment.institution_canonical_name,
-      catalogLabel: assignment.catalog_label,
-      degreeType: assignment.degree_type,
-      programName: assignment.program_name,
-      majorCanonicalName: assignment.major_canonical_name || undefined,
-      minorCanonicalName: assignment.minor_canonical_name || undefined,
-    }),
-    SCRAPE_TIMEOUT_MS,
-    "ACADEMIC_REQUIREMENTS_DISCOVERY_TIMEOUT"
-  );
+  let result:
+    | Awaited<ReturnType<typeof discoverProgramRequirements>>
+    | {
+        status: "upload_required";
+        uploadRecommended: true;
+        usedLlmAssistance?: false;
+        message: string;
+        diagnostics: string[];
+      };
+
+  try {
+    result = await withTimeout(
+      discoverProgramRequirements({
+        institutionCanonicalName: assignment.institution_canonical_name,
+        catalogLabel: assignment.catalog_label,
+        degreeType: assignment.degree_type,
+        programName: assignment.program_name,
+        majorCanonicalName: assignment.major_canonical_name || undefined,
+        minorCanonicalName: assignment.minor_canonical_name || undefined,
+      }),
+      SCRAPE_TIMEOUT_MS,
+      "ACADEMIC_REQUIREMENTS_DISCOVERY_TIMEOUT"
+    );
+  } catch (error) {
+    const isTimeout =
+      error instanceof Error && error.message === "ACADEMIC_REQUIREMENTS_DISCOVERY_TIMEOUT";
+
+    if (!isTimeout) {
+      throw error;
+    }
+
+    await recordAttempt({
+      studentProfileId: input.studentProfileId,
+      institutionId: assignment.institution_id,
+      academicCatalogId: assignment.academic_catalog_id,
+      discoveryType: "degree_requirements",
+      requestedEntityType: assignment.minor_canonical_name ? "minor" : "major",
+      requestedEntityName: assignment.major_display_name || assignment.minor_display_name || assignment.program_name,
+      sourceAttempted: "scrape",
+      status: "needs_review",
+      confidenceLabel: "low",
+      truthStatus: "unresolved",
+      sourceNote: "Degree requirement discovery timed out before a reliable result was available.",
+      reasonablenessNotes:
+        "Timed out after 10 seconds while collecting degree requirements. Review manually or upload a PDF.",
+      requestedByUserId: input.userId,
+    });
+
+    return {
+      status: "needs_review" as const,
+      sourceUsed: "scrape" as const,
+      uploadRequired: true,
+      message:
+        "Degree requirement discovery is taking longer than expected. You can keep this academic path saved and upload a PDF of the degree requirements for a faster review.",
+      diagnostics: [
+        "Discovery timed out after 10 seconds before a trustworthy requirement set was available.",
+      ],
+    };
+  }
 
   const requirementGraph = await getPrimaryRequirementSetGraphForStudent(input.studentProfileId);
   const requirementItemCount = requirementGraph?.groups?.reduce((sum, group) => sum + group.items.length, 0) || 0;

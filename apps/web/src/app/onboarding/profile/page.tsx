@@ -4,6 +4,7 @@ import { useDeferredValue, useEffect, useState } from "react";
 import Link from "next/link";
 import { AppShell } from "../../../components/layout/AppShell";
 import { SectionCard } from "../../../components/layout/SectionCard";
+import { StepFlowFooter, StepFlowHeader } from "../../../components/layout/StepFlow";
 import { RequireRole } from "../../../components/RequireRole";
 import { FieldInfoLabel } from "../../../components/forms/FieldInfoLabel";
 import { apiFetch } from "../../../lib/apiClient";
@@ -185,6 +186,24 @@ const labelStyle: React.CSSProperties = {
   color: "#183153",
 };
 
+const onboardingProfileSteps = [
+  {
+    key: "path",
+    label: "Academic path",
+    description: "Pick the school and program context the dashboard should use before anything else.",
+  },
+  {
+    key: "details",
+    label: "Profile details",
+    description: "Add the extra student context that helps the system guide decisions more specifically.",
+  },
+  {
+    key: "guidance",
+    label: "Guidance preferences",
+    description: "Set how advice should sound, how often it should show up, and what needs extra care.",
+  },
+] as const;
+
 export default function OnboardingProfilePage() {
   const saveNavigation = useSaveNavigation();
   const { isAuthenticated } = useSession();
@@ -252,6 +271,7 @@ export default function OnboardingProfilePage() {
     consentParentTranslatedMessages: false,
     notes: "",
   });
+  const [currentStep, setCurrentStep] = useState<(typeof onboardingProfileSteps)[number]["key"]>("path");
   const [manualProgramForm, setManualProgramForm] = useState({
     catalogLabel: "",
     degreeType: "Undergraduate",
@@ -872,6 +892,15 @@ export default function OnboardingProfilePage() {
       subtitle="Choose your school and major first so the dashboard can explain fit, gaps, and next steps in the right context."
     >
       <RequireRole expectedRoles={["student", "admin"]} fallbackTitle="Student sign-in required">
+        <StepFlowHeader
+          title="Academic path setup"
+          subtitle="This flow now shows one logical section at a time so you do not have to work through one oversized screen."
+          steps={onboardingProfileSteps.map((step) => ({ ...step }))}
+          currentStepKey={currentStep}
+          onStepSelect={(stepKey) => setCurrentStep(stepKey as (typeof onboardingProfileSteps)[number]["key"])}
+        />
+
+        {currentStep === "path" ? (
         <SectionCard
           title="School and program selection"
           subtitle="Start with the college or university. If structured curriculum data is available, the platform can use it right away to make the dashboard more specific."
@@ -1376,18 +1405,36 @@ export default function OnboardingProfilePage() {
                 ) : null}
               </div>
             ) : null}
+
+            <StepFlowFooter
+              steps={onboardingProfileSteps.map((step) => ({ ...step }))}
+              currentStepKey={currentStep}
+              onStepSelect={(stepKey) => setCurrentStep(stepKey as (typeof onboardingProfileSteps)[number]["key"])}
+            />
           </div>
         </SectionCard>
+        ) : null}
 
+        {currentStep !== "path" ? (
         <SectionCard
-          title={hasStructuredAcademicSelection ? "Profile details" : "Core profile"}
+          title={
+            currentStep === "guidance"
+              ? "Guidance preferences"
+              : hasStructuredAcademicSelection
+                ? "Profile details"
+                : "Core profile"
+          }
           subtitle={
-            hasStructuredAcademicSelection
-              ? "Your school and program are set. Add only the extra context that will help the dashboard guide the next decisions."
-              : "If your school path is not fully available yet, you can still continue here and strengthen the record later."
+            currentStep === "guidance"
+              ? "These preferences shape how student-facing guidance sounds and whether translated parent-originated messages may be shown."
+              : hasStructuredAcademicSelection
+                ? "Your school and program are set. Add only the extra context that will help the dashboard guide the next decisions."
+                : "If your school path is not fully available yet, you can still continue here and strengthen the record later."
           }
         >
           <div style={{ display: "grid", gap: 14 }}>
+            {currentStep === "details" ? (
+              <>
             {hasStructuredAcademicSelection ? (
               <div
                 style={{
@@ -1531,7 +1578,10 @@ export default function OnboardingProfilePage() {
                 rows={4}
               />
             </label>
+              </>
+            ) : null}
 
+            {currentStep === "guidance" ? (
             <div
               style={{
                 display: "grid",
@@ -1792,23 +1842,19 @@ export default function OnboardingProfilePage() {
                 </span>
               </label>
             </div>
+            ) : null}
 
-            <button
-              onClick={save}
-              style={{
-                border: "none",
-                borderRadius: 14,
-                padding: "13px 18px",
-                background: "linear-gradient(135deg, #155eef, #16a3ff)",
-                color: "#ffffff",
-                fontWeight: 800,
-                cursor: "pointer",
-              }}
-            >
-              Save academic path
-            </button>
+            {currentStep === "guidance" ? (
+              <button
+                onClick={save}
+                className="ui-button ui-button--primary"
+                style={{ width: "fit-content" }}
+              >
+                Save academic path
+              </button>
+            ) : null}
 
-            {status ? (
+            {currentStep === "guidance" && status ? (
               <div
                 style={{
                   display: "grid",
@@ -1863,9 +1909,16 @@ export default function OnboardingProfilePage() {
                 </div>
               </div>
             ) : null}
-            {errorMessage ? <p style={{ margin: 0, color: "crimson" }}>{errorMessage}</p> : null}
+            {currentStep === "guidance" && errorMessage ? <p style={{ margin: 0, color: "crimson" }}>{errorMessage}</p> : null}
+
+            <StepFlowFooter
+              steps={onboardingProfileSteps.map((step) => ({ ...step }))}
+              currentStepKey={currentStep}
+              onStepSelect={(stepKey) => setCurrentStep(stepKey as (typeof onboardingProfileSteps)[number]["key"])}
+            />
           </div>
         </SectionCard>
+        ) : null}
       </RequireRole>
     </AppShell>
   );

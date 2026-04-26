@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type { IntroTourStepConfig } from "../../lib/introOnboarding";
 import { IntroTourStep } from "./IntroTourStep";
 
@@ -215,7 +216,7 @@ export function IntroTourOverlay(props: {
 
   const counterLabel = `${props.stepIndex + 1} of ${props.totalSteps}`;
 
-  return (
+  const overlay = (
     <div className="intro-onboarding intro-onboarding--tour" role="dialog" aria-modal="true" aria-labelledby="intro-tour-title">
       <div className="intro-onboarding__scrim" aria-hidden="true" />
       {connector ? (
@@ -287,4 +288,10 @@ export function IntroTourOverlay(props: {
       </div>
     </div>
   );
+
+  if (typeof document === "undefined") {
+    return overlay;
+  }
+
+  return createPortal(overlay, document.body);
 }

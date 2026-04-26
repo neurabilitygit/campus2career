@@ -4,6 +4,12 @@ const { Pool } = pg;
 
 let pool: pg.Pool | null = null;
 
+export interface DbExecutor {
+  query: pg.Pool["query"];
+}
+
+export type TransactionClient = pg.PoolClient;
+
 function getConnectionHost(connectionString: string): string | null {
   try {
     return new URL(connectionString).hostname || null;
@@ -63,6 +69,38 @@ export async function query<T extends pg.QueryResultRow = pg.QueryResultRow>(
   text: string,
   params: unknown[] = []
 ): Promise<pg.QueryResult<T>> {
-  const db = getDbPool();
+  return executeQuery<T>(undefined, text, params);
+}
+
+export async function executeQuery<T extends pg.QueryResultRow = pg.QueryResultRow>(
+  executor: DbExecutor | undefined,
+  text: string,
+  params: unknown[] = []
+): Promise<pg.QueryResult<T>> {
+  const db = executor ?? getDbPool();
   return db.query<T>(text, params);
+}
+
+export async function withTransaction<T>(
+  fn: (tx: TransactionClient) => Promise<T>,
+  options?: { connect?: () => Promise<TransactionClient> }
+): Promise<T> {
+  const connect = options?.connect ?? (async () => getDbPool().connect() as Promise<TransactionClient>);
+  const client = await connect();
+
+  try {
+    await client.query("BEGIN");
+    const result = await fn(client);
+    await client.query("COMMIT");
+    return result;
+  } catch (error) {
+    try {
+      await client.query("ROLLBACK");
+    } catch (rollbackError) {
+      console.error("Postgres transaction rollback failed", rollbackError);
+    }
+    throw error;
+  } finally {
+    client.release();
+  }
 }
