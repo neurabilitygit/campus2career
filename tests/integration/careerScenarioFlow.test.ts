@@ -1,6 +1,7 @@
 import test, { after, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import { closeDbPool, query } from "../../apps/api/src/db/client";
+import { JobTargetRepository } from "../../apps/api/src/repositories/career/jobTargetRepository";
 import {
   coachCareerScenarioCreateRoute,
   coachCareerScenarioListRoute,
@@ -137,6 +138,53 @@ test("student can create, update, duplicate, activate, and soft-delete career sc
     [SYNTHETIC_STUDENTS.maya.studentProfileId]
   );
   assert.equal(studentExists.rows[0].count, "1");
+});
+
+test("onboarding and active career scenarios persist a concrete primary job target before scoring runs", async () => {
+  const repo = new JobTargetRepository();
+
+  const profileResponse = createResponseFactory();
+  await studentProfileUpsertRoute(
+    createAuthedRequest(
+      "studentLeo",
+      {
+        schoolName: "Bucknell University",
+        expectedGraduationDate: "2027-05-15",
+        majorPrimary: "Computer Science",
+        preferredGeographies: ["New York"],
+        careerGoalSummary: "I want to work toward software development roles.",
+      },
+      { method: "POST", url: "/students/me/profile" }
+    ),
+    profileResponse.res
+  );
+  assert.equal(profileResponse.statusCode, 200);
+
+  const seededFromOnboarding = await repo.getPrimaryForStudent(SYNTHETIC_STUDENTS.leo.studentProfileId);
+  assert.ok(seededFromOnboarding);
+  assert.equal(seededFromOnboarding?.normalizedRoleFamily, "software developer");
+  assert.equal(seededFromOnboarding?.normalizationSource, "deterministic");
+
+  const createScenarioResponse = createResponseFactory();
+  await studentCareerScenarioCreateRoute(
+    createAuthedRequest(
+      "studentLeo",
+      {
+        scenarioName: "Healthcare analytics path",
+        targetRole: "Healthcare Analyst",
+        targetSector: "Healthcare",
+        targetGeography: "Boston",
+      },
+      { method: "POST", url: "/students/me/career-scenarios" }
+    ),
+    createScenarioResponse.res
+  );
+  assert.equal(createScenarioResponse.statusCode, 200);
+
+  const syncedFromActiveScenario = await repo.getPrimaryForStudent(SYNTHETIC_STUDENTS.leo.studentProfileId);
+  assert.ok(syncedFromActiveScenario);
+  assert.equal(syncedFromActiveScenario?.normalizedRoleFamily, "healthcare analyst");
+  assert.match(syncedFromActiveScenario?.title || "", /healthcare analyst/i);
 });
 
 test("career scenario names must stay unique per student among non-deleted scenarios", async () => {

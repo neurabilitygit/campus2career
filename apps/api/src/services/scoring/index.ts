@@ -213,43 +213,72 @@ function computeMarketDemand(input: StudentScoringInput): SubScoreEvidenceDetail
     };
   }
 
-  let score = 60;
+  let weightedSignalScore = 0;
+  let totalWeight = 0;
+  let roleSignalCount = 0;
 
   for (const signal of signals) {
-    const weight = signal.scope === "role" ? 1.15 : 0.8;
+    const scopeWeight = signal.scope === "role" ? 1.15 : 0.8;
     const confidenceMultiplier =
       signal.confidenceLevel === "high" ? 1 :
-      signal.confidenceLevel === "medium" ? 0.8 :
-      signal.confidenceLevel === "low" ? 0.6 : 0.75;
-
-    const value = signal.signalValue ?? 0;
+      signal.confidenceLevel === "medium" ? 0.82 :
+      signal.confidenceLevel === "low" ? 0.65 : 0.75;
+    const signalWeight = scopeWeight * confidenceMultiplier;
+    const value = Math.min(Math.max(signal.signalValue ?? 0, 0), 10);
+    let signalScore = 58;
 
     if (signal.signalType === "unemployment_pressure") {
-      score += (10 - Math.min(value, 10)) * 4.2 * weight * confidenceMultiplier;
-    } else if (signal.signalType === "demand_growth" || signal.signalType === "openings_trend" || signal.signalType === "internship_availability" || signal.signalType === "wage") {
-      score += Math.min(value, 10) * 2.5 * weight * confidenceMultiplier;
+      signalScore = 46 + (10 - value) * 3.4;
+    } else if (
+      signal.signalType === "demand_growth" ||
+      signal.signalType === "openings_trend" ||
+      signal.signalType === "internship_availability" ||
+      signal.signalType === "wage"
+    ) {
+      signalScore = 44 + value * 4.2;
     } else if (signal.signalType === "hiring_slowdown" || signal.signalType === "ai_disruption_signal") {
-      score -= Math.min(value, 10) * 2.5 * weight * confidenceMultiplier;
+      signalScore = 74 - value * 3.2;
     }
 
-    if (signal.signalDirection === "rising" && (signal.signalType === "demand_growth" || signal.signalType === "openings_trend" || signal.signalType === "internship_availability" || signal.signalType === "wage")) {
-      score += 6 * confidenceMultiplier;
+    if (
+      signal.signalDirection === "rising" &&
+      (signal.signalType === "demand_growth" ||
+        signal.signalType === "openings_trend" ||
+        signal.signalType === "internship_availability" ||
+        signal.signalType === "wage")
+    ) {
+      signalScore += 2.4 * confidenceMultiplier;
     }
     if (signal.signalDirection === "falling" && signal.signalType === "unemployment_pressure") {
-      score += 5 * confidenceMultiplier;
+      signalScore += 2.2 * confidenceMultiplier;
     }
     if (signal.signalDirection === "rising" && signal.signalType === "unemployment_pressure") {
-      score -= 6 * confidenceMultiplier;
+      signalScore -= 2.6 * confidenceMultiplier;
     }
-    if (signal.signalDirection === "rising" && (signal.signalType === "hiring_slowdown" || signal.signalType === "ai_disruption_signal")) {
-      score -= 5 * confidenceMultiplier;
+    if (
+      signal.signalDirection === "rising" &&
+      (signal.signalType === "hiring_slowdown" || signal.signalType === "ai_disruption_signal")
+    ) {
+      signalScore -= 2.2 * confidenceMultiplier;
+    }
+
+    weightedSignalScore += clamp(signalScore, 30, 92) * signalWeight;
+    totalWeight += signalWeight;
+    if (signal.scope === "role") {
+      roleSignalCount += 1;
     }
   }
 
-  let normalizedScore = clamp(Math.round(score));
+  const weightedAverage = totalWeight > 0 ? weightedSignalScore / totalWeight : 55;
+  const coverageBoost = Math.min(roleSignalCount, 3) * 1.8 + (signals.length >= 3 ? 1.5 : 0);
+  let normalizedScore = clamp(Math.round(weightedAverage + coverageBoost), 35, 93);
   const fallbackSignals = input.marketSignalTruth?.truthStatus === "fallback";
   if (fallbackSignals) {
     normalizedScore = clamp(Math.round(55 + (normalizedScore - 55) * 0.55), 35, 68);
+  } else if (signals.length === 1) {
+    normalizedScore = clamp(Math.round(60 + (normalizedScore - 60) * 0.65), 45, 82);
+  } else if (signals.length === 2) {
+    normalizedScore = clamp(Math.round(60 + (normalizedScore - 60) * 0.82), 48, 88);
   }
 
   const confidenceLabel =

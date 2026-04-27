@@ -14,6 +14,7 @@
     "db:migrate": "node --env-file=.env.local --import tsx/esm src/scripts/applyDbMigrations.ts",
     "db:seed:institutions": "node --env-file=.env.local --import tsx/esm src/scripts/seedInstitutionDirectoryBootstrap.ts",
     "db:seed:ci": "node --env-file=.env.local --import tsx/esm src/scripts/seedCiBaseline.ts",
+    "market:refresh": "node --env-file=.env.local --import tsx/esm src/scripts/refreshMarketReferenceData.ts",
     "synthetic:run": "node --env-file=.env.local --import tsx/esm src/scripts/runSyntheticScenarios.ts",
     "academic:discover:smoke": "node --env-file=.env.local --import tsx/esm src/scripts/runAcademicDiscoverySmoke.ts",
     "academic:discover:seed": "node --env-file=.env.local --import tsx/esm src/scripts/runAcademicDiscoverySeed.ts",

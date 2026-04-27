@@ -20,6 +20,7 @@
     "db:migrate": "pnpm --dir apps/api db:migrate",
     "db:seed:institutions": "pnpm --dir apps/api db:seed:institutions",
     "db:seed:ci": "pnpm --dir apps/api db:seed:ci",
+    "market:refresh": "pnpm --dir apps/api market:refresh",
     "synthetic:run": "pnpm --dir apps/api synthetic:run",
     "academic:discover:smoke": "pnpm --dir apps/api academic:discover:smoke",
     "academic:discover:seed:ivy-suny": "pnpm --dir apps/api academic:discover:seed",

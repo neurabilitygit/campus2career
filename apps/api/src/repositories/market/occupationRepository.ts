@@ -70,6 +70,27 @@ export class OccupationRepository {
     );
   }
 
+  async deleteMarketSignalsForOccupationCluster(occupationClusterId: string): Promise<void> {
+    await query(
+      `
+      delete from market_signals
+      where occupation_cluster_id = $1
+      `,
+      [occupationClusterId]
+    );
+  }
+
+  async deleteMacroMarketSignalsByType(signalType: MarketSignalRecord["signalType"]): Promise<void> {
+    await query(
+      `
+      delete from market_signals
+      where occupation_cluster_id is null
+        and signal_type = $1
+      `,
+      [signalType]
+    );
+  }
+
   async upsertOccupationCluster(record: OccupationClusterRecord): Promise<void> {
     await query(
       `

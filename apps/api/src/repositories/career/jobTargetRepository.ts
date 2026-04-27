@@ -220,7 +220,7 @@ export class JobTargetRepository {
           is_primary,
           created_at,
           updated_at
-        ) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,now(),now())
+        ) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,now(),now())
         `,
         [
           input.jobTargetId,
@@ -305,5 +305,113 @@ export class JobTargetRepository {
     } finally {
       client.release();
     }
+  }
+
+  async updateNormalization(input: {
+    studentProfileId: string;
+    jobTargetId: string;
+    normalizedRoleFamily?: string | null;
+    normalizedSectorCluster?: string | null;
+    onetCode?: string | null;
+    normalizationConfidence?: number | null;
+    normalizationConfidenceLabel?: "low" | "medium" | "high" | null;
+    normalizationReasoning?: string | null;
+    normalizationSource?: "deterministic" | "llm" | null;
+    normalizationTruthStatus?: "direct" | "inferred" | "placeholder" | "fallback" | "unresolved";
+  }): Promise<boolean> {
+    const result = await query(
+      `
+      update job_targets
+      set
+        normalized_role_family = $3,
+        normalized_sector_cluster = $4,
+        onet_code = $5,
+        normalization_confidence = $6,
+        normalization_confidence_label = $7,
+        normalization_reasoning = $8,
+        normalization_source = $9,
+        normalization_truth_status = $10,
+        updated_at = now()
+      where student_profile_id = $1
+        and job_target_id = $2
+      `,
+      [
+        input.studentProfileId,
+        input.jobTargetId,
+        input.normalizedRoleFamily ?? null,
+        input.normalizedSectorCluster ?? null,
+        input.onetCode ?? null,
+        input.normalizationConfidence ?? null,
+        input.normalizationConfidenceLabel ?? null,
+        input.normalizationReasoning ?? null,
+        input.normalizationSource ?? null,
+        input.normalizationTruthStatus ?? "unresolved",
+      ]
+    );
+
+    return (result.rowCount || 0) > 0;
+  }
+
+  async updatePrimaryIntent(input: {
+    studentProfileId: string;
+    jobTargetId: string;
+    title: string;
+    employer?: string | null;
+    location?: string | null;
+    sourceType: JobTargetSourceType;
+    sourceUrl?: string | null;
+    jobDescriptionText?: string | null;
+    normalizedRoleFamily?: string | null;
+    normalizedSectorCluster?: string | null;
+    onetCode?: string | null;
+    normalizationConfidence?: number | null;
+    normalizationConfidenceLabel?: "low" | "medium" | "high" | null;
+    normalizationReasoning?: string | null;
+    normalizationSource?: "deterministic" | "llm" | null;
+    normalizationTruthStatus?: "direct" | "inferred" | "placeholder" | "fallback" | "unresolved";
+  }): Promise<boolean> {
+    const result = await query(
+      `
+      update job_targets
+      set
+        title = $3,
+        employer = $4,
+        location = $5,
+        source_type = $6,
+        source_url = $7,
+        job_description_text = $8,
+        normalized_role_family = $9,
+        normalized_sector_cluster = $10,
+        onet_code = $11,
+        normalization_confidence = $12,
+        normalization_confidence_label = $13,
+        normalization_reasoning = $14,
+        normalization_source = $15,
+        normalization_truth_status = $16,
+        updated_at = now()
+      where student_profile_id = $1
+        and job_target_id = $2
+      `,
+      [
+        input.studentProfileId,
+        input.jobTargetId,
+        input.title,
+        input.employer ?? null,
+        input.location ?? null,
+        input.sourceType,
+        input.sourceUrl ?? null,
+        input.jobDescriptionText ?? null,
+        input.normalizedRoleFamily ?? null,
+        input.normalizedSectorCluster ?? null,
+        input.onetCode ?? null,
+        input.normalizationConfidence ?? null,
+        input.normalizationConfidenceLabel ?? null,
+        input.normalizationReasoning ?? null,
+        input.normalizationSource ?? null,
+        input.normalizationTruthStatus ?? "unresolved",
+      ]
+    );
+
+    return (result.rowCount || 0) > 0;
   }
 }

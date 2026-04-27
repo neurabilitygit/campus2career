@@ -20,6 +20,8 @@ import {
 } from "./scenarioAnalysis";
 import { buildCareerScenarioActionItemDrafts, materializeCareerScenarioActionItems } from "./scenarioActionItems";
 import { AppError } from "../../utils/appError";
+import { syncPrimaryJobTargetFromStudentIntent } from "./primaryJobTargetSync";
+import type { CareerScenarioSourceType } from "../../../../../packages/shared/src/contracts/careerScenario";
 
 const repo = new CareerScenarioRepository();
 const jobTargetRepo = new JobTargetRepository();
@@ -125,21 +127,34 @@ async function normalizeScenarioTarget(input: CareerScenarioUpsertInput) {
     input.targetProfession ||
     input.scenarioName;
   if (!freeformTarget) {
-    return { normalizedRoleFamily: null, normalizedSectorCluster: null };
+    return {
+      normalizedRoleFamily: null,
+      normalizedSectorCluster: null,
+      onetCode: null,
+      normalizationConfidence: null,
+      confidenceLabel: null,
+      normalizationReasoning: null,
+      source: null,
+      truthStatus: null,
+    };
   }
 
-  const normalized = await normalizeJobTarget({
+  return await normalizeJobTarget({
     title: freeformTarget,
     employer: input.employerName || undefined,
     location: input.targetGeography || undefined,
     sourceUrl: input.jobPostingUrl || undefined,
     jobDescriptionText: input.jobDescriptionText || undefined,
   });
+}
 
-  return {
-    normalizedRoleFamily: normalized.normalizedRoleFamily || null,
-    normalizedSectorCluster: normalized.normalizedSectorCluster || null,
-  };
+function mapScenarioSourceTypeToJobTargetSourceType(
+  sourceType: CareerScenarioSourceType | null | undefined,
+  hasJobDescription: boolean
+): "manual" | "job_posting" | "partner_feed" {
+  if (sourceType === "imported") return "partner_feed";
+  if (sourceType === "pasted_job_description" || hasJobDescription) return "job_posting";
+  return "manual";
 }
 
 export class CareerScenarioService {
@@ -212,6 +227,27 @@ export class CareerScenarioService {
         tx
       );
 
+      if (input.isActive ?? true) {
+        await syncPrimaryJobTargetFromStudentIntent({
+          studentProfileId,
+          title: input.targetProfession || input.targetRole || input.scenarioName,
+          employer: input.employerName || null,
+          location: input.targetGeography || null,
+          sourceType: mapScenarioSourceTypeToJobTargetSourceType(input.sourceType, !!input.jobDescriptionText),
+          sourceUrl: input.jobPostingUrl || null,
+          jobDescriptionText: input.jobDescriptionText || null,
+          normalizedRoleFamily: normalized.normalizedRoleFamily || null,
+          normalizedSectorCluster: normalized.normalizedSectorCluster || null,
+          onetCode: normalized.onetCode || null,
+          normalizationConfidence: normalized.normalizationConfidence ?? null,
+          normalizationConfidenceLabel: normalized.confidenceLabel ?? null,
+          normalizationReasoning: normalized.normalizationReasoning ?? null,
+          normalizationSource: normalized.source,
+          normalizationTruthStatus: normalized.truthStatus,
+          allowOverwriteExistingPrimary: true,
+        });
+      }
+
       return this.analyzeScenario(studentProfileId, scenarioId, actorUserId, tx);
     });
   }
@@ -270,6 +306,30 @@ export class CareerScenarioService {
         tx
       );
 
+      if (nextIsActive) {
+        await syncPrimaryJobTargetFromStudentIntent({
+          studentProfileId,
+          title: input.targetProfession || input.targetRole || input.scenarioName,
+          employer: input.employerName || null,
+          location: input.targetGeography || null,
+          sourceType: mapScenarioSourceTypeToJobTargetSourceType(
+            input.sourceType || existing.sourceType,
+            !!input.jobDescriptionText
+          ),
+          sourceUrl: input.jobPostingUrl || null,
+          jobDescriptionText: input.jobDescriptionText || null,
+          normalizedRoleFamily: normalized.normalizedRoleFamily || null,
+          normalizedSectorCluster: normalized.normalizedSectorCluster || null,
+          onetCode: normalized.onetCode || null,
+          normalizationConfidence: normalized.normalizationConfidence ?? null,
+          normalizationConfidenceLabel: normalized.confidenceLabel ?? null,
+          normalizationReasoning: normalized.normalizationReasoning ?? null,
+          normalizationSource: normalized.source,
+          normalizationTruthStatus: normalized.truthStatus,
+          allowOverwriteExistingPrimary: true,
+        });
+      }
+
       return this.analyzeScenario(studentProfileId, careerScenarioId, actorUserId, tx);
     });
   }
@@ -319,7 +379,20 @@ export class CareerScenarioService {
       }
       await repo.setActive(studentProfileId, careerScenarioId, actorUserId, tx);
     });
-    return this.hydrateScenario(await repo.getById(studentProfileId, careerScenarioId));
+    const scenario = await repo.getById(studentProfileId, careerScenarioId);
+    if (scenario) {
+      await syncPrimaryJobTargetFromStudentIntent({
+        studentProfileId,
+        title: scenario.targetProfession || scenario.targetRole || scenario.scenarioName,
+        employer: scenario.employerName || null,
+        location: scenario.targetGeography || null,
+        sourceType: mapScenarioSourceTypeToJobTargetSourceType(scenario.sourceType, !!scenario.jobDescriptionText),
+        sourceUrl: scenario.jobPostingUrl || null,
+        jobDescriptionText: scenario.jobDescriptionText || null,
+        allowOverwriteExistingPrimary: true,
+      });
+    }
+    return this.hydrateScenario(scenario);
   }
 
   async analyzeScenario(

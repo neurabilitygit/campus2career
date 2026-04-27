@@ -31,7 +31,7 @@ function scoreSeed(seed: (typeof TARGET_ROLE_SEEDS)[number], haystack: string): 
   return score;
 }
 
-function deterministicNormalization(input: {
+export function deterministicallyNormalizeJobTarget(input: {
   title: string;
   employer?: string;
   location?: string;
@@ -92,7 +92,7 @@ export async function normalizeJobTarget(input: {
   sourceUrl?: string;
   jobDescriptionText?: string;
 }): Promise<JobTargetNormalizationResult> {
-  const deterministic = deterministicNormalization(input);
+  const deterministic = deterministicallyNormalizeJobTarget(input);
 
   try {
     const llm = await inferNormalizedJobTarget({

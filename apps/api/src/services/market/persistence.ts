@@ -38,6 +38,29 @@ export async function replaceNormalizedSkillsForOccupation(
   }
 }
 
+export async function replaceNormalizedMarketSignalsForOccupation(
+  occupationCanonicalName: string,
+  signals: NormalizedMarketSignal[]
+) {
+  const occupationClusterId = stableId("occupation_cluster", occupationCanonicalName);
+  await repo.deleteMarketSignalsForOccupationCluster(occupationClusterId);
+
+  for (const signal of signals) {
+    await persistNormalizedMarketSignal(signal);
+  }
+}
+
+export async function replaceNormalizedMacroMarketSignals(
+  signalType: NormalizedMarketSignal["signalType"],
+  signals: NormalizedMarketSignal[]
+) {
+  await repo.deleteMacroMarketSignalsByType(signalType);
+
+  for (const signal of signals) {
+    await persistNormalizedMarketSignal(signal);
+  }
+}
+
 export async function persistNormalizedMarketSignal(signal: NormalizedMarketSignal) {
   await repo.upsertMarketSignal({
     marketSignalId: stableId("market_signal", `${signal.occupationCanonicalName || "macro"}:${signal.signalType}:${signal.geographyCode || "national"}:${signal.effectiveDate}`),

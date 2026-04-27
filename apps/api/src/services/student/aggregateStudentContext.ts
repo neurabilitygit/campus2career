@@ -9,6 +9,7 @@ import {
 } from "../../../../../packages/shared/src/market/targetRoleSeeds";
 import { buildAcademicScoringEvidence } from "../academic/scoringEvidence";
 import { AppError } from "../../utils/appError";
+import { ensurePersistedPrimaryJobTarget } from "./scoringTargetRepair";
 
 export interface AggregatedStudentContext {
   studentProfileId: string;
@@ -305,6 +306,12 @@ export async function buildStudentScoringInput(
     jobTargetRepo.getPrimaryForStudent(studentProfileId),
     careerScenarioRepo.getActiveForStudent(studentProfileId),
   ]);
+  const persistedPrimaryJobTarget = await ensurePersistedPrimaryJobTarget({
+    studentProfileId,
+    profile,
+    primaryJobTarget,
+    activeScenario,
+  });
   const selectedSector = sectors[0]?.sector_cluster;
   const scenarioPreferredGeographies =
     activeScenario?.assumptions?.preferredGeographies?.length
@@ -314,7 +321,7 @@ export async function buildStudentScoringInput(
         : [];
   const resolvedTarget = resolveTargetRole({
     selectedSector,
-    primaryJobTarget,
+    primaryJobTarget: persistedPrimaryJobTarget,
     overrideTargetRoleFamily: options?.targetRoleFamily || activeScenario?.targetRole || undefined,
     overrideTargetSectorCluster: options?.targetSectorCluster || activeScenario?.targetSector || undefined,
   });
@@ -515,10 +522,12 @@ export async function buildStudentScoringInput(
     signals: {
       currentAcademicYear: deriveAcademicYear(profile.expected_graduation_date),
       hasInternshipByJuniorYear: experiences.some((e) => /intern/i.test(e.title)),
-      hasIndependentProjectBySeniorYear: artifacts.some((a) => ["project", "portfolio", "presentation", "resume"].includes(a.artifact_type)),
+      hasIndependentProjectBySeniorYear: artifacts.some((a) =>
+        ["project", "portfolio", "presentation"].includes(a.artifact_type)
+      ),
       hasFirstOrSecondDegreeProfessionalNetwork: contacts.length > 0,
       hasCarefullyCultivatedMentors: contacts.some((c) => c.warmth_level === "strong"),
-      aiToolComfortLevel: "medium",
+      aiToolComfortLevel: undefined,
       repeatedDeadlineMisses: overdueOpenDeadlines + Math.max(0, deadlines.length - completedDeadlines - 2),
     },
   };

@@ -156,6 +156,8 @@ test("runScoring distinguishes low readiness from low evidence when evidence is 
   assert.ok(scoring.subScoreDetails.roleAlignment.evidenceLevel !== "missing");
   assert.equal(scoring.subScoreDetails.roleAlignment.status, "weak");
   assert.match(scoring.subScoreDetails.roleAlignment.interpretation, /role alignment/i);
+  assert.ok(scoring.subScores.marketDemand < 90);
+  assert.ok(scoring.subScores.marketDemand >= 65);
 });
 
 test("runScoring dampens role certainty when targeting and skill maps rely on fallback assumptions", () => {
@@ -187,6 +189,47 @@ test("runScoring dampens role certainty when targeting and skill maps rely on fa
   assert.equal(scoring.subScoreDetails.roleAlignment.evidenceLevel, "weak");
   assert.equal(scoring.subScoreDetails.roleAlignment.confidenceLabel, "low");
   assert.ok(scoring.subScores.roleAlignment <= 70);
+});
+
+test("runScoring does not saturate market demand to 100 from a few strong direct signals", () => {
+  const scoring = runScoring(
+    baseInput({
+      marketSignals: [
+        {
+          signalType: "unemployment_pressure",
+          signalValue: 4.2,
+          signalDirection: "stable",
+          sourceName: "bls",
+          effectiveDate: "2026-01-01",
+          confidenceLevel: "high",
+          scope: "macro",
+        },
+        {
+          signalType: "demand_growth",
+          signalValue: 8.5,
+          signalDirection: "rising",
+          sourceName: "onet",
+          effectiveDate: "2026-01-01",
+          confidenceLevel: "high",
+          scope: "role",
+        },
+        {
+          signalType: "wage",
+          signalValue: 7.8,
+          signalDirection: "stable",
+          sourceName: "onet",
+          effectiveDate: "2026-01-01",
+          confidenceLevel: "high",
+          scope: "role",
+        },
+      ],
+    })
+  );
+
+  assert.ok(scoring.subScores.marketDemand < 95);
+  assert.ok(scoring.subScores.marketDemand >= 75);
+  assert.equal(scoring.subScoreDetails.marketDemand.evidenceLevel, "strong");
+  assert.equal(scoring.subScoreDetails.marketDemand.confidenceLabel, "high");
 });
 
 test("missing transcript does not automatically look like academic failure", () => {

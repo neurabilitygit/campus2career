@@ -15,6 +15,7 @@ import { careerScenarioService } from "../services/career/careerScenarioService"
 import { runScoring } from "../services/scoring";
 import { finalizeOnboardingAndDiagnostic } from "../services/student/diagnosticService";
 import { buildStudentScoringInput } from "../services/student/aggregateStudentContext";
+import { syncPrimaryJobTargetFromStudentIntent } from "../services/career/primaryJobTargetSync";
 
 const repo = new StudentWriteRepository();
 const onboardingRepo = new OnboardingRepository();
@@ -324,6 +325,13 @@ export async function studentProfileUpsertRoute(req: IncomingMessage, res: Serve
         },
         tx
       );
+    });
+    await syncPrimaryJobTargetFromStudentIntent({
+      studentProfileId,
+      title: body.careerGoalSummary,
+      location: body.preferredGeographies[0] || null,
+      sourceType: "manual",
+      allowOverwriteExistingPrimary: false,
     });
     await careerScenarioService.markStudentScenariosNeedsRerun(studentProfileId);
 
