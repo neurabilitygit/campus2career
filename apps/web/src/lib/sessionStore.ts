@@ -5,6 +5,7 @@ import type {
   Session,
   SupabaseClient,
 } from "@supabase/supabase-js";
+import { rememberGoogleAccountFromSession } from "./authFlow";
 import { readStoredDemoAuth } from "./demoAuth";
 import { getSupabaseBrowserClient } from "./supabaseClient";
 
@@ -66,6 +67,9 @@ function emit(next: SessionState) {
 }
 
 function emitSession(session: Session | null, error: string | null = null) {
+  if (session) {
+    rememberGoogleAccountFromSession(session);
+  }
   emit({
     session,
     loading: false,
@@ -218,4 +222,16 @@ export async function refreshSession(options?: { force?: boolean }) {
   })();
 
   return activeRefresh;
+}
+
+export function clearSessionState() {
+  latestRefreshId += 1;
+  activeRefresh = null;
+  activeRefreshStartedAt = null;
+  emit({
+    session: null,
+    loading: false,
+    error: null,
+    lastCheckedAt: Date.now(),
+  });
 }

@@ -204,6 +204,14 @@ const onboardingProfileSteps = [
   },
 ] as const;
 
+function normalizeOptionalDateInput(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+  return /^\d{4}-\d{2}-\d{2}$/.test(trimmed) ? trimmed : undefined;
+}
+
 export default function OnboardingProfilePage() {
   const saveNavigation = useSaveNavigation();
   const { isAuthenticated } = useSession();
@@ -253,9 +261,6 @@ export default function OnboardingProfilePage() {
   const [catalogDiscoveryAttemptedFor, setCatalogDiscoveryAttemptedFor] = useState<string | null>(null);
   const [programRequirementsDiscovery, setProgramRequirementsDiscovery] =
     useState<ProgramRequirementDiscoveryResponse | null>(null);
-  const [didHydrateProfile, setDidHydrateProfile] = useState(false);
-  const [didHydrateAssignment, setDidHydrateAssignment] = useState(false);
-  const [didHydrateCommunicationPreferences, setDidHydrateCommunicationPreferences] = useState(false);
   const [communicationForm, setCommunicationForm] = useState({
     preferredChannels: [] as Array<"email" | "sms" | "whatsapp">,
     dislikedChannels: [] as Array<"email" | "sms" | "whatsapp">,
@@ -315,11 +320,10 @@ export default function OnboardingProfilePage() {
   }
 
   useEffect(() => {
-    if (!isAuthenticated || profile.loading || didHydrateProfile) {
+    if (!isAuthenticated) {
       return;
     }
 
-    setDidHydrateProfile(true);
     const currentProfile = profile.data?.profile;
     if (!currentProfile) {
       return;
@@ -335,14 +339,13 @@ export default function OnboardingProfilePage() {
       careerGoalSummary: currentProfile.career_goal_summary || current.careerGoalSummary,
       academicNotes: currentProfile.academic_notes || current.academicNotes,
     }));
-  }, [didHydrateProfile, isAuthenticated, profile.data, profile.loading]);
+  }, [isAuthenticated, profile.data?.profile]);
 
   useEffect(() => {
-    if (!isAuthenticated || assignment.loading || didHydrateAssignment) {
+    if (!isAuthenticated) {
       return;
     }
 
-    setDidHydrateAssignment(true);
     const currentAssignment = assignment.data?.assignment;
     if (!currentAssignment) {
       return;
@@ -373,18 +376,13 @@ export default function OnboardingProfilePage() {
       majorPrimary: current.majorPrimary || currentAssignment.major_display_name || "",
       majorSecondary: current.majorSecondary || currentAssignment.minor_display_name || "",
     }));
-  }, [assignment.data, assignment.loading, didHydrateAssignment, isAuthenticated]);
+  }, [assignment.data?.assignment, isAuthenticated]);
 
   useEffect(() => {
-    if (
-      !isAuthenticated ||
-      communicationPreferences.loading ||
-      didHydrateCommunicationPreferences
-    ) {
+    if (!isAuthenticated) {
       return;
     }
 
-    setDidHydrateCommunicationPreferences(true);
     const currentPreferences = communicationPreferences.data?.preferences;
     if (!currentPreferences) {
       return;
@@ -405,9 +403,7 @@ export default function OnboardingProfilePage() {
       notes: currentPreferences.notes || "",
     });
   }, [
-    communicationPreferences.data,
-    communicationPreferences.loading,
-    didHydrateCommunicationPreferences,
+    communicationPreferences.data?.preferences,
     isAuthenticated,
   ]);
 
@@ -727,12 +723,13 @@ export default function OnboardingProfilePage() {
       const resolvedSchoolName = selectedInstitutionDisplayName || form.schoolName;
       const resolvedMajorPrimary = selectedMajor?.displayName || form.majorPrimary;
       const resolvedMajorSecondary = selectedMinor?.displayName || form.majorSecondary;
+      const expectedGraduationDate = normalizeOptionalDateInput(form.expectedGraduationDate);
 
       const profileResult = await apiFetch("/students/me/profile", {
         method: "POST",
         body: JSON.stringify({
           schoolName: resolvedSchoolName,
-          expectedGraduationDate: form.expectedGraduationDate,
+          expectedGraduationDate,
           majorPrimary: resolvedMajorPrimary,
           majorSecondary: resolvedMajorSecondary,
           preferredGeographies: form.preferredGeographies

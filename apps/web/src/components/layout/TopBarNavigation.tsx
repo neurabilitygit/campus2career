@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { useMemo } from "react";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useApiData } from "../../hooks/useApiData";
 import type { AuthContextResponse } from "../../hooks/useAuthContext";
+import { setStoredTestContextStudentProfileId } from "../../lib/testContext";
 import type { WorkspaceRole } from "../../lib/workspaceAccess";
 import { AccountMenu } from "./AccountMenu";
 import { buildTopBarItems, getTopBarAttentionItems, type TopBarItem } from "./topBar";
@@ -177,13 +178,19 @@ export function TopBarNavigation(props: {
   authContext?: AuthContextResponse["context"];
   onOpenNavigation: () => void;
 }) {
+  const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const context = props.authContext;
   const role = context?.authenticatedRoleType || null;
   const capabilities = context?.effectiveCapabilities || [];
+  const previewStudentOptions = context?.testContextPreviewStudents || [];
+  const canSwitchPreviewStudent =
+    !!context?.testContextSwitchingEnabled && previewStudentOptions.length > 1;
   const selectedStudentProfileId =
     searchParams.get("studentProfileId") ||
-    (role && role !== "student" ? context?.studentProfileId || null : null);
+    context?.studentProfileId ||
+    (context?.testContextOverrideRole ? previewStudentOptions[0]?.studentProfileId || null : null);
 
   const coachWorkspace = useApiData<CoachWorkspaceResponse>(
     buildCoachWorkspacePath(selectedStudentProfileId),
@@ -221,9 +228,35 @@ export function TopBarNavigation(props: {
   const selectedStudentHref =
     role === "coach" && selectedStudentProfileId
       ? `/coach?studentProfileId=${encodeURIComponent(selectedStudentProfileId)}`
-      : role === "parent"
-        ? "/parent"
+      : role === "parent" && selectedStudentProfileId
+        ? `/parent?studentProfileId=${encodeURIComponent(selectedStudentProfileId)}`
+        : role === "parent"
+          ? "/parent"
         : undefined;
+
+  const selectedPreviewStudent = previewStudentOptions.find(
+    (item) => item.studentProfileId === selectedStudentProfileId
+  ) || null;
+
+  function previewStudentLabel(item: NonNullable<typeof previewStudentOptions>[number]) {
+    const name =
+      item.studentPreferredName?.trim() ||
+      item.studentFirstName?.trim() ||
+      item.studentLastName?.trim() ||
+      "Student";
+    const household = item.householdName?.trim();
+    return household ? `${name} • ${household}` : name;
+  }
+
+  function handlePreviewStudentChange(nextStudentProfileId: string) {
+    setStoredTestContextStudentProfileId(nextStudentProfileId);
+    const nextParams = new URLSearchParams(searchParams.toString());
+    nextParams.set("studentProfileId", nextStudentProfileId);
+    const nextHref = nextParams.toString()
+      ? `${pathname}?${nextParams.toString()}`
+      : pathname;
+    router.replace(nextHref);
+  }
 
   const attentionItems = useMemo(
     () =>
@@ -303,6 +336,28 @@ export function TopBarNavigation(props: {
         </div>
       </div>
       <div className="app-topbar__actions">
+        {canSwitchPreviewStudent ? (
+          <label className="app-topbar__selector" aria-label="Preview student">
+            <span className="app-topbar__selector-label">Preview Student</span>
+            <select
+              className="app-topbar__selector-input"
+              value={selectedStudentProfileId || previewStudentOptions[0]?.studentProfileId || ""}
+              onChange={(event) => handlePreviewStudentChange(event.target.value)}
+              aria-label="Choose preview student"
+              title={
+                selectedPreviewStudent
+                  ? `Preview student: ${previewStudentLabel(selectedPreviewStudent)}`
+                  : "Choose preview student"
+              }
+            >
+              {previewStudentOptions.map((item) => (
+                <option key={item.studentProfileId} value={item.studentProfileId}>
+                  {previewStudentLabel(item)}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
         <div className="app-topbar__shortcuts" aria-label="Top bar shortcuts">
           {actionItems.map((item) => {
             if (item.kind === "account") {

@@ -15,6 +15,7 @@ export interface PreviewStudentContext {
   householdId: string | null;
   studentProfileId: string | null;
   studentUserId: string | null;
+  householdName?: string | null;
   studentFirstName?: string | null;
   studentLastName?: string | null;
   studentPreferredName?: string | null;
@@ -76,13 +77,37 @@ export class UserContextRepository {
     return result.rows[0] || null;
   }
 
-  async resolveDefaultPreviewStudentContext(): Promise<PreviewStudentContext | null> {
+  async resolvePreviewStudentContext(studentProfileId: string): Promise<PreviewStudentContext | null> {
     const result = await query<PreviewStudentContext>(
       `
       select
         h.household_id as "householdId",
         sp.student_profile_id as "studentProfileId",
         sp.user_id as "studentUserId",
+        h.household_name as "householdName",
+        su.first_name as "studentFirstName",
+        su.last_name as "studentLastName",
+        su.preferred_name as "studentPreferredName"
+      from households h
+      join student_profiles sp on sp.user_id = h.primary_student_user_id
+      join users su on su.user_id = sp.user_id
+      where sp.student_profile_id = $1
+      limit 1
+      `,
+      [studentProfileId]
+    );
+
+    return result.rows[0] || null;
+  }
+
+  async listPreviewStudentContexts(): Promise<PreviewStudentContext[]> {
+    const result = await query<PreviewStudentContext>(
+      `
+      select
+        h.household_id as "householdId",
+        sp.student_profile_id as "studentProfileId",
+        sp.user_id as "studentUserId",
+        h.household_name as "householdName",
         su.first_name as "studentFirstName",
         su.last_name as "studentLastName",
         su.preferred_name as "studentPreferredName"
@@ -91,13 +116,13 @@ export class UserContextRepository {
       join users su on su.user_id = sp.user_id
       where h.primary_student_user_id is not null
       order by
+        coalesce(su.preferred_name, su.first_name, su.last_name, sp.student_profile_id::text) asc,
         h.household_name asc nulls last,
         h.created_at asc
-      limit 1
       `
     );
 
-    return result.rows[0] || null;
+    return result.rows;
   }
 
   async resolveApplicationRoleForUser(userId: string): Promise<"student" | "parent" | "coach" | "admin" | null> {

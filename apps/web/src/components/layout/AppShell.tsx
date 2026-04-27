@@ -7,6 +7,13 @@ import { useAuthContext } from "../../hooks/useAuthContext";
 import { useIntroOnboarding } from "../../hooks/useIntroOnboarding";
 import { useRoleIntroOnboarding } from "../../hooks/useRoleIntroOnboarding";
 import { rememberSaveNavigationRoute } from "../../lib/saveNavigation";
+import {
+  getStoredTestContextRole,
+  getStoredTestContextStudentProfileId,
+  inferTestContextRoleFromBrowserState,
+  setStoredTestContextRole,
+  setStoredTestContextStudentProfileId,
+} from "../../lib/testContext";
 import { IntroTourOverlay } from "../onboarding/IntroTourOverlay";
 import { IntroWelcomeSplash } from "../onboarding/IntroWelcomeSplash";
 import { INTRO_TOUR_STEPS, ROLE_INTRO_TOUR_STEPS } from "../onboarding/introTourConfig";
@@ -60,6 +67,12 @@ function resolveTheme(
   }
 
   if (pathname.startsWith("/profile") || pathname.startsWith("/communication")) {
+    if (role === "student") return "student";
+    if (role === "parent") return "parent";
+    if (role === "coach") return "coach";
+  }
+
+  if (pathname.startsWith("/career-scenarios")) {
     if (role === "student") return "student";
     if (role === "parent") return "parent";
     if (role === "coach") return "coach";
@@ -165,6 +178,56 @@ export function AppShell(props: {
 
     rememberSaveNavigationRoute(`${pathname}${window.location.search}`);
   }, [pathname]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    if (!auth.data?.context?.testContextSwitchingEnabled) {
+      return;
+    }
+
+    if (getStoredTestContextRole()) {
+      return;
+    }
+
+    const inferredRole = inferTestContextRoleFromBrowserState(pathname);
+    if (!inferredRole) {
+      return;
+    }
+
+    setStoredTestContextRole(inferredRole);
+  }, [auth.data?.context?.testContextSwitchingEnabled, pathname]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const context = auth.data?.context;
+    if (!context?.testContextSwitchingEnabled) {
+      return;
+    }
+
+    const resolvedPreviewStudentProfileId =
+      context.studentProfileId || context.testContextPreviewStudents?.[0]?.studentProfileId || null;
+
+    if (!context?.testContextOverrideRole || !resolvedPreviewStudentProfileId) {
+      return;
+    }
+
+    if (getStoredTestContextStudentProfileId() === resolvedPreviewStudentProfileId) {
+      return;
+    }
+
+    setStoredTestContextStudentProfileId(resolvedPreviewStudentProfileId);
+  }, [
+    auth.data?.context?.studentProfileId,
+    auth.data?.context?.testContextPreviewStudents,
+    auth.data?.context?.testContextOverrideRole,
+    auth.data?.context?.testContextSwitchingEnabled,
+  ]);
 
   useEffect(() => {
     setExpandedGroups((current) => {

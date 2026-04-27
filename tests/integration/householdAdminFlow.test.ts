@@ -19,8 +19,12 @@ import { router } from "../../apps/api/src/server";
 import { householdAdminRepository } from "../../apps/api/src/repositories/households/householdAdminRepository";
 import { createAuthedRequest, createJsonRequest, createResponse } from "../fixtures/http";
 import { resetSyntheticTestData, seedSyntheticTestData } from "../fixtures/seedSyntheticData";
+import { SYNTHETIC_STUDENTS } from "../synthetic/scenarios";
 
 process.env.ALLOW_DEMO_AUTH = "true";
+process.env.ALLOW_TEST_CONTEXT_SWITCHING = "true";
+process.env.TEST_SUPERUSER_EMAILS = "eric.bassman@gmail.com";
+process.env.TEST_DEFAULT_PREVIEW_STUDENT_PROFILE_ID = SYNTHETIC_STUDENTS.maya.studentProfileId;
 
 beforeEach(async () => {
   await seedSyntheticTestData();
@@ -98,6 +102,25 @@ test("Eric Bass fallback still resolves super admin context even if upstream aut
   assert.equal(response.statusCode, 200);
   assert.equal(response.json.context.authenticatedRoleType, "admin");
   assert.equal(response.json.context.isSuperAdmin, true);
+});
+
+test("auth route does not silently recover from generic sync-time failures for Eric", async (t) => {
+  const originalEnsureCatalog = permissionRepository.ensureCapabilityCatalogSynced.bind(permissionRepository);
+  permissionRepository.ensureCapabilityCatalogSynced = async () => {
+    throw new Error("synthetic sync failure");
+  };
+  t.after(() => {
+    permissionRepository.ensureCapabilityCatalogSynced = originalEnsureCatalog;
+  });
+
+  await assert.rejects(
+    () =>
+      authMeRoute(
+        createAuthedRequest("adminEric", undefined, { method: "GET", url: "/auth/me" }),
+        createResponse().res
+      ),
+    /synthetic sync failure/
+  );
 });
 
 test("Eric Bass parent preview resolves a usable student and household context", async () => {
@@ -262,7 +285,7 @@ test("router-level admin authorization fallback still allows Eric to reach house
   assert.equal(response.json.overview.canManagePermissions, true);
 });
 
-test("router-level admin authorization fallback still allows Eric through generic sync-time failures", async (t) => {
+test("household administration route does not silently recover from generic sync-time failures for Eric", async (t) => {
   const originalEnsureCatalog = permissionRepository.ensureCapabilityCatalogSynced.bind(permissionRepository);
   permissionRepository.ensureCapabilityCatalogSynced = async () => {
     throw new Error("synthetic sync failure");
@@ -271,15 +294,14 @@ test("router-level admin authorization fallback still allows Eric through generi
     permissionRepository.ensureCapabilityCatalogSynced = originalEnsureCatalog;
   });
 
-  const response = createResponse();
-  await router(
-    createAuthedRequest("adminEric", undefined, { method: "GET", url: "/households/me/admin" }),
-    response.res
+  await assert.rejects(
+    () =>
+      householdAdminOverviewRoute(
+        createAuthedRequest("adminEric", undefined, { method: "GET", url: "/households/me/admin" }),
+        createResponse().res
+      ),
+    /synthetic sync failure/
   );
-
-  assert.equal(response.statusCode, 200);
-  assert.equal(response.json.overview.canManageHousehold, true);
-  assert.equal(response.json.overview.canManagePermissions, true);
 });
 
 test("super admin directory falls back safely when auth context resolution fails", async (t) => {
@@ -305,7 +327,7 @@ test("super admin directory falls back safely when auth context resolution fails
   assert.ok(response.json.users.some((user: { email?: string | null }) => user.email === "eric.bassman@gmail.com"));
 });
 
-test("router-level admin authorization fallback still allows Eric through generic sync-time failures for the directory", async (t) => {
+test("super-admin directory route does not silently recover from generic sync-time failures for Eric", async (t) => {
   const originalEnsureCatalog = permissionRepository.ensureCapabilityCatalogSynced.bind(permissionRepository);
   permissionRepository.ensureCapabilityCatalogSynced = async () => {
     throw new Error("synthetic sync failure");
@@ -314,15 +336,14 @@ test("router-level admin authorization fallback still allows Eric through generi
     permissionRepository.ensureCapabilityCatalogSynced = originalEnsureCatalog;
   });
 
-  const response = createResponse();
-  await router(
-    createAuthedRequest("adminEric", undefined, { method: "GET", url: "/admin/users" }),
-    response.res
+  await assert.rejects(
+    () =>
+      superAdminUserDirectoryRoute(
+        createAuthedRequest("adminEric", undefined, { method: "GET", url: "/admin/users" }),
+        createResponse().res
+      ),
+    /synthetic sync failure/
   );
-
-  assert.equal(response.statusCode, 200);
-  assert.ok(Array.isArray(response.json.users));
-  assert.ok(response.json.users.some((user: { email?: string | null }) => user.email === "eric.bassman@gmail.com"));
 });
 
 test("parent can approve a student join request and the student becomes household-active", async () => {
@@ -574,6 +595,33 @@ test("ordinary household admins cannot assign the admin persona", async () => {
   );
 
   assert.equal(response.statusCode, 403);
+});
+
+test("super admin can update member permissions for an explicitly selected household", async () => {
+  const response = createResponse();
+  await householdPermissionUpdateRoute(
+    createAuthedRequest(
+      "adminEric",
+      {
+        householdId: SYNTHETIC_STUDENTS.leo.householdId,
+        userId: "22222222-2222-4222-8222-111111111111",
+        persona: "student",
+        grants: [],
+        denies: ["view_student_dashboard"],
+      },
+      { method: "POST", url: "/households/me/permissions" }
+    ),
+    response.res
+  );
+
+  assert.equal(response.statusCode, 200);
+  assert.equal(response.json.overview.householdId, SYNTHETIC_STUDENTS.leo.householdId);
+
+  const leo = response.json.overview.members.find(
+    (member: { userId: string }) => member.userId === "22222222-2222-4222-8222-111111111111"
+  );
+  assert.ok(leo);
+  assert.ok(leo.deniedCapabilities.includes("view_student_dashboard"));
 });
 
 test("super admin can view the cross-household user directory while household admins cannot", async () => {

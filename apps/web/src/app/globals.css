@@ -543,6 +543,51 @@ details summary {
   flex: 0 0 auto;
 }
 
+.app-topbar__selector {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 42px;
+  min-width: 0;
+  max-width: 280px;
+  padding: 7px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.78);
+  background: rgba(255, 255, 255, 0.88);
+  color: var(--ink-strong);
+  box-shadow: var(--shadow-soft);
+}
+
+.app-topbar__selector-label {
+  flex: 0 0 auto;
+  color: var(--ink-muted);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.app-topbar__selector-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 180px;
+  border: 0;
+  background: transparent;
+  color: var(--ink-strong);
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding-right: 18px;
+}
+
+.app-topbar__selector-input:focus {
+  outline: none;
+}
+
 .app-topbar__menu-button {
   display: none;
   width: 42px;
@@ -1174,10 +1219,27 @@ details summary {
 
   .app-topbar__actions {
     display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr);
     align-items: center;
     gap: 10px;
     width: 100%;
+  }
+
+  .app-topbar__selector {
+    max-width: 100%;
+    width: 100%;
+    padding-inline: 14px;
+  }
+
+  .app-topbar__selector-label {
+    display: none;
+  }
+
+  .app-topbar__selector-input {
+    max-width: none;
+    width: 100%;
+    font-size: 13px;
+    padding-right: 0;
   }
 
   .app-topbar__shortcuts {

@@ -137,6 +137,37 @@ test("coach can review curriculum for the selected student but cannot family-ver
   await expect(curriculumSection.getByRole("link", { name: "Upload a PDF" })).toHaveCount(0);
 });
 
+test("coach can move from curriculum review into communication context and a drafted student nudge", async ({
+  page,
+  openAs,
+}) => {
+  await openAs(
+    "coachTaylor",
+    `/coach?studentProfileId=${encodeURIComponent(SYNTHETIC_STUDENTS.leo.studentProfileId)}`
+  );
+
+  const curriculumSection = page
+    .locator("section")
+    .filter({ has: page.getByRole("heading", { name: "Degree Requirements Review" }) })
+    .first();
+
+  await expect(curriculumSection.getByRole("link", { name: "Open communication context" })).toBeVisible();
+  await expect(curriculumSection.getByRole("link", { name: "Draft coach reminder" })).toBeVisible();
+
+  await curriculumSection.getByRole("link", { name: "Open communication context" }).first().click();
+  await expect(page).toHaveURL(/\/communication\?section=context/);
+  await expect(page.getByText("Prepare a curriculum-review nudge")).toBeVisible();
+
+  await page.getByRole("link", { name: "Draft coach follow-up" }).click();
+  await expect(page).toHaveURL(/\/coach\?/);
+  await expect(page.locator("#coach-follow-up-message")).toBeVisible();
+  await expect(
+    page
+      .locator("#coach-follow-up-message")
+      .getByPlaceholder("Write a calm, professional follow-up message")
+  ).toHaveValue(/degree requirements/i);
+});
+
 test("coach can open Career Goal for a selected student and stays scoped to that student", async ({
   page,
   openAs,

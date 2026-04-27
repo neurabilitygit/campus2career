@@ -13,7 +13,7 @@ function applyCors(req: IncomingMessage, res: ServerResponse) {
   }
   res.setHeader(
     "access-control-allow-headers",
-    "authorization, content-type, x-demo-user-id, x-demo-role-type, x-demo-email, x-test-context-role"
+    "authorization, content-type, x-demo-user-id, x-demo-role-type, x-demo-email, x-test-context-role, x-test-context-student-profile-id"
   );
   res.setHeader("access-control-allow-methods", "GET, POST, PATCH, DELETE, OPTIONS");
 }
@@ -409,6 +409,18 @@ export async function router(req: IncomingMessage, res: ServerResponse) {
   if (url === "/students/me/coach-feed" && req.method === "GET") {
     const { studentCoachFeedRoute } = await import("./routes/coach");
     await studentCoachFeedRoute(req, res);
+    return;
+  }
+
+  if (url === "/students/me/action-plan" && req.method === "GET") {
+    const { studentActionPlanRoute } = await import("./routes/actionPlan");
+    await studentActionPlanRoute(req, res);
+    return;
+  }
+
+  if (url === "/students/me/action-plan" && req.method === "POST") {
+    const { studentActionPlanSaveRoute } = await import("./routes/actionPlan");
+    await studentActionPlanSaveRoute(req, res);
     return;
   }
 

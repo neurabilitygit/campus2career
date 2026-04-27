@@ -66,12 +66,26 @@ const USER_IDS = listSyntheticUsers().map((user) => user.userId);
 const SYNTHETIC_EMAILS = listSyntheticUsers().map((user) => user.email);
 const SYNTHETIC_SEED_LOCK_KEY = 42424201;
 
+async function withSyntheticSeedLock<T>(work: () => Promise<T>): Promise<T> {
+  const lockClient = await getDbPool().connect();
+  try {
+    await lockClient.query(`select pg_advisory_lock($1)`, [SYNTHETIC_SEED_LOCK_KEY]);
+    return await work();
+  } finally {
+    try {
+      await lockClient.query(`select pg_advisory_unlock($1)`, [SYNTHETIC_SEED_LOCK_KEY]);
+    } finally {
+      lockClient.release();
+    }
+  }
+}
+
 async function cleanupTable(table: string, column: string, ids: string[]) {
   if (!ids.length) return;
   await query(`delete from ${table} where ${column} = any($1::uuid[])`, [ids]);
 }
 
-export async function resetSyntheticTestData() {
+async function resetSyntheticTestDataUnlocked() {
   const existingSyntheticUsers = await query<{ user_id: string }>(
     `
     select user_id
@@ -86,6 +100,16 @@ export async function resetSyntheticTestData() {
   await query(`delete from career_scenario_action_items where student_profile_id = any($1::uuid[])`, [
     STUDENT_PROFILE_IDS,
   ]);
+  await query(
+    `
+    delete from action_items
+    where action_plan_id in (
+      select action_plan_id from action_plans where student_profile_id = any($1::uuid[])
+    )
+    `,
+    [STUDENT_PROFILE_IDS]
+  );
+  await query(`delete from action_plans where student_profile_id = any($1::uuid[])`, [STUDENT_PROFILE_IDS]);
   await query(`delete from career_scenarios where student_profile_id = any($1::uuid[])`, [
     STUDENT_PROFILE_IDS,
   ]);
@@ -205,8 +229,12 @@ export async function resetSyntheticTestData() {
   ]);
 }
 
-export async function seedSyntheticTestData() {
-  await resetSyntheticTestData();
+export async function resetSyntheticTestData() {
+  await withSyntheticSeedLock(resetSyntheticTestDataUnlocked);
+}
+
+async function seedSyntheticTestDataUnlocked() {
+  await resetSyntheticTestDataUnlocked();
 
   await query(
     `
@@ -1050,17 +1078,11 @@ export async function seedSyntheticTestData() {
   );
 }
 
+export async function seedSyntheticTestData() {
+  await withSyntheticSeedLock(seedSyntheticTestDataUnlocked);
+}
+
 export async function seedAndCloseSyntheticTestData() {
-  const lockClient = await getDbPool().connect();
-  try {
-    await lockClient.query(`select pg_advisory_lock($1)`, [SYNTHETIC_SEED_LOCK_KEY]);
-    await seedSyntheticTestData();
-  } finally {
-    try {
-      await lockClient.query(`select pg_advisory_unlock($1)`, [SYNTHETIC_SEED_LOCK_KEY]);
-    } finally {
-      lockClient.release();
-    }
-    await closeDbPool();
-  }
+  await seedSyntheticTestData();
+  await closeDbPool();
 }

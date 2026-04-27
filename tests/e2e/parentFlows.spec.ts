@@ -33,6 +33,36 @@ test("missing or concerning student data shows the expected visible coach flag",
   ).toBeVisible();
 });
 
+test("student action-plan choices persist from the student dashboard into the parent dashboard", async ({
+  page,
+  openAs,
+  switchAs,
+}) => {
+  await openAs("studentLeo", "/student");
+  await expect(page.getByRole("heading", { name: "Student dashboard" })).toBeVisible();
+
+  const actionPlanSection = page.locator("section").filter({ hasText: "Best next actions" }).first();
+  const firstActionCard = actionPlanSection.getByTestId("action-plan-option").first();
+  const chosenTitle = (await firstActionCard.getByTestId("action-plan-option-title").textContent())?.trim();
+  expect(chosenTitle).toBeTruthy();
+
+  await firstActionCard.getByLabel("Explore").check();
+  await expect(firstActionCard.getByLabel("How to act on this")).toBeVisible();
+  await firstActionCard.getByLabel("How to act on this").fill(
+    "Turn one repeated class or work task into a short before-and-after workflow example."
+  );
+  await firstActionCard.getByLabel("Next-step date").fill("2026-05-15");
+  await firstActionCard.getByRole("button", { name: "Save action choice" }).click();
+  await expect(actionPlanSection.getByText("Action plan updated.")).toBeVisible();
+
+  await switchAs("parentLeo", "/parent");
+  await expect(page.getByRole("heading", { name: "Parent dashboard" })).toBeVisible();
+
+  const sharedPlanSection = page.locator("section").filter({ hasText: "Shared student action plan" }).first();
+  await expect(sharedPlanSection.getByText(chosenTitle || "").first()).toBeVisible();
+  await expect(sharedPlanSection.getByText("2026-05-15")).toBeVisible();
+});
+
 test("parent can update family profile and sees only parent-appropriate navigation", async ({
   page,
   openAs,
@@ -135,6 +165,27 @@ test("parent can open Career Goal in read-only mode for the connected student", 
   await expect(page.getByRole("button", { name: "Create new Career Goal" })).toBeDisabled();
 });
 
+test("parent can open a prefilled translator nudge when degree requirements still need student review", async ({
+  page,
+  openAs,
+}) => {
+  await openAs("parentLeo", "/parent");
+
+  const curriculumSection = page
+    .locator("section")
+    .filter({ has: page.getByRole("heading", { name: "Degree Requirements Review" }) })
+    .first();
+
+  await expect(
+    curriculumSection.getByText("Want the system to help nudge Leo", { exact: false })
+  ).toBeVisible();
+  await curriculumSection.getByRole("link", { name: "Open communication translator" }).click();
+
+  await expect(page).toHaveURL(/\/communication\?section=translator/);
+  await expect(page.getByRole("heading", { name: "Parent-to-student translator" })).toBeVisible();
+  await expect(page.locator("textarea").first()).toHaveValue(/degree requirements/i);
+});
+
 test("Eric parent preview resolves a usable student context and does not emit missing-student API errors", async ({
   page,
 }) => {
@@ -178,4 +229,92 @@ test("Eric can open the student workspace directly and the API follows the infer
 
   await expect(page.getByRole("heading", { name: "Student dashboard" })).toBeVisible();
   await expect(page.getByText("No student profile could be resolved for the authenticated user")).toHaveCount(0);
+});
+
+test("Eric can open the shared profile page from student preview without losing the selected student context", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.evaluate(
+    ({ demoAuthKey, demoAuthValue, previewKey, previewStudentKey }) => {
+      window.localStorage.setItem(demoAuthKey, demoAuthValue);
+      window.localStorage.removeItem(previewKey);
+      window.localStorage.removeItem(previewStudentKey);
+    },
+    {
+      demoAuthKey: DEMO_AUTH_STORAGE_KEY,
+      demoAuthValue: JSON.stringify(makeDemoAuthState("adminEric")),
+      previewKey: "rising-senior:test-context-role",
+      previewStudentKey: "rising-senior:test-context-student-profile-id",
+    }
+  );
+
+  await page.goto("/student");
+  await expect(page.getByRole("heading", { name: "Student dashboard" })).toBeVisible();
+
+  await page.goto("/profile");
+
+  await expect(page.getByText("Student profile")).toBeVisible();
+  await expect(
+    page.getByText(/help the platform address (Leo|Maya) more clearly/i)
+  ).toBeVisible();
+  await expect(page.getByText("No student profile could be resolved for the authenticated user")).toHaveCount(0);
+});
+
+test("Eric keeps student preview context when moving from Student dashboard into Career Goal", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.evaluate(
+    ({ demoAuthKey, demoAuthValue, previewKey }) => {
+      window.localStorage.setItem(demoAuthKey, demoAuthValue);
+      window.localStorage.removeItem(previewKey);
+    },
+    {
+      demoAuthKey: DEMO_AUTH_STORAGE_KEY,
+      demoAuthValue: JSON.stringify(makeDemoAuthState("adminEric")),
+      previewKey: "rising-senior:test-context-role",
+    }
+  );
+
+  await page.goto("/student");
+  await expect(page.getByRole("heading", { name: "Student dashboard" })).toBeVisible();
+  await expect(page.getByText("No student profile could be resolved for the authenticated user")).toHaveCount(0);
+
+  await page.goto("/career-scenarios");
+  await expect(page.getByRole("heading", { name: "Career Goal", exact: true })).toBeVisible();
+  await expect(page.getByText("A studentProfileId is required for admin scenario access")).toHaveCount(0);
+  await expect(page.getByText("No career goals have been saved yet.")).toBeVisible();
+});
+
+test("Eric can select student persona for the session and Career Goal keeps that student preview context", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.evaluate(
+    ({ demoAuthKey, demoAuthValue, previewKey }) => {
+      window.localStorage.setItem(demoAuthKey, demoAuthValue);
+      window.localStorage.removeItem(previewKey);
+    },
+    {
+      demoAuthKey: DEMO_AUTH_STORAGE_KEY,
+      demoAuthValue: JSON.stringify(makeDemoAuthState("adminEric")),
+      previewKey: "rising-senior:test-context-role",
+    }
+  );
+
+  await page.goto("/admin");
+  await page.getByRole("button", { name: /Account Eric Bass/i }).click();
+  await page.getByRole("button", { name: "student", exact: true }).click();
+
+  await page.goto("/career-scenarios");
+
+  await expect(page.getByRole("heading", { name: "Career Goal", exact: true })).toBeVisible();
+  await expect(page.getByText("A studentProfileId is required for admin scenario access")).toHaveCount(0);
+  await expect(page.getByText("Student workspace")).toBeVisible();
+  await expect(
+    page
+      .getByLabel("Detail workspace")
+      .getByText(/compare how well (Leo|Maya) lines up/i)
+  ).toBeVisible();
 });

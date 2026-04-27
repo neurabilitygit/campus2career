@@ -648,14 +648,29 @@ function TranslationPanel(props: {
   subtitle: string;
   placeholder: string;
   defaultGoal: string;
+  initialOriginalText?: string;
+  initialTranslationGoal?: string;
+  initialTone?: string;
 }) {
-  const [originalText, setOriginalText] = useState("");
-  const [translationGoal, setTranslationGoal] = useState(props.defaultGoal);
-  const [tone, setTone] = useState("gentle");
+  const [originalText, setOriginalText] = useState(props.initialOriginalText || "");
+  const [translationGoal, setTranslationGoal] = useState(props.initialTranslationGoal || props.defaultGoal);
+  const [tone, setTone] = useState(props.initialTone || "gentle");
   const [result, setResult] = useState<TranslationResponse | null>(null);
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
   const [feedbackStatus, setFeedbackStatus] = useState("");
+
+  useEffect(() => {
+    setOriginalText(props.initialOriginalText || "");
+  }, [props.initialOriginalText]);
+
+  useEffect(() => {
+    setTranslationGoal(props.initialTranslationGoal || props.defaultGoal);
+  }, [props.initialTranslationGoal, props.defaultGoal]);
+
+  useEffect(() => {
+    setTone(props.initialTone || "gentle");
+  }, [props.initialTone]);
 
   async function translate() {
     if (!originalText.trim()) return;
@@ -822,6 +837,9 @@ function TranslationPanel(props: {
 function ParentCommunicationWorkspace() {
   const searchParams = useSearchParams();
   const section = searchParams.get("section") || "profile";
+  const translatorPrefillMessage = searchParams.get("prefillMessage") || "";
+  const translatorPrefillGoal = searchParams.get("prefillGoal") || "reduce_friction";
+  const translatorPrefillTone = searchParams.get("prefillTone") || "gentle";
   const auth = useAuthContext();
   const studentLabel = formatNamedReference(
     {
@@ -954,6 +972,9 @@ function ParentCommunicationWorkspace() {
             subtitle={`Start with what you really want to say to ${studentLabel}. The system will translate it into clearer, lower-friction language.`}
             placeholder="I’m worried you’re waiting too long to start internship applications, and I don’t want this to turn into another argument."
             defaultGoal="reduce_friction"
+            initialOriginalText={translatorPrefillMessage}
+            initialTranslationGoal={translatorPrefillGoal}
+            initialTone={translatorPrefillTone}
           />
           <SectionCard title="Recent translation activity" subtitle="The system uses feedback to adjust tone guidance over time.">
             {summary.data?.summary?.recentTranslationActivity ? (
@@ -1118,6 +1139,7 @@ function StudentCommunicationWorkspace() {
 function CoachCommunicationWorkspace() {
   const searchParams = useSearchParams();
   const selectedStudentProfileId = searchParams.get("studentProfileId");
+  const coachPrompt = searchParams.get("coachPrompt");
   const summary = useApiData<CommunicationSummaryResponse>(
     selectedStudentProfileId
       ? `/communication/summary?studentProfileId=${encodeURIComponent(selectedStudentProfileId)}`
@@ -1133,10 +1155,45 @@ function CoachCommunicationWorkspace() {
     },
     { fallback: "the selected student", preferPreferred: true }
   );
+  const coachReminderDraftHref = useMemo(() => {
+    const params = new URLSearchParams({
+      prefillRecipientType: "student",
+      prefillMessageSubject: "Please review your degree requirements",
+      prefillMessageBody: `${studentLabel} still needs to review and approve the degree requirements so scoring can be trusted. Please complete that review and flag anything that looks incomplete, outdated, or inaccurate.`,
+    });
+    if (selectedStudentProfileId) {
+      params.set("studentProfileId", selectedStudentProfileId);
+    }
+    return `/coach?${params.toString()}#coach-follow-up-message`;
+  }, [selectedStudentProfileId, studentLabel]);
 
   return (
     <>
       <CommunicationSectionNav section="context" items={[{ key: "context", label: "Communication Context" }]} />
+      {coachPrompt === "curriculum_review_nudge" ? (
+        <SectionCard
+          title="Prepare a curriculum-review nudge"
+          subtitle={`Use the shared communication context first, then draft a follow-up that asks ${studentLabel} to review and approve the degree requirements.`}
+          tone="highlight"
+        >
+          <div style={{ display: "grid", gap: 12 }}>
+            <p style={{ margin: 0, color: "#334155", lineHeight: 1.7 }}>
+              The readiness score should not stay anchored to unreviewed curriculum information. Use the communication context below to lower friction, then move back into coach follow-up drafting when you are ready to nudge the student.
+            </p>
+            <div className="ui-soft-panel">
+              <strong>Suggested nudge focus</strong>
+              <div style={{ marginTop: 6, color: "#334155", lineHeight: 1.6 }}>
+                Ask {studentLabel} to review the degree requirements, confirm that they look complete, and flag anything that appears missing or incorrect before the next scoring pass.
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+              <Link href={coachReminderDraftHref} className="ui-button ui-button--primary">
+                Draft coach follow-up
+              </Link>
+            </div>
+          </div>
+        </SectionCard>
+      ) : null}
       <SectionCard
         title="Communication context summary"
         subtitle={`Use this to reduce friction, respect communication preferences, and avoid stepping into family dynamics without context for ${studentLabel}.`}

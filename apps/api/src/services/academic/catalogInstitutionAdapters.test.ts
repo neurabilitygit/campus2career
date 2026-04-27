@@ -6,11 +6,17 @@ import {
   dedupeRepeatedProgramLabel,
   extractBrownConcentrationsFromBulletinHtml,
   extractBostonCollegeProgramsFromHtml,
+  extractBostonUniversityProgramsFromHtml,
+  extractBerkeleyProgramsFromAdmissionsHtml,
+  extractBucknellProgramsFromMajorsMinorsHtml,
+  extractCaltechProgramsFromCatalogHtml,
+  extractCmuProgramsFromFinderHtml,
   extractDartmouthProgramsFromCatalogHtml,
   extractDukeProgramsFromAdmissionsHtml,
   extractEmoryProgramsFromHtml,
   extractGeorgetownProgramsFromDegreePage,
   extractJhuProgramsFromHtml,
+  extractMichiganProgramsFromHtml,
   extractMontclairProgramsFromFinderHtml,
   extractMitProgramsFromCourseleafHtml,
   extractNorthwesternProgramsFromAdmissionsHtml,
@@ -19,6 +25,8 @@ import {
   extractPennProgramsFromCatalogHtml,
   extractRiceProgramsFromCatalogHtml,
   extractRochesterProgramsFromHtml,
+  extractRutgersProgramsFromUndergraduateHtml,
+  extractUncProgramsFromCatalogHtml,
   extractUcdavisProgramsFromCatalogHtml,
   extractUclaDepartmentLinksFromNextData,
   extractUcsdProgramsFromMajorCodesHtml,
@@ -26,10 +34,14 @@ import {
   extractUcsdProgramsFromDegreesHtml,
   extractUChicagoProgramsFromCourseleafHtml,
   extractUcsbProgramsFromDepartmentPage,
+  extractTuftsProgramsFromAdmissionsHtml,
+  extractUtAustinMajorProgramsFromHtml,
+  extractUtAustinMinorProgramsFromHtml,
   extractVanderbiltProgramsFromApiPayload,
   extractWashingtonProgramsFromDegreeProgramsHtml,
   extractWashuProgramsFromHtml,
   extractWisconsinProgramsFromHtml,
+  extractGeorgiaProgramsFromSearchHtml,
   extractYaleMajorsFromHtml,
   extractTcnjProgramsFromJsonLdHtml,
   extractTcnjProgramsFromDirectoryHtml,
@@ -262,15 +274,172 @@ test("extractJhuProgramsFromHtml keeps undergraduate majors and minors while fil
 
 test("extractWisconsinProgramsFromHtml keeps undergraduate degree rows and filters certificates", () => {
   const html = `
-    <a href="/undergraduate/letters-science/anthropology/anthropology-ba/">Anthropology, BA Anthropology, BA</a>
-    <a href="/undergraduate/education/art/art-bfa/">Art, BFA Art, BFA</a>
-    <a href="/undergraduate/education/art/art-studio-certificate/">Art Studio, Certificate Art Studio, Certificate</a>
+    <li id="isotope-item691" class="item filter_33 filter_48">
+      <a href="/undergraduate/letters-science/african-american-studies/african-american-studies-ba/">
+        <span class="title visual"><h3>African American Studies, BA</h3></span>
+        <span class="title list"><h3>African American Studies, BA</h3></span>
+      </a>
+    </li>
+    <li id="isotope-item692" class="item filter_33 filter_48">
+      <a href="/undergraduate/letters-science/african-american-studies/african-american-studies-bs/">
+        <span class="title visual"><h3>African American Studies, BS</h3></span>
+        <span class="title list"><h3>African American Studies, BS</h3></span>
+      </a>
+    </li>
+    <li id="isotope-item693" class="item filter_33 filter_45">
+      <a href="/undergraduate/letters-science/african-american-studies/african-american-studies-certificate/">
+        <span class="title visual"><h3>African American Studies, Certificate</h3></span>
+        <span class="title list"><h3>African American Studies, Certificate</h3></span>
+      </a>
+    </li>
   `;
 
   const programs = extractWisconsinProgramsFromHtml("https://guide.wisc.edu/explore-majors/", html);
   assert.deepEqual(
     programs.map((program) => `${program.degreeType}:${program.kind}:${program.displayName}`),
-    ["Undergraduate:major:Anthropology", "BFA:major:Art"]
+    ["Undergraduate:major:African American Studies"]
+  );
+});
+
+test("extractBucknellProgramsFromMajorsMinorsHtml keeps real majors and minors while skipping dual-degree and utility entries", () => {
+  const html = `
+    <div id="m_fullList"></div>
+    <li class="c-accordion-item__list-item">
+      <h3>
+        <button data-targetid="college-of-arts-sciences">
+          <span class="label label--upper">Majors in the<span class="u-sr-only">: </span></span>
+          <span class="title title--xs">College of Arts &amp; Sciences</span>
+        </button>
+      </h3>
+      <div class="c-accordion-item__panel-wrapper js-accordion-panel">
+        <div id="college-of-arts-sciences" class="c-accordion-item__panel c-wysiwyg">
+          <ul>
+            <li><a href="/academics/college-arts-sciences/academic-departments-programs/animal-behavior-program">Animal Behavior</a></li>
+            <li><a href="/academics/college-arts-sciences/academic-departments-programs/east-asian-studies">Chinese</a></li>
+            <li><a href="/academics/college-arts-sciences/academic-departments-programs/mathematics-statistics">Applied Mathematic</a><a href="/node/2452">s</a></li>
+            <li><a href="https://coursecatalog.bucknell.edu/collegeofartsandsciencescurricula/areasofstudy/interdepartmental/">Interdepartmental</a></li>
+          </ul>
+          <span aria-hidden="true">&nbsp;</span>
+        </div>
+      </div>
+    </li>
+    <li class="c-accordion-item__list-item">
+      <h3>
+        <button data-targetid="college-of-engineering--2">
+          <span class="label label--upper">Five-Year-Dual-Degree Programs<span class="u-sr-only">: </span></span>
+          <span class="title title--xs">College of Engineering</span>
+        </button>
+      </h3>
+      <div class="c-accordion-item__panel-wrapper js-accordion-panel">
+        <div id="college-of-engineering--2" class="c-accordion-item__panel c-wysiwyg">
+          <ul>
+            <li><a href="/academics/college-engineering/majors-departments/dual-program-engineering-management">Bachelor of Science in Engineering &amp; Bachelor of Management for Engineers</a></li>
+          </ul>
+          <span aria-hidden="true">&nbsp;</span>
+        </div>
+      </div>
+    </li>
+    <li class="c-accordion-item__list-item">
+      <h3>
+        <button data-targetid="minors">
+          <span class="title title--xs">Minors</span>
+        </button>
+      </h3>
+      <div class="c-accordion-item__panel-wrapper js-accordion-panel">
+        <div id="minors" class="c-accordion-item__panel c-wysiwyg">
+          <ul>
+            <li><a href="/academics/freeman-college-management/majors-departments/accounting-financial-management">Accounting</a></li>
+            <li><a href="/academics/college-arts-sciences/academic-departments-programs/art-art-history">Art — Studio</a></li>
+            <li><a href="/academics/college-arts-sciences/academic-departments-programs/critical-black-studies">Critical Black Studies&nbsp;(previously Africana Studies)</a></li>
+            <li><a href="https://coursecatalog.bucknell.edu/collegeofengineeringcurricula/areasofstudy/militaryscience/">Military Science</a></li>
+          </ul>
+          <span aria-hidden="true">&nbsp;</span>
+        </div>
+      </div>
+    </li>
+  `;
+
+  const programs = extractBucknellProgramsFromMajorsMinorsHtml("https://www.bucknell.edu/academics/majors-minors", html);
+
+  assert.deepEqual(
+    programs.map((program) => `${program.kind}:${program.displayName}`),
+    [
+      "major:Animal Behavior",
+      "major:Chinese",
+      "major:Applied Mathematics",
+      "minor:Accounting",
+      "minor:Art — Studio",
+      "minor:Critical Black Studies",
+    ]
+  );
+});
+
+test("extractCaltechProgramsFromCatalogHtml keeps undergraduate options and minors while ignoring scaffolding", () => {
+  const html = `
+    <a href="/current/information-for-undergraduate-students/graduation-requirements-all-options/">Graduation Requirements, All Options</a>
+    <a href="/current/information-for-undergraduate-students/graduation-requirements-all-options/applied-and-computational-mathematics-acm/">
+      Applied and Computational Mathematics Option (ACM)
+    </a>
+    <a href="/current/information-for-undergraduate-students/graduation-requirements-all-options/astrophysics-option-and-minor-ay/">
+      Astrophysics Option and Minor (Ay)
+    </a>
+    <a href="/current/information-for-undergraduate-students/graduation-requirements-all-options/aerospace-minor-ae/">
+      Aerospace Minor (Ae)
+    </a>
+  `;
+
+  assert.deepEqual(
+    extractCaltechProgramsFromCatalogHtml("https://catalog.caltech.edu/current/", html).map(
+      (program) => `${program.kind}:${program.displayName}`
+    ),
+    [
+      "major:Applied and Computational Mathematics",
+      "major:Astrophysics",
+      "minor:Astrophysics",
+      "minor:Aerospace",
+    ]
+  );
+});
+
+test("extractMichiganProgramsFromHtml strips major and degree suffixes while skipping sub-majors", () => {
+  const html = `
+    <tr id="row-1">
+      <td class="dept-name"><a href="/lsa/academics/majors-minors.html#anthropology-maj">Anthropology (Major)</a></td>
+    </tr>
+    <tr id="row-2">
+      <td class="dept-name"><a href="/lsa/academics/majors-minors.html#anthropology-min">Anthropology (Minor)</a></td>
+    </tr>
+    <tr id="row-3">
+      <td class="dept-name"><a href="/lsa/academics/majors-minors.html#biochemistry_bs-maj">Biochemistry [B.S.] (Major)</a></td>
+    </tr>
+    <tr id="row-4">
+      <td class="dept-name"><a href="/lsa/academics/majors-minors.html#actuarial_mathematics-sub">Actuarial Mathematics (Sub-Major)</a></td>
+    </tr>
+  `;
+
+  assert.deepEqual(
+    extractMichiganProgramsFromHtml("https://prod.lsa.umich.edu/lsa/academics/majors-minors.html", html).map(
+      (program) => `${program.kind}:${program.displayName}`
+    ),
+    ["major:Anthropology", "minor:Anthropology", "major:Biochemistry"]
+  );
+});
+
+test("extractUncProgramsFromCatalogHtml collapses degree and concentration variants to clean majors and minors", () => {
+  const html = `
+    <a href="/undergraduate/programs-study/american-studies-major-ba/">American Studies Major, B.A.</a>
+    <a href="/undergraduate/programs-study/american-studies-major-baamerican-indian-indigenous-studies-concentration/">
+      American Studies Major, B.A.–American Indian and Indigenous Studies Concentration
+    </a>
+    <a href="/undergraduate/programs-study/biology-major-bs-quantitative-biology-track/">Biology Major, B.S.–Quantitative Biology Track</a>
+    <a href="/undergraduate/programs-study/american-studies-minor/">American Studies Minor</a>
+  `;
+
+  assert.deepEqual(
+    extractUncProgramsFromCatalogHtml("https://catalog.unc.edu/undergraduate/programs-study/", html).map(
+      (program) => `${program.kind}:${program.displayName}`
+    ),
+    ["major:American Studies", "major:Biology", "minor:American Studies"]
   );
 });
 
@@ -487,6 +656,163 @@ test("extractVanderbiltProgramsFromApiPayload keeps undergraduate entries with c
   assert.deepEqual(
     programs.map((program) => `${program.kind}:${program.displayName}`),
     ["major:African American and Diaspora Studies", "major:Anthropology"]
+  );
+});
+
+test("extractCmuProgramsFromFinderHtml keeps clean major and minor cards from the undergraduate finder", () => {
+  const html = `
+    <a class="grid__box program-finder__program" href="/admission/majors-programs/college-of-fine-arts/school-of-architecture#majors-minors-more">
+      <h2 class="program-finder__program__title">Architecture</h2>
+      <p class="program-finder__program__summary">Students can pursue architecture pathways.</p>
+      <div class="program-finder__program__concentrations">
+        <span class="icon-concentration icon-concentration--major">Major</span>
+        <span class="icon-concentration icon-concentration--minor">Minor</span>
+      </div>
+    </a>
+    <a class="grid__box program-finder__program" href="/admission/majors-programs/college-of-engineering#engineering-only-minors">
+      <h2 class="program-finder__program__title">Additive Manufacturing</h2>
+      <p class="program-finder__program__summary">Minor only.</p>
+      <div class="program-finder__program__concentrations">
+        <span class="icon-concentration icon-concentration--minor">Minor</span>
+      </div>
+    </a>
+    <a class="grid__box program-finder__program" href="/admission/majors-programs/school-of-computer-science/artificial-intelligence#artificial-intelligence">
+      <h2 class="program-finder__program__title">Artificial Intelligence</h2>
+      <p class="program-finder__program__summary">Major and minor.</p>
+      <div class="program-finder__program__concentrations">
+        <span class="icon-concentration icon-concentration--major">Major</span>
+        <span class="icon-concentration icon-concentration--minor">Minor</span>
+      </div>
+    </a>
+  `;
+
+  assert.deepEqual(
+    extractCmuProgramsFromFinderHtml("https://www.cmu.edu/admission/majors-programs/undergraduate-program-finder", html).map(
+      (program) => `${program.kind}:${program.displayName}`
+    ),
+    [
+      "major:Architecture",
+      "minor:Architecture",
+      "minor:Additive Manufacturing",
+      "major:Artificial Intelligence",
+      "minor:Artificial Intelligence",
+    ]
+  );
+});
+
+test("extractBostonUniversityProgramsFromHtml keeps undergraduate majors and minors while dropping graduate-only entries", () => {
+  const html = `
+    <li class="mj">Acting (<a href="/academics/cfa/programs/school-of-theatre/acting/">BFA</a>)</li>
+    <li class="ma ol">Advanced Information Technology (<a href="/academics/met/programs/computer-science/graduate-certificates/">GRAD Cert</a>)</li>
+    <li class="ma mi mj">Advertising <strong>COM</strong> (<a href="/academics/com/programs/advertising/advertising-bs/">BS</a>, <a href="/academics/com/programs/advertising/advertising-minor/">minor</a>, <a href="/academics/com/programs/advertising/advertising-ms/">MS</a>)</li>
+    <li class="mj mi">African American &#038; Black Diaspora Studies <strong>CAS</strong> (<a href="/academics/cas/programs/african-american-black-diaspora-studies/ba/">BA</a>, <a href="/academics/cas/programs/african-american-black-diaspora-studies/minor/">minor</a>)</li>
+  `;
+
+  assert.deepEqual(
+    extractBostonUniversityProgramsFromHtml("https://www.bu.edu/academics/degree-programs/", html).map(
+      (program) => `${program.kind}:${program.displayName}`
+    ),
+    [
+      "major:Acting",
+      "major:Advertising",
+      "minor:Advertising",
+      "major:African American & Black Diaspora Studies",
+      "minor:African American & Black Diaspora Studies",
+    ]
+  );
+});
+
+test("extractTuftsProgramsFromAdmissionsHtml keeps only real program cards and derives major/minor availability", () => {
+  const html = `
+    <div class="js-program program_finder_box arts_sciences major arts_sciences_major interdisciplinary-programs social-sciences">
+      <a href="#" class="js-swap js-lightbox-link" data-url="https://admissions.tufts.edu/ajax/majors-minors/details/1">
+        <div class="program_finder_content clearfix">
+          <h3 class="program_finder_heading">American Studies</h3>
+          <div class="program_finder_content_wrap">
+            <p class="program_finder_subheading">School of Arts &amp; Sciences</p>
+            <p class="program_finder_label">Major</p>
+          </div>
+        </div>
+      </a>
+    </div>
+    <div class="js-program program_finder_box arts_sciences major arts_sciences_major arts_sciences minor arts_sciences_minor">
+      <a href="#" class="js-swap js-lightbox-link" data-url="https://admissions.tufts.edu/ajax/majors-minors/details/98">
+        <div class="program_finder_content clearfix">
+          <h3 class="program_finder_heading">Africana Studies</h3>
+          <div class="program_finder_content_wrap">
+            <p class="program_finder_subheading">School of Arts &amp; Sciences</p>
+            <p class="program_finder_label">Major &amp; Minor</p>
+          </div>
+        </div>
+      </a>
+    </div>
+  `;
+
+  assert.deepEqual(
+    extractTuftsProgramsFromAdmissionsHtml("https://admissions.tufts.edu/discover-tufts/academics/majors-and-minors/", html).map(
+      (program) => `${program.kind}:${program.displayName}`
+    ),
+    [
+      "major:American Studies",
+      "major:Africana Studies",
+      "minor:Africana Studies",
+    ]
+  );
+});
+
+test("extractRutgersProgramsFromUndergraduateHtml keeps accordion program names and ignores filter chrome", () => {
+  const html = `
+    <ul class="accordion-list">
+      <li class="views-row accordion-list-item">
+        <div class="program">
+          <button type="button" class="accordion-trigger">
+            <h3>Accounting</h3>
+          </button>
+          <div id="section-8653" class="accordion-panel" role="region">
+            <table class="program-data">
+              <tbody>
+                <tr class="program_implementation">
+                  <td>Rutgers-Camden</td>
+                  <td>School of Business - Camden</td>
+                  <td><a href="https://business.camden.rutgers.edu/undergraduate/bachelor-of-science-programs/#majors">Learn More</a></td>
+                </tr>
+                <tr class="program_implementation">
+                  <td>Rutgers-New Brunswick</td>
+                  <td>Rutgers Business School - New Brunswick</td>
+                  <td><a href="https://www.business.rutgers.edu/undergraduate-new-brunswick/accounting">Learn More</a></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </li>
+      <li class="views-row accordion-list-item">
+        <div class="program">
+          <button type="button" class="accordion-trigger">
+            <h3>Naval Science</h3>
+          </button>
+          <div id="section-8654" class="accordion-panel" role="region">
+            <table class="program-data">
+              <tbody>
+                <tr class="program_implementation">
+                  <td>Rutgers-New Brunswick</td>
+                  <td>Other campus sample</td>
+                  <td><a href="https://example.com/naval-science">Learn More</a></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </li>
+      <li><button type="button" class="all-button"><a href="?field_name_alpha=">All</a></button></li>
+    </ul>
+  `;
+
+  assert.deepEqual(
+    extractRutgersProgramsFromUndergraduateHtml("https://www.rutgers.edu/academics/explore-undergraduate-programs", html).map(
+      (program) => `${program.kind}:${program.displayName}`
+    ),
+    ["major:Accounting", "major:Naval Science"]
   );
 });
 
@@ -866,4 +1192,90 @@ test("classifyUclaDepartmentPageFromNextData reads major and minor tab availabil
     hasMajor: true,
     hasMinor: true,
   });
+});
+
+test("extractBerkeleyProgramsFromAdmissionsHtml removes undeclared buckets and cleans catalog notes", () => {
+  const html = `
+    <h5>Majors</h5>
+    <ul>
+      <li>Astrophysics <em>(including Astronomy)</em></li>
+      <li>Chemistry <i>also offered in the College of Chemistry</i></li>
+      <li>Undeclared - Social Sciences*</li>
+    </ul>
+    <h5>Minors</h5>
+    <ul>
+      <li>Ancient Greek &amp; Roman Studies</li>
+      <li>Undeclared - Arts and Humanities*</li>
+    </ul>
+  `;
+
+  assert.deepEqual(
+    extractBerkeleyProgramsFromAdmissionsHtml("https://admissions.berkeley.edu/majors", html).map(
+      (program) => `${program.kind}:${program.displayName}`
+    ),
+    ["major:Astrophysics", "major:Chemistry", "minor:Ancient Greek & Roman Studies"]
+  );
+});
+
+test("extractUtAustinMajorProgramsFromHtml keeps real programs and skips degree containers", () => {
+  const html = `
+    <a href="/undergraduate/business/degrees-and-programs/">Degrees and Programs</a>
+    <a href="/undergraduate/business/degrees-and-programs/bachelor-of-business-administration/">Bachelor of Business Administration</a>
+    <a href="/undergraduate/business/degrees-and-programs/bachelor-of-business-administration/accounting/">Accounting</a>
+    <a href="/undergraduate/business/degrees-and-programs/bachelor-of-business-administration/accounting/suggested-arrangement-of-courses/">Suggested Arrangement of Courses, Accounting (BBA)</a>
+    <a href="/undergraduate/architecture/degrees-and-programs/bs-interior-design/">BS Interior Design</a>
+    <a href="/undergraduate/fine-arts/degrees-and-programs/ba-art/sugg-art-history-ba/">Suggested Arrangement of Courses, Art History (BA)</a>
+  `;
+
+  assert.deepEqual(
+    extractUtAustinMajorProgramsFromHtml("https://catalog.utexas.edu/undergraduate/business/degrees-and-programs/", html).map(
+      (program) => `${program.kind}:${program.displayName}`
+    ),
+    ["major:Accounting", "major:Interior Design", "major:Art History"]
+  );
+});
+
+test("extractUtAustinMinorProgramsFromHtml reads h4 minors and excludes certificates", () => {
+  const html = `
+    <h2>Minors</h2>
+    <h3>Minors for Business Majors</h3>
+    <h4>Accounting Minor for Business Majors</h4>
+    <h4>Entrepreneurship Minor</h4>
+    <h2>Certificates</h2>
+    <h4>The Elements of Business Certificate</h4>
+  `;
+
+  assert.deepEqual(
+    extractUtAustinMinorProgramsFromHtml("https://catalog.utexas.edu/undergraduate/business/minor-and-certificate-programs/", html).map(
+      (program) => `${program.kind}:${program.displayName}`
+    ),
+    ["minor:Accounting Minor for Business Majors", "minor:Entrepreneurship"]
+  );
+});
+
+test("extractGeorgiaProgramsFromSearchHtml reads program cards from the bulletin partial view", () => {
+  const html = `
+    <div class="program-card">
+      <div class="entry-card--text">
+        <p class="large-mw">Accounting and International Business Co-Major</p>
+        <a href="/Program/Details/31532?IDc=BUS" class="btn btn--outline"><span class="program-undergrad"></span> BBA</a>
+      </div>
+    </div>
+    <div class="program-card">
+      <div class="entry-card--text">
+        <p class="large-mw">Minor in Aerospace Studies</p>
+        <a href="/Program/Details/50315" class="btn btn--outline"><span class="program-minor"></span> MINOR</a>
+      </div>
+    </div>
+  `;
+
+  assert.deepEqual(
+    extractGeorgiaProgramsFromSearchHtml("https://bulletin.uga.edu/Program/Index", html, "major").map(
+      (program) => `${program.kind}:${program.displayName}:${program.sourceUrl}`
+    ),
+    [
+      "major:Accounting and International Business:https://bulletin.uga.edu/Program/Details/31532?IDc=BUS",
+      "major:Aerospace Studies:https://bulletin.uga.edu/Program/Details/50315",
+    ]
+  );
 });

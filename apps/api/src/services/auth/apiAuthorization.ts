@@ -79,6 +79,8 @@ export const ROUTE_RULES: RouteRule[] = [
   { method: "POST", path: "/students/me/outcomes/archive", capability: "edit_student_profile" },
   { method: "GET", path: "/students/me/outcomes/summary", capability: "view_student_information" },
   { method: "GET", path: "/students/me/coach-feed", capability: "view_recommendations" },
+  { method: "GET", path: "/students/me/action-plan", capability: "view_recommendations" },
+  { method: "POST", path: "/students/me/action-plan", capability: "edit_student_profile" },
   { method: "GET", path: "/students/me/ai-documents", capability: "view_documents" },
   { method: "GET", path: "/students/me/diagnostic/first", capability: "run_scoring" },
   { method: "GET", path: "/households/me/admin", capability: "view_household_admin" },
@@ -191,9 +193,8 @@ export async function authorizeApiRequest(req: IncomingMessage, pathname: string
   } catch (error) {
     const auth = await getAuthenticatedUser(req);
     const canFallback =
-      error instanceof AppError
-        ? error.code === "auth_user_sync_failed" || error.code === "auth_role_resolution_failed"
-        : isReturningSuperUserIdentity(auth);
+      error instanceof AppError &&
+      (error.code === "auth_user_sync_failed" || error.code === "auth_role_resolution_failed");
 
     if (
       canFallback &&

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { CapabilityKey, CapabilityDefinition, Persona } from "../../../../../packages/shared/src/capabilities";
 import type {
   HouseholdAdminOverview,
@@ -11,6 +11,8 @@ import { AppShell } from "../../components/layout/AppShell";
 import { RequireRole } from "../../components/RequireRole";
 import { useApiData } from "../../hooks/useApiData";
 import { apiFetch } from "../../lib/apiClient";
+import { useSaveNavigation } from "../../lib/saveNavigation";
+import { getStoredTestContextStudentProfileId } from "../../lib/testContext";
 
 type AdminOverviewResponse = {
   ok: boolean;
@@ -27,6 +29,32 @@ function checkboxListValue(source: CapabilityKey[], target: CapabilityKey) {
   return source.includes(target);
 }
 
+function upsertExclusiveCapability(
+  current: CapabilityKey[],
+  capability: CapabilityKey,
+  shouldInclude: boolean
+) {
+  if (shouldInclude) {
+    return current.includes(capability) ? current : [...current, capability];
+  }
+  return current.filter((item) => item !== capability);
+}
+
+function capabilitySnapshot(values: CapabilityKey[]) {
+  return [...values].sort().join("|");
+}
+
+function splitIntoColumns<T>(items: T[], columnCount: number) {
+  if (columnCount <= 1 || items.length <= 1) {
+    return [items];
+  }
+
+  const size = Math.ceil(items.length / columnCount);
+  return Array.from({ length: columnCount }, (_, index) =>
+    items.slice(index * size, index * size + size)
+  ).filter((column) => column.length > 0);
+}
+
 function MemberPermissionsCard(props: {
   member: HouseholdMemberAdminRecord;
   capabilityDefs: CapabilityDefinition[];
@@ -36,14 +64,37 @@ function MemberPermissionsCard(props: {
     persona: Persona;
     grants: CapabilityKey[];
     denies: CapabilityKey[];
-  }) => Promise<void>;
+  }) => Promise<boolean>;
+  onFinished: () => void;
 }) {
   const [selectedPersona, setSelectedPersona] = useState<Persona>(props.member.persona);
   const [grants, setGrants] = useState<CapabilityKey[]>(props.member.grantedCapabilities);
   const [denies, setDenies] = useState<CapabilityKey[]>(props.member.deniedCapabilities);
+  const [lastSavedSnapshot, setLastSavedSnapshot] = useState<string | null>(null);
+
+  const memberSnapshot = `${props.member.persona}::${capabilitySnapshot(props.member.grantedCapabilities)}::${capabilitySnapshot(props.member.deniedCapabilities)}`;
+  const currentSnapshot = `${selectedPersona}::${capabilitySnapshot(grants)}::${capabilitySnapshot(denies)}`;
+  const canFinishUpdating = lastSavedSnapshot !== null && lastSavedSnapshot === currentSnapshot;
+  const capabilityColumns = splitIntoColumns(props.capabilityDefs, 3);
+
+  useEffect(() => {
+    setSelectedPersona(props.member.persona);
+    setGrants(props.member.grantedCapabilities);
+    setDenies(props.member.deniedCapabilities);
+  }, [memberSnapshot, props.member.deniedCapabilities, props.member.grantedCapabilities, props.member.persona]);
+
+  async function handleSave() {
+    const didSave = await props.onSave({ userId: props.member.userId, persona: selectedPersona, grants, denies });
+    if (didSave) {
+      setLastSavedSnapshot(currentSnapshot);
+    }
+  }
 
   return (
-    <div style={{ display: "grid", gap: 10, padding: 16, border: "1px solid #dbe4f0", borderRadius: 18 }}>
+    <div
+      data-testid={`member-permissions-card-${props.member.userId}`}
+      style={{ display: "grid", gap: 10, padding: 16, border: "1px solid #dbe4f0", borderRadius: 18 }}
+    >
       <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
         <div style={{ display: "grid", gap: 4 }}>
           <strong>{props.member.displayName}</strong>
@@ -63,54 +114,87 @@ function MemberPermissionsCard(props: {
           {props.canAssignAdmin ? <option value="admin">Admin</option> : null}
         </select>
       </div>
-      <div style={{ display: "grid", gap: 8 }}>
-        {props.capabilityDefs.map((capability) => {
-          const granted = checkboxListValue(grants, capability.key);
-          const denied = checkboxListValue(denies, capability.key);
-          return (
-            <div key={capability.key} style={{ display: "grid", gap: 6, padding: 12, borderRadius: 12, background: "#f8fafc" }}>
-              <strong>{capability.label}</strong>
-              <span style={{ color: "#52657d", lineHeight: 1.5 }}>{capability.description}</span>
-              {!!capability.dependencies.length ? (
-                <span style={{ color: "#92400e", fontSize: 13 }}>
-                  Depends on: {capability.dependencies.join(", ")}
-                </span>
-              ) : null}
-              <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
-                <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                  <input
-                    type="checkbox"
-                    checked={granted}
-                    onChange={() =>
-                      setGrants((current) =>
-                        granted ? current.filter((item) => item !== capability.key) : [...current, capability.key]
-                      )
-                    }
-                  />
-                  Grant
-                </label>
-                <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                  <input
-                    type="checkbox"
-                    checked={denied}
-                    onChange={() =>
-                      setDenies((current) =>
-                        denied ? current.filter((item) => item !== capability.key) : [...current, capability.key]
-                      )
-                    }
-                  />
-                  Deny
-                </label>
-              </div>
-            </div>
-          );
-        })}
+      <div
+        style={{
+          display: "grid",
+          gap: 12,
+          gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+          alignItems: "start",
+        }}
+      >
+        {capabilityColumns.map((column, columnIndex) => (
+          <div key={`capability-column-${columnIndex}`} style={{ display: "grid", gap: 8 }}>
+            {column.map((capability) => {
+              const granted = checkboxListValue(grants, capability.key);
+              const denied = checkboxListValue(denies, capability.key);
+              const choiceName = `${props.member.userId}-${capability.key}-permission-choice`;
+              return (
+                <div
+                  key={capability.key}
+                  data-testid={`capability-row-${props.member.userId}-${capability.key}`}
+                  style={{ display: "grid", gap: 6, padding: 12, borderRadius: 12, background: "#f8fafc", minHeight: 132 }}
+                >
+                  <strong>{capability.label}</strong>
+                  <span style={{ color: "#52657d", lineHeight: 1.5 }}>{capability.description}</span>
+                  {!!capability.dependencies.length ? (
+                    <span style={{ color: "#92400e", fontSize: 13 }}>
+                      Depends on: {capability.dependencies.join(", ")}
+                    </span>
+                  ) : null}
+                  <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginTop: "auto" }}>
+                    <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                      <input
+                        type="radio"
+                        name={choiceName}
+                        checked={granted}
+                        onChange={() => {
+                          setGrants((current) => upsertExclusiveCapability(current, capability.key, true));
+                          setDenies((current) => upsertExclusiveCapability(current, capability.key, false));
+                        }}
+                      />
+                      Grant
+                    </label>
+                    <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                      <input
+                        type="radio"
+                        name={choiceName}
+                        checked={denied}
+                        onChange={() => {
+                          setDenies((current) => upsertExclusiveCapability(current, capability.key, true));
+                          setGrants((current) => upsertExclusiveCapability(current, capability.key, false));
+                        }}
+                      />
+                      Deny
+                    </label>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ))}
       </div>
-      <div>
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+        <button
+          type="button"
+          className="ui-button ui-button--secondary"
+          disabled={!canFinishUpdating}
+          data-testid={`finished-updating-${props.member.userId}`}
+          style={!canFinishUpdating ? { opacity: 0.6, cursor: "not-allowed" } : undefined}
+          onClick={() => {
+            if (!canFinishUpdating) {
+              return;
+            }
+            props.onFinished();
+          }}
+        >
+          Finished Updating
+        </button>
         <button
           type="button"
           className="ui-button ui-button--primary"
-          onClick={() => props.onSave({ userId: props.member.userId, persona: selectedPersona, grants, denies })}
+          onClick={() => {
+            void handleSave();
+          }}
         >
           Save permissions
         </button>
@@ -120,8 +204,21 @@ function MemberPermissionsCard(props: {
 }
 
 export default function AdminPage() {
-  const auth = useApiData<{ context?: { isSuperAdmin?: boolean } }>("/auth/me", true);
-  const overview = useApiData<AdminOverviewResponse>("/households/me/admin", true);
+  const saveNavigation = useSaveNavigation();
+  const auth = useApiData<{
+    context?: {
+      isSuperAdmin?: boolean;
+      testContextPreviewStudents?: Array<{
+        studentProfileId: string;
+        householdId?: string | null;
+      }>;
+    };
+  }>("/auth/me", true);
+  const [currentHouseholdId, setCurrentHouseholdId] = useState<string | null>(null);
+  const overviewPath = currentHouseholdId
+    ? `/households/me/admin?householdId=${encodeURIComponent(currentHouseholdId)}`
+    : "/households/me/admin";
+  const overview = useApiData<AdminOverviewResponse>(overviewPath, true);
   const directory = useApiData<SuperAdminDirectoryResponse>(
     "/admin/users",
     !!auth.data?.context?.isSuperAdmin
@@ -135,6 +232,37 @@ export default function AdminPage() {
     () => overview.data?.editableCapabilitiesByPersona || null,
     [overview.data?.editableCapabilitiesByPersona]
   );
+  const scopedHouseholdId = currentHouseholdId || overview.data?.overview.householdId || null;
+  const previewScopedHouseholdId = useMemo(() => {
+    if (typeof window === "undefined") {
+      return null;
+    }
+
+    const selectedStudentProfileId =
+      new URLSearchParams(window.location.search).get("studentProfileId")?.trim() ||
+      getStoredTestContextStudentProfileId();
+    if (!selectedStudentProfileId) {
+      return null;
+    }
+
+    return (
+      auth.data?.context?.testContextPreviewStudents?.find(
+        (student) => student.studentProfileId === selectedStudentProfileId
+      )?.householdId || null
+    );
+  }, [auth.data?.context?.testContextPreviewStudents]);
+
+  useEffect(() => {
+    if (previewScopedHouseholdId && previewScopedHouseholdId !== currentHouseholdId) {
+      setCurrentHouseholdId(previewScopedHouseholdId);
+      return;
+    }
+
+    const loadedHouseholdId = overview.data?.overview.householdId ?? null;
+    if (!currentHouseholdId && loadedHouseholdId) {
+      setCurrentHouseholdId(loadedHouseholdId);
+    }
+  }, [currentHouseholdId, overview.data?.overview.householdId, previewScopedHouseholdId]);
 
   async function sendInvite() {
     setStatus("");
@@ -142,7 +270,11 @@ export default function AdminPage() {
     try {
       const response = await apiFetch("/households/me/invitations", {
         method: "POST",
-        body: JSON.stringify({ invitedEmail: inviteEmail, invitedPersona: invitePersona }),
+        body: JSON.stringify({
+          householdId: scopedHouseholdId,
+          invitedEmail: inviteEmail,
+          invitedPersona: invitePersona,
+        }),
       });
       const deliveryMessage =
         response?.invitation?.deliveryMessage ||
@@ -182,12 +314,17 @@ export default function AdminPage() {
     try {
       await apiFetch("/households/me/permissions", {
         method: "POST",
-        body: JSON.stringify(input),
+        body: JSON.stringify({
+          householdId: scopedHouseholdId,
+          ...input,
+        }),
       });
       setStatus("Permissions updated.");
       await overview.refresh();
+      return true;
     } catch (saveError: any) {
-      setError(saveError?.message || "Could not update permissions.");
+      setError("We could not save those permissions yet. Refresh and try again with the same household selected.");
+      return false;
     }
   }
 
@@ -275,6 +412,7 @@ export default function AdminPage() {
                   capabilityDefs={capabilityDefs}
                   canAssignAdmin={!!auth.data?.context?.isSuperAdmin}
                   onSave={savePermissions}
+                  onFinished={() => saveNavigation.returnAfterSave("/app")}
                 />
               );
             })}

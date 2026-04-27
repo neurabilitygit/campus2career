@@ -13,14 +13,5 @@ export function isReturningSuperUserIdentity(
     return false;
   }
 
-  if (normalize(auth.email) === RETURNING_SUPERUSER_EMAIL) {
-    return true;
-  }
-
-  const fullName = `${auth.firstName || ""} ${auth.lastName || ""}`.trim().toLowerCase();
-  if (fullName === "eric bass") {
-    return true;
-  }
-
-  return normalize(auth.preferredName) === "eric";
+  return normalize(auth.email) === RETURNING_SUPERUSER_EMAIL;
 }

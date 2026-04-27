@@ -129,10 +129,9 @@ function readLastName(payload: SupabaseJwtPayload) {
   return parts.slice(1).join(" ");
 }
 
-function mapSupabaseRole(payload: SupabaseJwtPayload): AuthenticatedUser["roleType"] {
+export function mapSupabaseRole(payload: SupabaseJwtPayload): AuthenticatedUser["roleType"] {
   const roleCandidate =
     (typeof payload.app_metadata?.role === "string" ? payload.app_metadata.role : undefined) ||
-    (typeof payload.user_metadata?.role === "string" ? payload.user_metadata.role : undefined) ||
     payload.role;
 
   if (roleCandidate === "service_role" || roleCandidate === "admin") return "admin";

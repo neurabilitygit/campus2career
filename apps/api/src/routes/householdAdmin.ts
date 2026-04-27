@@ -119,8 +119,7 @@ async function getSignupDecisionWithRouteFallback(req: IncomingMessage): Promise
     const auth = await getAuthenticatedUser(req);
     const canFallback =
       error instanceof AppError
-        ? error.code === "auth_user_sync_failed" || error.code === "auth_role_resolution_failed"
-        : false;
+        && (error.code === "auth_user_sync_failed" || error.code === "auth_role_resolution_failed");
 
     if (!auth || (!canFallback && !isReturningSuperUserIdentity(auth))) {
       throw error;
@@ -182,8 +181,7 @@ async function getHouseholdAdminOverviewWithRouteFallback(
     const auth = await getAuthenticatedUser(req);
     const canFallback =
       error instanceof AppError
-        ? error.code === "auth_user_sync_failed" || error.code === "auth_role_resolution_failed"
-        : isReturningSuperUserIdentity(auth);
+        && (error.code === "auth_user_sync_failed" || error.code === "auth_role_resolution_failed");
 
     if (!auth || !canFallback || !isReturningSuperUserIdentity(auth)) {
       throw error;
@@ -234,8 +232,7 @@ async function getSuperAdminDirectoryWithRouteFallback(req: IncomingMessage) {
     const auth = await getAuthenticatedUser(req);
     const canFallback =
       error instanceof AppError
-        ? error.code === "auth_user_sync_failed" || error.code === "auth_role_resolution_failed"
-        : isReturningSuperUserIdentity(auth);
+        && (error.code === "auth_user_sync_failed" || error.code === "auth_role_resolution_failed");
 
     if (!auth || !canFallback || !isReturningSuperUserIdentity(auth)) {
       throw error;

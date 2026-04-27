@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { getCurrentAppRoute, redirectToAuth } from "../lib/authFlow";
 import { clearStoredDemoAuth } from "../lib/demoAuth";
+import { clearSessionState } from "../lib/sessionStore";
 import { getSupabaseBrowserClient, getSupabaseConfigError } from "../lib/supabaseClient";
-import { setStoredTestContextRole } from "../lib/testContext";
+import { setStoredTestContextRole, setStoredTestContextStudentProfileId } from "../lib/testContext";
 import { useSession } from "../hooks/useSession";
 
 export function AuthButtons() {
@@ -30,25 +32,17 @@ export function AuthButtons() {
 
   const sessionAppearsStalled = loading && showSlowNotice && !hasResolvedOnce;
   const signInDisabled =
-    !supabase ||
     isAuthenticated ||
     actionBusy !== null ||
     (loading && !sessionAppearsStalled);
   const signOutDisabled =
-    !supabase ||
     !isAuthenticated ||
     actionBusy !== null;
 
   async function signInWithGoogle() {
-    if (!supabase) return;
     setActionBusy("sign_in");
     try {
-      await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
-        },
-      });
+      redirectToAuth({ returnTo: getCurrentAppRoute() });
     } finally {
       setActionBusy(null);
     }
@@ -59,10 +53,12 @@ export function AuthButtons() {
     try {
       clearStoredDemoAuth();
       if (supabase) {
-        await supabase.auth.signOut();
+        await supabase.auth.signOut({ scope: "global" });
       }
+      clearSessionState();
       setStoredTestContextRole(null);
-      window.location.href = "/";
+      setStoredTestContextStudentProfileId(null);
+      redirectToAuth({ returnTo: getCurrentAppRoute(), signedOut: true, replace: true });
     } finally {
       setActionBusy(null);
     }
@@ -103,10 +99,10 @@ export function AuthButtons() {
           className={`ui-button ${signInDisabled ? "ui-button--secondary ui-button--disabled" : "ui-button--primary"}`}
         >
           {actionBusy === "sign_in"
-            ? "Opening Google..."
+            ? "Opening sign-in..."
             : loading && !sessionAppearsStalled
               ? "Checking session..."
-              : "Continue with Google"}
+              : "Open sign-in"}
         </button>
         <button
           onClick={signOut}

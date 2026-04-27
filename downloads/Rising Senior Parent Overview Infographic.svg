@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-labelledby="title desc">
+  <title id="title">Parent concern becomes constructive support</title>
+  <desc id="desc">A family-facing flow from uncertainty toward steadier, more useful involvement.</desc>
+  <defs>
+    <linearGradient id="hero" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#18534e" />
+      <stop offset="100%" stop-color="#4d8f6d" />
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="14" stdDeviation="16" flood-color="#0f172a" flood-opacity="0.12" />
+    </filter>
+  </defs>
+  <rect width="1600" height="900" fill="#f7f9fc" />
+  <rect x="0" y="0" width="1600" height="170" fill="url(#hero)" />
+  <text x="80" y="78" fill="#ffffff" font-family="'Avenir Next', 'Segoe UI', sans-serif" font-size="38" font-weight="800">Parent concern becomes constructive support</text>
+  <text x="80" y="118" fill="rgba(255,255,255,0.92)" font-family="'Avenir Next', 'Segoe UI', sans-serif" font-size="20">A family-facing flow from uncertainty toward steadier, more useful involvement.</text>
+  
+    <rect x="80" y="230" width="320" height="420" rx="26" fill="#ffffff" filter="url(#shadow)" />
+    <rect x="80" y="230" width="320" height="78" rx="26" fill="#1f6b61" />
+    <text x="106" y="274" fill="#ffffff" font-family="'Avenir Next', 'Segoe UI', sans-serif" font-size="28" font-weight="800">Concern</text>
+    <text x="106" y="326" fill="#334155" font-family="'Avenir Next', 'Segoe UI', sans-serif" font-size="20" font-weight="700">What parents often feel first</text>
+    
+    <circle cx="110" cy="369" r="7" fill="#1f6b61" />
+    <text x="130" y="375" fill="#0f172a" font-family="'Avenir Next', 'Segoe UI', sans-serif" font-size="22">Uncertainty</text>
+    <circle cx="110" cy="423" r="7" fill="#1f6b61" />
+    <text x="130" y="429" fill="#0f172a" font-family="'Avenir Next', 'Segoe UI', sans-serif" font-size="22">Worry</text>
+    <circle cx="110" cy="477" r="7" fill="#1f6b61" />
+    <text x="130" y="483" fill="#0f172a" font-family="'Avenir Next', 'Segoe UI', sans-serif" font-size="22">Communication friction</text>
+    
+    <path d="M 410 440 C 430 440, 450 440, 480 440" fill="none" stroke="#1f6b61" stroke-width="10" stroke-linecap="round" />
+    <path d="M 466 422 L 498 440 L 466 458" fill="none" stroke="#1f6b61" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" />
+    <rect x="440" y="230" width="320" height="420" rx="26" fill="#ffffff" filter="url(#shadow)" />
+    <rect x="440" y="230" width="320" height="78" rx="26" fill="#2f855a" />
+    <text x="466" y="274" fill="#ffffff" font-family="'Avenir Next', 'Segoe UI', sans-serif" font-size="28" font-weight="800">Visibility</text>
+    <text x="466" y="326" fill="#334155" font-family="'Avenir Next', 'Segoe UI', sans-serif" font-size="20" font-weight="700">What the system clarifies</text>
+    
+    <circle cx="470" cy="369" r="7" fill="#2f855a" />
+    <text x="490" y="375" fill="#0f172a" font-family="'Avenir Next', 'Segoe UI', sans-serif" font-size="22">Readiness dashboard</text>
+    <circle cx="470" cy="423" r="7" fill="#2f855a" />
+    <text x="490" y="429" fill="#0f172a" font-family="'Avenir Next', 'Segoe UI', sans-serif" font-size="22">Academic evidence</text>
+    <circle cx="470" cy="477" r="7" fill="#2f855a" />
+    <text x="490" y="483" fill="#0f172a" font-family="'Avenir Next', 'Segoe UI', sans-serif" font-size="22">Career Goal</text>
+    <circle cx="470" cy="531" r="7" fill="#2f855a" />
+    <text x="490" y="537" fill="#0f172a" font-family="'Avenir Next', 'Segoe UI', sans-serif" font-size="22">Alerts</text>
+    
+    <path d="M 770 440 C 790 440, 810 440, 840 440" fill="none" stroke="#2f855a" stroke-width="10" stroke-linecap="round" />
+    <path d="M 826 422 L 858 440 L 826 458" fill="none" stroke="#2f855a" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" />
+    <rect x="800" y="230" width="320" height="420" rx="26" fill="#ffffff" filter="url(#shadow)" />
+    <rect x="800" y="230" width="320" height="78" rx="26" fill="#ca8a04" />
+    <text x="826" y="274" fill="#ffffff" font-family="'Avenir Next', 'Segoe UI', sans-serif" font-size="28" font-weight="800">Shared Plan</text>
+    <text x="826" y="326" fill="#334155" font-family="'Avenir Next', 'Segoe UI', sans-serif" font-size="20" font-weight="700">What support can become</text>
+    
+    <circle cx="830" cy="369" r="7" fill="#ca8a04" />
+    <text x="850" y="375" fill="#0f172a" font-family="'Avenir Next', 'Segoe UI', sans-serif" font-size="22">Recommendations</text>
+    <circle cx="830" cy="423" r="7" fill="#ca8a04" />
+    <text x="850" y="429" fill="#0f172a" font-family="'Avenir Next', 'Segoe UI', sans-serif" font-size="22">Communication support</text>
+    <circle cx="830" cy="477" r="7" fill="#ca8a04" />
+    <text x="850" y="483" fill="#0f172a" font-family="'Avenir Next', 'Segoe UI', sans-serif" font-size="22">Tracked actions</text>
+    <circle cx="830" cy="531" r="7" fill="#ca8a04" />
+    <text x="850" y="537" fill="#0f172a" font-family="'Avenir Next', 'Segoe UI', sans-serif" font-size="22">Verified requirements</text>
+    
+    <path d="M 1130 440 C 1150 440, 1170 440, 1200 440" fill="none" stroke="#ca8a04" stroke-width="10" stroke-linecap="round" />
+    <path d="M 1186 422 L 1218 440 L 1186 458" fill="none" stroke="#ca8a04" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" />
+    <rect x="1160" y="230" width="320" height="420" rx="26" fill="#ffffff" filter="url(#shadow)" />
+    <rect x="1160" y="230" width="320" height="78" rx="26" fill="#2563eb" />
+    <text x="1186" y="274" fill="#ffffff" font-family="'Avenir Next', 'Segoe UI', sans-serif" font-size="28" font-weight="800">Better Launch</text>
+    <text x="1186" y="326" fill="#334155" font-family="'Avenir Next', 'Segoe UI', sans-serif" font-size="20" font-weight="700">What families want next</text>
+    
+    <circle cx="1190" cy="369" r="7" fill="#2563eb" />
+    <text x="1210" y="375" fill="#0f172a" font-family="'Avenir Next', 'Segoe UI', sans-serif" font-size="22">Student ownership</text>
+    <circle cx="1190" cy="423" r="7" fill="#2563eb" />
+    <text x="1210" y="429" fill="#0f172a" font-family="'Avenir Next', 'Segoe UI', sans-serif" font-size="22">Parent confidence</text>
+    <circle cx="1190" cy="477" r="7" fill="#2563eb" />
+    <text x="1210" y="483" fill="#0f172a" font-family="'Avenir Next', 'Segoe UI', sans-serif" font-size="22">Stronger employability path</text>
+    <circle cx="1190" cy="531" r="7" fill="#2563eb" />
+    <text x="1210" y="537" fill="#0f172a" font-family="'Avenir Next', 'Segoe UI', sans-serif" font-size="22">Better relationship</text>
+    
+  <rect x="80" y="735" width="1440" height="110" rx="24" fill="#ffffff" stroke="#dbe4f0" stroke-width="2" />
+  <text x="115" y="777" fill="#0f172a" font-family="'Avenir Next', 'Segoe UI', sans-serif" font-size="24" font-weight="800">Parent value story</text>
+  <text x="115" y="813" fill="#475569" font-family="'Avenir Next', 'Segoe UI', sans-serif" font-size="20">The strongest support is informed, timely, and calm enough that the student can still stay in the driver’s seat.</text>
+</svg>

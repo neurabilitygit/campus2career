@@ -43,6 +43,15 @@ export type AuthContextResponse = {
     testContextSwitchingEnabled?: boolean;
     testContextAllowedRoles?: TestContextRole[];
     testContextOverrideRole?: TestContextRole | null;
+    testContextPreviewStudents?: Array<{
+      studentProfileId: string;
+      studentUserId?: string | null;
+      householdId?: string | null;
+      householdName?: string | null;
+      studentFirstName?: string | null;
+      studentLastName?: string | null;
+      studentPreferredName?: string | null;
+    }>;
   };
 };
 

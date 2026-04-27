@@ -17,8 +17,10 @@ import { OutcomeTrackingSection } from "../outcomes/OutcomeTrackingSection";
 import { VisibleCoachFeedSection } from "../coach/VisibleCoachFeedSection";
 import { ActiveCareerScenarioBanner } from "../career/ActiveCareerScenarioBanner";
 import { CareerScenarioComparisonSnapshot } from "../career/CareerScenarioComparisonSnapshot";
+import { StudentActionPlanSection } from "../actionPlan/StudentActionPlanSection";
 import { listTargetRoleOptions } from "../../../../../packages/shared/src/market/targetRoleSeeds";
 import type { JobTargetNormalizationResult, StudentJobTargetRecord } from "../../../../../packages/shared/src/contracts/career";
+import type { StudentActionPlanResponse } from "../../../../../packages/shared/src/contracts/actionPlan";
 import { buildDirectAddressName } from "../../lib/personalization";
 import { useSaveNavigation } from "../../lib/saveNavigation";
 
@@ -412,6 +414,7 @@ export default function StudentDashboardView() {
   );
   const communicationSummary = useApiData<CommunicationSummaryResponse>("/communication/summary", true);
   const activeCareerScenario = useApiData<CareerScenarioActiveResponse>("/students/me/career-scenarios/active", true);
+  const actionPlan = useApiData<StudentActionPlanResponse>("/students/me/action-plan", true);
 
   const scenarioBody = useMemo(
     () => ({
@@ -442,7 +445,10 @@ export default function StudentDashboardView() {
       requirementProgress.majorDisplayName
     );
   const usesLlmAssistedRequirements = requirementProgress?.provenanceMethod === "llm_assisted";
-  const topRecommendation = scoring.data?.scoring?.recommendations?.[0];
+  const topRecommendationTitle =
+    actionPlan.data?.plan.summary.primaryTitle ||
+    scoring.data?.scoring?.recommendations?.[0]?.title ||
+    null;
   const primaryRisk = scoring.data?.scoring?.topRisks?.[0];
   const targetRoleLabel = titleCase(scoring.data?.scoring?.targetRoleFamily);
   const targetSectorLabel = titleCase(scoring.data?.scoring?.targetSectorCluster);
@@ -464,13 +470,23 @@ export default function StudentDashboardView() {
     requestedSection === "outcomes"
       ? requestedSection
       : "strategy";
+  const previewStudentDirectName =
+    auth.data?.context?.testContextOverrideRole === "student"
+      ? buildDirectAddressName({
+          preferredName: auth.data?.context?.studentPreferredName,
+          firstName: auth.data?.context?.studentFirstName,
+          lastName: auth.data?.context?.studentLastName,
+        })
+      : null;
   const directName =
+    previewStudentDirectName ||
     buildDirectAddressName({
       preferredName: auth.data?.context?.authenticatedPreferredName,
       firstName: auth.data?.context?.authenticatedFirstName,
       lastName: auth.data?.context?.authenticatedLastName,
       fallback: "you",
-    }) || "you";
+    }) ||
+    "you";
 
   async function handleSaveJobTarget() {
     const title = jobTargetDraft.title.trim();
@@ -631,7 +647,7 @@ export default function StudentDashboardView() {
                       Best next move
                     </div>
                     <div style={{ marginTop: 8, lineHeight: 1.55 }}>
-                      {topRecommendation?.title || "Add more student information to unlock a clearer next step."}
+                      {topRecommendationTitle || "Add more student information to unlock a clearer next step."}
                     </div>
                   </div>
                   <div style={summaryTileStyle}>
@@ -754,14 +770,12 @@ export default function StudentDashboardView() {
                     </div>
                   ) : null}
 
-                  {explanation.data.explanation.immediateActions.length ? (
-                    <div>
-                      <strong>Best next actions</strong>
-                      <ul style={{ marginBottom: 0 }}>
-                        {explanation.data.explanation.immediateActions.map((action) => <li key={action}>{action}</li>)}
-                      </ul>
-                    </div>
-                  ) : null}
+                  <StudentActionPlanSection
+                    mode="student"
+                    subjectLabel={directName}
+                    title="Best next actions"
+                    subtitle="Choose whether to ignore, explore, or accept each next step, then add a next-step date so the plan can be tracked."
+                  />
 
                   {explanation.data.explanation.counterfactual ? (
                     <div
@@ -823,9 +837,18 @@ export default function StudentDashboardView() {
                         background: "#fff8e7",
                         color: "#7a5817",
                         lineHeight: 1.6,
+                        display: "grid",
+                        gap: 12,
                       }}
                     >
-                      Degree requirements must be reviewed before scoring because the readiness score depends on accurate curriculum information.
+                      <div>
+                        Degree requirements must be reviewed before scoring because the readiness score depends on accurate curriculum information.
+                      </div>
+                      <div>
+                        <Link href="/student?section=evidence#curriculum-review" className="ui-button ui-button--primary">
+                          Review degree requirements now
+                        </Link>
+                      </div>
                     </div>
                   ) : null}
                   {scoring.data?.scoring?.evidenceQuality?.recommendedEvidenceActions?.length ? (
@@ -1079,6 +1102,7 @@ export default function StudentDashboardView() {
               title="Degree Requirements Review"
               subtitle={`${directName}, inspect the curriculum details below and confirm they look complete before relying on them for scoring.`}
               subjectLabel={directName}
+              mode="student"
             />
 
             <SectionCard

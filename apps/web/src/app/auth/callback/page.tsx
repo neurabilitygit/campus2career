@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { consumeStoredAuthReturnTo, rememberGoogleAccountFromSession } from "../../../lib/authFlow";
 import { getSupabaseBrowserClient, getSupabaseConfigError } from "../../../lib/supabaseClient";
 import { refreshSession } from "../../../lib/sessionStore";
 
@@ -46,9 +47,10 @@ export default function AuthCallbackPage() {
         return;
       }
       if (data.session) {
+        rememberGoogleAccountFromSession(data.session);
         setMessage("Signed in. Redirecting you into the app...");
         await refreshSession({ force: true });
-        window.location.replace("/signup");
+        window.location.replace(consumeStoredAuthReturnTo("/signup"));
       } else {
         setMessage("No active session found.");
       }

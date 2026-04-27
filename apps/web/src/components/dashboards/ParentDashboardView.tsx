@@ -15,6 +15,8 @@ import { OutcomeTrackingSection } from "../outcomes/OutcomeTrackingSection";
 import { VisibleCoachFeedSection } from "../coach/VisibleCoachFeedSection";
 import { ActiveCareerScenarioBanner } from "../career/ActiveCareerScenarioBanner";
 import { CareerScenarioComparisonSnapshot } from "../career/CareerScenarioComparisonSnapshot";
+import { StudentActionPlanSection } from "../actionPlan/StudentActionPlanSection";
+import type { StudentActionPlanResponse } from "../../../../../packages/shared/src/contracts/actionPlan";
 
 type TrajectoryStatus = "on_track" | "watch" | "at_risk";
 type RoleType = "parent" | "coach" | "student" | "admin";
@@ -168,12 +170,12 @@ function ParentNarrative(props: {
   brief: BriefRecord | null | undefined;
   monthLabel: string;
   studentLabel: string;
+  nextActionTitle?: string | null;
 }) {
   const targetRole = titleCase(props.scoring?.targetRoleFamily);
   const targetSector = titleCase(props.scoring?.targetSectorCluster);
   const status = props.scoring?.trajectoryStatus || props.brief?.trajectoryStatus || "watch";
   const statusCard = statusTone[status];
-  const nextAction = props.scoring?.recommendations?.[0];
   const studentLabel = props.studentLabel;
   const topRisk =
     props.scoring?.topRisks?.[0] ||
@@ -238,7 +240,7 @@ function ParentNarrative(props: {
           <div style={{ background: "#fff", borderRadius: 16, padding: 16 }}>
             <div style={{ color: "#64748b", fontSize: 13, fontWeight: 700, textTransform: "uppercase" }}>Next best action</div>
             <div style={{ marginTop: 8, color: "#0f172a", lineHeight: 1.5 }}>
-              {nextAction?.title || splitPipeList(props.brief?.recommendedParentActions)[0] || "Generate the monthly brief to get a recommended next move."}
+              {props.nextActionTitle || props.scoring?.recommendations?.[0]?.title || splitPipeList(props.brief?.recommendedParentActions)[0] || "Generate the monthly brief to get a recommended next move."}
             </div>
           </div>
         </div>
@@ -275,17 +277,20 @@ export default function ParentDashboardView() {
   const scoring = useApiData<ScoringResponse>("/students/me/scoring");
   const activeCareerScenario = useApiData<CareerScenarioActiveResponse>("/parents/me/career-scenarios/active");
   const communicationSummary = useApiData<CommunicationSummaryResponse>("/communication/summary");
+  const actionPlan = useApiData<StudentActionPlanResponse>("/students/me/action-plan");
   const [briefRefresh, setBriefRefresh] = useState(0);
   const [generateBusy, setGenerateBusy] = useState(false);
   const [generateError, setGenerateError] = useState<string | null>(null);
   const brief = useApiData<BriefResponse>("/v1/briefs/live", true, briefRefresh);
 
   const recommendedActions = useMemo(() => {
+    const fromPlan = actionPlan.data?.plan.summary.selectedTitles || [];
+    if (fromPlan.length) return fromPlan.slice(0, 3);
     const fromScoring =
       scoring.data?.scoring?.recommendations?.slice(0, 3).map((item) => item.title) || [];
     if (fromScoring.length) return fromScoring;
     return splitPipeList(brief.data?.brief?.recommendedParentActions);
-  }, [brief.data?.brief?.recommendedParentActions, scoring.data?.scoring?.recommendations]);
+  }, [actionPlan.data?.plan.summary.selectedTitles, brief.data?.brief?.recommendedParentActions, scoring.data?.scoring?.recommendations]);
 
   const strengths = scoring.data?.scoring?.topStrengths || [];
   const risks = scoring.data?.scoring?.topRisks || splitPipeList(brief.data?.brief?.topRisks);
@@ -368,8 +373,16 @@ export default function ParentDashboardView() {
             brief={brief.data?.brief}
             monthLabel={brief.data?.monthLabel || "Current month"}
             studentLabel={studentLabel}
+            nextActionTitle={actionPlan.data?.plan.summary.primaryTitle}
           />
         </div>
+
+        <StudentActionPlanSection
+          mode="parent"
+          subjectLabel={studentLabel}
+          title="Shared student action plan"
+          subtitle="Review the current next-step choices, see what has been accepted or left in exploration, and track the dates that now matter most."
+        />
 
         <OutcomeTrackingSection mode="parent" subjectLabel={studentLabel} />
 
@@ -379,6 +392,7 @@ export default function ParentDashboardView() {
           title="Degree Requirements Review"
           subtitle={`Review ${studentPossessive} curriculum information here, then confirm it looks complete enough to use for scoring.`}
           subjectLabel={studentLabel}
+          mode="parent"
         />
 
         <VisibleCoachFeedSection mode="parent" />

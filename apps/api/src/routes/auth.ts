@@ -9,6 +9,7 @@ import { buildIntroOnboardingView } from "../services/auth/introOnboarding";
 import { resolveRequestContext } from "../services/auth/resolveRequestContext";
 import { isReturningSuperUserIdentity } from "../services/auth/superAdminIdentity";
 import { syncAuthenticatedUser } from "../services/auth/syncAuthenticatedUser";
+import { AppError } from "../utils/appError";
 import { readJsonBody } from "../utils/body";
 import { badRequest, unauthorized, json } from "../utils/http";
 
@@ -30,7 +31,10 @@ export async function authMeRoute(req: IncomingMessage, res: ServerResponse) {
       return unauthorized(res);
     }
     const auth = await getAuthenticatedUser(req);
-    if (auth && isReturningSuperUserIdentity(auth)) {
+    const canFallback =
+      error instanceof AppError &&
+      (error.code === "auth_user_sync_failed" || error.code === "auth_role_resolution_failed");
+    if (auth && canFallback && isReturningSuperUserIdentity(auth)) {
       return json(res, 200, {
         authenticated: true,
         context: {

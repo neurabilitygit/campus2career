@@ -102,7 +102,6 @@ export function buildTopBarItems(input: BuildTopBarItemsInput): TopBarItem[] {
       key: "needs-attention",
       kind: "attention",
       label: "Needs Attention",
-      shortLabel: "Needs Attention",
       href: highestPriority?.href,
       priority: 70,
       badgeCount: input.attentionItems?.length || 0,

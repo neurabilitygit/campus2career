@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "../../components/layout/AppShell";
 import { SectionCard } from "../../components/layout/SectionCard";
@@ -39,6 +40,55 @@ type ProfileResponse<T> = {
   profile: T | null;
 };
 
+type StudentAcademicProfileResponse = {
+  ok: boolean;
+  studentProfileId: string;
+  profile: {
+    school_name?: string | null;
+    expected_graduation_date?: string | null;
+    major_primary?: string | null;
+    major_secondary?: string | null;
+    preferred_geographies?: string[] | null;
+    career_goal_summary?: string | null;
+    academic_notes?: string | null;
+  } | null;
+};
+
+type CatalogAssignmentResponse = {
+  ok: boolean;
+  assignment: {
+    institution_canonical_name?: string | null;
+    institution_display_name?: string | null;
+    catalog_label?: string | null;
+    degree_type?: string | null;
+    program_name?: string | null;
+    major_canonical_name?: string | null;
+    major_display_name?: string | null;
+    minor_canonical_name?: string | null;
+    minor_display_name?: string | null;
+  } | null;
+};
+
+type DirectoryOptionsResponse = {
+  ok: boolean;
+  institution: {
+    institutionId: string;
+    canonicalName: string;
+    displayName: string;
+  } | null;
+  majors: Array<{
+    majorId: string;
+    canonicalName: string;
+    displayName: string;
+    isSelected: boolean;
+  }>;
+  minors: Array<{
+    minorId: string;
+    canonicalName: string;
+    displayName: string;
+  }>;
+};
+
 function commaSeparatedValues(value: string) {
   return value
     .split(",")
@@ -46,10 +96,51 @@ function commaSeparatedValues(value: string) {
     .filter(Boolean);
 }
 
+function normalizeOptionalDateInput(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+  return /^\d{4}-\d{2}-\d{2}$/.test(trimmed) ? trimmed : undefined;
+}
+
 function StudentProfileEditor() {
   const saveNavigation = useSaveNavigation();
-  const data = useApiData<ProfileResponse<StudentEditableProfile>>("/students/me/account-profile", true);
   const auth = useAuthContext();
+  const previewStudentFallback = auth.data?.context?.testContextPreviewStudents?.[0] || null;
+  const selectedStudentProfileId =
+    auth.data?.context?.studentProfileId ||
+    (auth.data?.context?.testContextOverrideRole === "student"
+      ? previewStudentFallback?.studentProfileId || null
+      : null);
+  const isStudentPreview = auth.data?.context?.testContextOverrideRole === "student";
+  const canLoadStudentContext = auth.isAuthenticated && !auth.loading && !!auth.data?.context;
+
+  function withStudentScope(path: string) {
+    if (!isStudentPreview || !selectedStudentProfileId) {
+      return path;
+    }
+    const url = new URL(path, "http://localhost");
+    url.searchParams.set("studentProfileId", selectedStudentProfileId);
+    return `${url.pathname}${url.search}`;
+  }
+
+  const accountProfilePath = withStudentScope("/students/me/account-profile");
+  const academicProfilePath = withStudentScope("/students/me/profile");
+  const catalogAssignmentPath = withStudentScope("/students/me/academic/catalog-assignment");
+
+  const data = useApiData<ProfileResponse<StudentEditableProfile>>(
+    accountProfilePath,
+    canLoadStudentContext
+  );
+  const academicProfile = useApiData<StudentAcademicProfileResponse>(
+    academicProfilePath,
+    canLoadStudentContext
+  );
+  const catalogAssignment = useApiData<CatalogAssignmentResponse>(
+    catalogAssignmentPath,
+    auth.isAuthenticated && !auth.loading && !!auth.data?.context
+  );
   const [form, setForm] = useState({
     fullName: "",
     preferredName: "",
@@ -61,6 +152,21 @@ function StudentProfileEditor() {
     communicationPreferences: "",
     personalChoices: "",
   });
+  const [academicForm, setAcademicForm] = useState({
+    schoolName: "",
+    expectedGraduationDate: "",
+    majorPrimary: "",
+    majorSecondary: "",
+  });
+  const [selectedInstitutionCanonicalName, setSelectedInstitutionCanonicalName] = useState("");
+  const [selectedInstitutionDisplayName, setSelectedInstitutionDisplayName] = useState("");
+  const [selectedCatalogLabel, setSelectedCatalogLabel] = useState("");
+  const [selectedDegreeKey, setSelectedDegreeKey] = useState("");
+  const [selectedMajorCanonicalName, setSelectedMajorCanonicalName] = useState("");
+  const [selectedMinorCanonicalName, setSelectedMinorCanonicalName] = useState("");
+  const [directoryOptions, setDirectoryOptions] = useState<DirectoryOptionsResponse | null>(null);
+  const [directoryLoading, setDirectoryLoading] = useState(false);
+  const [directoryError, setDirectoryError] = useState("");
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
 
@@ -82,19 +188,195 @@ function StudentProfileEditor() {
     });
   }, [data.data?.profile]);
 
+  useEffect(() => {
+    if (!canLoadStudentContext) {
+      return;
+    }
+
+    const profile = academicProfile.data?.profile;
+    if (!profile) {
+      return;
+    }
+
+    setAcademicForm((current) => ({
+      schoolName: current.schoolName || profile.school_name || "",
+      expectedGraduationDate:
+        current.expectedGraduationDate || profile.expected_graduation_date || "",
+      majorPrimary: current.majorPrimary || profile.major_primary || "",
+      majorSecondary: current.majorSecondary || profile.major_secondary || "",
+    }));
+  }, [academicProfile.data?.profile, canLoadStudentContext]);
+
+  useEffect(() => {
+    if (!canLoadStudentContext) {
+      return;
+    }
+
+    const assignment = catalogAssignment.data?.assignment;
+    if (!assignment) {
+      return;
+    }
+
+    setSelectedInstitutionCanonicalName(assignment.institution_canonical_name || "");
+    setSelectedInstitutionDisplayName(assignment.institution_display_name || "");
+    setSelectedCatalogLabel(assignment.catalog_label || "");
+    if (assignment.degree_type && assignment.program_name) {
+      setSelectedDegreeKey(
+        JSON.stringify({
+          degreeType: assignment.degree_type,
+          programName: assignment.program_name,
+        })
+      );
+    }
+    setSelectedMajorCanonicalName(assignment.major_canonical_name || "");
+    setSelectedMinorCanonicalName(assignment.minor_canonical_name || "");
+
+    setAcademicForm((current) => ({
+      schoolName: current.schoolName || assignment.institution_display_name || "",
+      expectedGraduationDate: current.expectedGraduationDate,
+      majorPrimary: current.majorPrimary || assignment.major_display_name || "",
+      majorSecondary: current.majorSecondary || assignment.minor_display_name || "",
+    }));
+  }, [canLoadStudentContext, catalogAssignment.data?.assignment]);
+
+  useEffect(() => {
+    let active = true;
+
+    if (!canLoadStudentContext || !selectedInstitutionCanonicalName) {
+      setDirectoryOptions(null);
+      setDirectoryLoading(false);
+      setDirectoryError("");
+      return () => {
+        active = false;
+      };
+    }
+
+    const params = new URLSearchParams();
+    params.set("institutionCanonicalName", selectedInstitutionCanonicalName);
+    if (selectedCatalogLabel) {
+      params.set("catalogLabel", selectedCatalogLabel);
+    }
+    if (selectedDegreeKey) {
+      const selectedDegree = JSON.parse(selectedDegreeKey) as {
+        degreeType: string;
+        programName: string;
+      };
+      params.set("degreeType", selectedDegree.degreeType);
+      params.set("programName", selectedDegree.programName);
+    }
+    if (selectedMajorCanonicalName) {
+      params.set("majorCanonicalName", selectedMajorCanonicalName);
+    }
+
+    setDirectoryLoading(true);
+    setDirectoryError("");
+
+    apiFetch(withStudentScope(`/v1/academic/directory/options?${params.toString()}`))
+      .then((result) => {
+        if (!active) {
+          return;
+        }
+        setDirectoryOptions(result as DirectoryOptionsResponse);
+        setDirectoryLoading(false);
+      })
+      .catch((directoryLoadError) => {
+        if (!active) {
+          return;
+        }
+        setDirectoryOptions(null);
+        setDirectoryLoading(false);
+        setDirectoryError(
+          directoryLoadError instanceof Error
+            ? directoryLoadError.message
+            : "Could not load school-specific major options."
+        );
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [
+    canLoadStudentContext,
+    selectedCatalogLabel,
+    selectedDegreeKey,
+    selectedInstitutionCanonicalName,
+    selectedMajorCanonicalName,
+  ]);
+
+  useEffect(() => {
+    if (!directoryOptions?.institution) {
+      return;
+    }
+
+    if (!selectedInstitutionDisplayName) {
+      setSelectedInstitutionDisplayName(directoryOptions.institution.displayName);
+    }
+
+    if (!selectedMajorCanonicalName && academicForm.majorPrimary) {
+      const matchedMajor = directoryOptions.majors.find(
+        (major) =>
+          major.displayName.toLowerCase() === academicForm.majorPrimary.trim().toLowerCase() ||
+          major.canonicalName === academicForm.majorPrimary
+      );
+      if (matchedMajor) {
+        setSelectedMajorCanonicalName(matchedMajor.canonicalName);
+      }
+    }
+
+    if (!selectedMinorCanonicalName && academicForm.majorSecondary) {
+      const matchedMinor = directoryOptions.minors.find(
+        (minor) =>
+          minor.displayName.toLowerCase() === academicForm.majorSecondary.trim().toLowerCase() ||
+          minor.canonicalName === academicForm.majorSecondary
+      );
+      if (matchedMinor) {
+        setSelectedMinorCanonicalName(matchedMinor.canonicalName);
+      }
+    }
+  }, [
+    academicForm.majorPrimary,
+    academicForm.majorSecondary,
+    directoryOptions,
+    selectedInstitutionDisplayName,
+    selectedMajorCanonicalName,
+    selectedMinorCanonicalName,
+  ]);
+
   const directName =
     buildDirectAddressName({
-      preferredName: auth.data?.context?.authenticatedPreferredName,
-      firstName: auth.data?.context?.authenticatedFirstName,
-      lastName: auth.data?.context?.authenticatedLastName,
+      preferredName:
+        isStudentPreview
+          ? auth.data?.context?.studentPreferredName || previewStudentFallback?.studentPreferredName
+          : auth.data?.context?.authenticatedPreferredName,
+      firstName:
+        isStudentPreview
+          ? auth.data?.context?.studentFirstName || previewStudentFallback?.studentFirstName
+          : auth.data?.context?.authenticatedFirstName,
+      lastName:
+        isStudentPreview
+          ? auth.data?.context?.studentLastName || previewStudentFallback?.studentLastName
+          : auth.data?.context?.authenticatedLastName,
       fallback: "you",
     }) || "you";
 
+  const selectedMajor =
+    directoryOptions?.majors.find((major) => major.canonicalName === selectedMajorCanonicalName) || null;
+  const selectedMinor =
+    directoryOptions?.minors.find((minor) => minor.canonicalName === selectedMinorCanonicalName) || null;
+  const hasStructuredMajorOptions = Boolean(directoryOptions?.majors.length);
+  const hasStructuredMinorOptions = Boolean(directoryOptions?.minors.length);
+  const schoolContextValue = selectedInstitutionDisplayName || academicForm.schoolName;
+  const academicAssignmentReadyForStructuredSave =
+    !!selectedInstitutionCanonicalName &&
+    !!selectedCatalogLabel &&
+    !!selectedDegreeKey &&
+    !!selectedMajorCanonicalName;
+
   async function save() {
-    setStatus("");
+    setStatus("Saving profile...");
     setError("");
     try {
-      await apiFetch("/students/me/account-profile", {
+      await apiFetch(accountProfilePath, {
         method: "POST",
         body: JSON.stringify({
           fullName: form.fullName,
@@ -108,8 +390,51 @@ function StudentProfileEditor() {
           personalChoices: form.personalChoices || null,
         }),
       });
+
+      const resolvedSchoolName = schoolContextValue.trim();
+      const resolvedMajorPrimary = (selectedMajor?.displayName || academicForm.majorPrimary).trim();
+      const resolvedMajorSecondary = (selectedMinor?.displayName || academicForm.majorSecondary).trim();
+      const currentAcademicProfile = academicProfile.data?.profile;
+
+      if (resolvedSchoolName && resolvedMajorPrimary) {
+        await apiFetch(academicProfilePath, {
+          method: "POST",
+          body: JSON.stringify({
+            schoolName: resolvedSchoolName,
+            expectedGraduationDate:
+              normalizeOptionalDateInput(academicForm.expectedGraduationDate) ||
+              currentAcademicProfile?.expected_graduation_date ||
+              undefined,
+            majorPrimary: resolvedMajorPrimary,
+            majorSecondary: resolvedMajorSecondary || undefined,
+            preferredGeographies: currentAcademicProfile?.preferred_geographies || [],
+            careerGoalSummary: currentAcademicProfile?.career_goal_summary || undefined,
+            academicNotes: currentAcademicProfile?.academic_notes || undefined,
+          }),
+        });
+      }
+
+      if (academicAssignmentReadyForStructuredSave) {
+        const selectedDegree = JSON.parse(selectedDegreeKey) as {
+          degreeType: string;
+          programName: string;
+        };
+        await apiFetch(catalogAssignmentPath, {
+          method: "POST",
+          body: JSON.stringify({
+            institutionCanonicalName: selectedInstitutionCanonicalName,
+            catalogLabel: selectedCatalogLabel,
+            degreeType: selectedDegree.degreeType,
+            programName: selectedDegree.programName,
+            majorCanonicalName: selectedMajorCanonicalName,
+            minorCanonicalName: selectedMinorCanonicalName || undefined,
+          }),
+        });
+      }
+
       saveNavigation.returnAfterSave("/student");
     } catch (saveError: any) {
+      setStatus("");
       setError(saveError?.message || "Could not save the profile.");
     }
   }
@@ -117,12 +442,163 @@ function StudentProfileEditor() {
   return (
     <SectionCard
       title="Student profile"
-      subtitle={`Update the personal details that help the platform address ${directName} more clearly. Sensitive fields stay optional.`}
+      subtitle={`Update the personal details that help the platform address ${directName} more clearly. Your saved school and major context also stay visible here so the profile does not drift away from the academic path.`}
     >
-      {data.loading ? <p>Loading profile...</p> : null}
+      {data.loading || academicProfile.loading || catalogAssignment.loading ? <p>Loading profile...</p> : null}
       {data.error ? <p style={{ color: "crimson" }}>{data.error}</p> : null}
-      {!data.loading && !data.error ? (
+      {academicProfile.error ? <p style={{ color: "crimson" }}>{academicProfile.error}</p> : null}
+      {catalogAssignment.error ? <p style={{ color: "crimson" }}>{catalogAssignment.error}</p> : null}
+      {!data.loading && !data.error && !academicProfile.error && !catalogAssignment.error ? (
         <div style={{ display: "grid", gap: 18 }}>
+          <div
+            style={{
+              display: "grid",
+              gap: 14,
+              borderRadius: 16,
+              border: "1px solid #d9e3f0",
+              background: "#f7faff",
+              padding: "16px 18px",
+            }}
+          >
+            <div style={{ display: "grid", gap: 4 }}>
+              <strong style={{ color: "#15355b" }}>Academic path context</strong>
+              <p style={{ margin: 0, color: "#4b6078", lineHeight: 1.6 }}>
+                School and major details carry forward from Academic path so the profile reflects
+                the same student context the dashboards use.
+              </p>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16 }}>
+              <label style={labelStyle}>
+                <FieldInfoLabel
+                  label="School from academic path"
+                  info="This comes from the school selected in Academic path."
+                  example="Synthetic State University"
+                />
+                <input
+                  style={{
+                    ...inputStyle,
+                    background: selectedInstitutionCanonicalName ? "#eef4fb" : "#ffffff",
+                    color: selectedInstitutionCanonicalName ? "#17365c" : undefined,
+                  }}
+                  value={schoolContextValue}
+                  onChange={(event) =>
+                    setAcademicForm((current) => ({ ...current, schoolName: event.target.value }))
+                  }
+                  readOnly={Boolean(selectedInstitutionCanonicalName)}
+                  placeholder="Open Academic path to choose a school"
+                />
+              </label>
+
+              <div style={{ display: "grid", alignContent: "end", gap: 10 }}>
+                <Link href="/onboarding/profile" className="ui-button ui-button--secondary">
+                  Open academic path
+                </Link>
+                <span style={{ color: "#5b6f89", fontSize: 13 }}>
+                  Change the school, catalog, or degree-program context there.
+                </span>
+              </div>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16 }}>
+              <label style={labelStyle}>
+                <FieldInfoLabel
+                  label="Primary major"
+                  info={
+                    hasStructuredMajorOptions
+                      ? "These options come from the selected school's saved academic path."
+                      : "If the school has not loaded structured major options yet, enter the major manually."
+                  }
+                  example="Economics"
+                />
+                {hasStructuredMajorOptions ? (
+                  <select
+                    style={inputStyle}
+                    value={selectedMajorCanonicalName}
+                    onChange={(event) => {
+                      const nextCanonicalName = event.target.value;
+                      const nextMajor =
+                        directoryOptions?.majors.find((major) => major.canonicalName === nextCanonicalName) || null;
+                      setSelectedMajorCanonicalName(nextCanonicalName);
+                      setAcademicForm((current) => ({
+                        ...current,
+                        majorPrimary: nextMajor?.displayName || "",
+                      }));
+                    }}
+                  >
+                    <option value="">Select a primary major</option>
+                    {directoryOptions?.majors.map((major) => (
+                      <option key={major.majorId} value={major.canonicalName}>
+                        {major.displayName}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    style={inputStyle}
+                    placeholder="Primary major"
+                    value={academicForm.majorPrimary}
+                    onChange={(event) =>
+                      setAcademicForm((current) => ({ ...current, majorPrimary: event.target.value }))
+                    }
+                  />
+                )}
+              </label>
+
+              <label style={labelStyle}>
+                <FieldInfoLabel
+                  label="Secondary major or minor"
+                  info={
+                    hasStructuredMinorOptions
+                      ? "Use this for the saved minor if the school directory already offers one."
+                      : "Use this for a second major, minor, or adjacent academic track."
+                  }
+                  example="Data Science minor"
+                />
+                {hasStructuredMinorOptions ? (
+                  <select
+                    style={inputStyle}
+                    value={selectedMinorCanonicalName}
+                    onChange={(event) => {
+                      const nextCanonicalName = event.target.value;
+                      const nextMinor =
+                        directoryOptions?.minors.find((minor) => minor.canonicalName === nextCanonicalName) || null;
+                      setSelectedMinorCanonicalName(nextCanonicalName);
+                      setAcademicForm((current) => ({
+                        ...current,
+                        majorSecondary: nextMinor?.displayName || "",
+                      }));
+                    }}
+                  >
+                    <option value="">No secondary major or minor</option>
+                    {directoryOptions?.minors.map((minor) => (
+                      <option key={minor.minorId} value={minor.canonicalName}>
+                        {minor.displayName}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    style={inputStyle}
+                    placeholder="Secondary major or minor"
+                    value={academicForm.majorSecondary}
+                    onChange={(event) =>
+                      setAcademicForm((current) => ({ ...current, majorSecondary: event.target.value }))
+                    }
+                  />
+                )}
+              </label>
+            </div>
+
+            {directoryLoading ? <span style={{ color: "#4b6078" }}>Loading school-specific major options...</span> : null}
+            {!directoryLoading && directoryError ? <span style={{ color: "crimson" }}>{directoryError}</span> : null}
+            {!directoryLoading && !directoryError && selectedInstitutionCanonicalName && !hasStructuredMajorOptions ? (
+              <span style={{ color: "#4b6078" }}>
+                Structured major options are not available for this school yet, so the profile stays on manual major entry.
+              </span>
+            ) : null}
+          </div>
+
           <label style={labelStyle}>
             <FieldInfoLabel
               label="Full name"
@@ -618,17 +1094,28 @@ function CoachProfileEditor() {
 function ProfileContent() {
   const auth = useAuthContext();
   const role = auth.data?.context?.authenticatedRoleType;
+  const isStudentPreview = auth.data?.context?.testContextOverrideRole === "student";
+  const previewStudentFallback = auth.data?.context?.testContextPreviewStudents?.[0] || null;
   const directName =
     buildDirectAddressName({
-      preferredName: auth.data?.context?.authenticatedPreferredName,
-      firstName: auth.data?.context?.authenticatedFirstName,
-      lastName: auth.data?.context?.authenticatedLastName,
+      preferredName:
+        isStudentPreview
+          ? auth.data?.context?.studentPreferredName || previewStudentFallback?.studentPreferredName
+          : auth.data?.context?.authenticatedPreferredName,
+      firstName:
+        isStudentPreview
+          ? auth.data?.context?.studentFirstName || previewStudentFallback?.studentFirstName
+          : auth.data?.context?.authenticatedFirstName,
+      lastName:
+        isStudentPreview
+          ? auth.data?.context?.studentLastName || previewStudentFallback?.studentLastName
+          : auth.data?.context?.authenticatedLastName,
       fallback: "you",
     }) || "you";
 
   const subtitle = useMemo(() => {
     if (role === "student") {
-      return `${directName}, update only the personal profile details you control. Academic path, scoring, and coach-only information stay separate.`;
+      return `${directName}, update your personal profile details here and keep the saved school and major context aligned with the academic path.`;
     }
     if (role === "parent") {
       return `${directName}, keep family context and communication preferences current so parent-facing guidance stays clear and respectful.`;

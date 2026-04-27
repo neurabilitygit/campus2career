@@ -1,0 +1,16 @@
+{
+  "schemaVersion": "academic-discovery-seed-bucknell.v1",
+  "generatedAt": "2026-04-26",
+  "description": "Dedicated academic discovery seed fixture for Bucknell University so the custom adapter can be rerun and audited independently.",
+  "sourceNotes": [
+    "Bucknell majors and minors are sourced from the official Bucknell majors/minors inventory page.",
+    "This fixture exists so Bucknell-specific catalog discovery can be rerun without touching the larger Ivy/SUNY or top-50 fixtures."
+  ],
+  "schools": [
+    {
+      "institutionQuery": "Bucknell University",
+      "websiteUrl": "https://www.bucknell.edu/",
+      "tags": ["bucknell"]
+    }
+  ]
+}

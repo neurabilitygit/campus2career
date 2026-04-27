@@ -77,7 +77,6 @@ function CatalogUploadPageInner() {
   const [status, setStatus] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<unknown>(null);
-  const [didHydrate, setDidHydrate] = useState(false);
   const [form, setForm] = useState({
     institutionCanonicalName: "",
     institutionDisplayName: "",
@@ -94,7 +93,7 @@ function CatalogUploadPageInner() {
   });
 
   useEffect(() => {
-    if (didHydrate || !isAuthenticated || assignment.loading) {
+    if (!isAuthenticated) {
       return;
     }
 
@@ -119,7 +118,6 @@ function CatalogUploadPageInner() {
       assignmentData?.minor_display_name ||
       "";
 
-    setDidHydrate(true);
     setForm({
       institutionCanonicalName:
         searchParams.get("institutionCanonicalName") ||
@@ -151,7 +149,7 @@ function CatalogUploadPageInner() {
       minorCanonicalName,
       minorDisplayName,
     });
-  }, [assignment.data, assignment.loading, didHydrate, isAuthenticated, searchParams]);
+  }, [assignment.data?.assignment, isAuthenticated, searchParams]);
 
   function setField(key: keyof typeof form, value: string) {
     setForm((current) => ({ ...current, [key]: value }));

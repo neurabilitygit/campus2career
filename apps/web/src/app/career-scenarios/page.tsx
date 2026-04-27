@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AppShell } from "../../components/layout/AppShell";
 import { SectionCard } from "../../components/layout/SectionCard";
@@ -133,10 +133,21 @@ function mapScenarioToForm(scenario: CareerScenarioRecord): CareerScenarioFormSt
   };
 }
 
+function resolveScenarioName(form: CareerScenarioFormState) {
+  return (
+    form.scenarioName.trim() ||
+    form.targetRole.trim() ||
+    form.targetProfession.trim() ||
+    form.employerName.trim() ||
+    ""
+  );
+}
+
 function buildUpsertPayload(form: CareerScenarioFormState) {
+  const resolvedScenarioName = resolveScenarioName(form);
   return {
     careerScenarioId: form.careerScenarioId,
-    scenarioName: form.scenarioName,
+    scenarioName: resolvedScenarioName,
     isActive: true,
     jobDescriptionText: form.jobDescriptionText || null,
     targetRole: form.targetRole || null,
@@ -417,6 +428,7 @@ function CareerScenarioContent() {
     error: null,
     success: null,
   });
+  const editorCardRef = useRef<HTMLDivElement | null>(null);
 
   const roster = useApiData<CoachRosterResponse>("/coaches/me/roster", role === "coach", nonce);
   const coachStudentProfileId =
@@ -537,6 +549,15 @@ function CareerScenarioContent() {
       fallback: "you",
     }) || "you";
 
+  const previewStudentReference = formatNamedReference(
+    {
+      preferredName: auth.data?.context?.studentPreferredName,
+      firstName: auth.data?.context?.studentFirstName,
+      lastName: auth.data?.context?.studentLastName,
+    },
+    { fallback: directName, preferPreferred: true }
+  );
+
   const studentReference =
     role === "parent" || role === "coach"
       ? formatNamedReference(
@@ -547,7 +568,23 @@ function CareerScenarioContent() {
           },
           { fallback: role === "parent" ? "your student" : "this student", preferPreferred: true }
         )
-      : directName;
+      : auth.data?.context?.testContextOverrideRole === "student"
+        ? previewStudentReference
+        : directName;
+
+  function startNewCareerGoal() {
+    setSelectedScenarioId(null);
+    setForm(blankForm);
+    setState({ saving: false, error: null, success: null });
+    setTimeout(() => {
+      editorCardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      const firstInput = editorCardRef.current?.querySelector("input, textarea") as
+        | HTMLInputElement
+        | HTMLTextAreaElement
+        | null;
+      firstInput?.focus();
+    }, 0);
+  }
 
   async function runAction(
     path: string,
@@ -648,11 +685,7 @@ function CareerScenarioContent() {
             <button
               type="button"
               className="ui-button ui-button--primary"
-              onClick={() => {
-                setSelectedScenarioId(null);
-                setForm(blankForm);
-                setState({ saving: false, error: null, success: null });
-              }}
+              onClick={startNewCareerGoal}
               disabled={!canEdit}
             >
               Create new Career Goal
@@ -792,17 +825,18 @@ function CareerScenarioContent() {
         />
       ) : null}
 
-      <SectionCard
-        title={selectedScenarioId ? "Edit Career Goal" : "New Career Goal"}
-        subtitle="Paste a real job description, refine the target assumptions, then save or re-run the Career Goal to see role-specific readiness guidance."
-        testId="career-goal-editor-card"
-      >
-        {!canEdit ? (
-          <p style={{ margin: 0, color: "#64748b" }}>
-            This account can review saved Career Goals for {studentReference}, but editing stays with the student or an authorized coach workflow.
-          </p>
-        ) : (
-          <div style={{ display: "grid", gap: 16 }}>
+      <div ref={editorCardRef}>
+        <SectionCard
+          title={selectedScenarioId ? "Edit Career Goal" : "New Career Goal"}
+          subtitle="Paste a real job description, refine the target assumptions, then save or re-run the Career Goal to see role-specific readiness guidance."
+          testId="career-goal-editor-card"
+        >
+          {!canEdit ? (
+            <p style={{ margin: 0, color: "#64748b" }}>
+              This account can review saved Career Goals for {studentReference}, but editing stays with the student or an authorized coach workflow.
+            </p>
+          ) : (
+            <div style={{ display: "grid", gap: 16 }}>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 14 }}>
               <label style={{ display: "grid", gap: 6 }}>
                 <FieldInfoLabel
@@ -890,15 +924,7 @@ function CareerScenarioContent() {
 
             <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
               {selectedScenarioId ? (
-                <button
-                  type="button"
-                  className="ui-button ui-button--secondary"
-                  onClick={() => {
-                    setSelectedScenarioId(null);
-                    setForm(blankForm);
-                    setState({ saving: false, error: null, success: null });
-                  }}
-                >
+                <button type="button" className="ui-button ui-button--secondary" onClick={startNewCareerGoal}>
                   Back to Career Goal list
                 </button>
               ) : null}
@@ -907,7 +933,19 @@ function CareerScenarioContent() {
                 className="ui-button ui-button--primary"
                 disabled={state.saving}
                 onClick={() => {
-                  const payload = buildUpsertPayload(form);
+                  const resolvedScenarioName = resolveScenarioName(form);
+                  if (!resolvedScenarioName) {
+                    setState({
+                      saving: false,
+                      error: "Add a Career Goal name or target role before saving.",
+                      success: null,
+                    });
+                    return;
+                  }
+                  if (resolvedScenarioName !== form.scenarioName) {
+                    setForm((current) => ({ ...current, scenarioName: resolvedScenarioName }));
+                  }
+                  const payload = buildUpsertPayload({ ...form, scenarioName: resolvedScenarioName });
                   void runAction(
                     form.careerScenarioId ? `${apiBase}/update` : apiBase,
                     payload,
@@ -925,7 +963,23 @@ function CareerScenarioContent() {
                   className="ui-button ui-button--secondary"
                   disabled={state.saving}
                   onClick={() => {
-                    const payload = buildUpsertPayload({ ...form, careerScenarioId: undefined });
+                    const resolvedScenarioName = resolveScenarioName(form);
+                    if (!resolvedScenarioName) {
+                      setState({
+                        saving: false,
+                        error: "Add a Career Goal name or target role before saving.",
+                        success: null,
+                      });
+                      return;
+                    }
+                    if (resolvedScenarioName !== form.scenarioName) {
+                      setForm((current) => ({ ...current, scenarioName: resolvedScenarioName }));
+                    }
+                    const payload = buildUpsertPayload({
+                      ...form,
+                      careerScenarioId: undefined,
+                      scenarioName: resolvedScenarioName,
+                    });
                     void runAction(apiBase, payload, "Career Goal saved as new", { useResponseScenario: true });
                   }}
                 >
@@ -947,18 +1001,16 @@ function CareerScenarioContent() {
               {state.success ? <span style={{ color: "#166534" }}>{state.success}</span> : null}
               {state.error ? <span style={{ color: "crimson" }}>{state.error}</span> : null}
             </div>
-          </div>
-        )}
-      </SectionCard>
+            </div>
+          )}
+        </SectionCard>
+      </div>
 
-      {selectedScenario.data?.scenario ? (
+      {selectedScenarioId && selectedScenario.data?.scenario ? (
         <ScenarioResults
           scenario={selectedScenario.data.scenario}
           analysis={selectedScenario.data.scenario.analysisResult}
-          onBack={() => {
-            setSelectedScenarioId(null);
-            setForm(blankForm);
-          }}
+          onBack={startNewCareerGoal}
         />
       ) : null}
     </AppShell>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AppShell } from "../layout/AppShell";
@@ -289,11 +289,27 @@ export default function CoachDashboardView() {
 
   const workspaceData = workspace.data?.workspace;
   const selectedName = workspaceData?.summary.studentDisplayName || "No student selected";
+  const prefillRecipientType = searchParams.get("prefillRecipientType");
+  const prefillMessageSubject = searchParams.get("prefillMessageSubject");
+  const prefillMessageBody = searchParams.get("prefillMessageBody");
+  const shouldOpenFollowUpMessage = Boolean(prefillRecipientType || prefillMessageSubject || prefillMessageBody);
   const mainRisk = workspaceData?.summary.missingEvidence?.[0] || workspaceData?.flags?.[0]?.title || "No major coach flag is open right now.";
   const nextAction =
     workspaceData?.actionItems?.find((item) => item.status !== "completed" && item.status !== "archived")?.title ||
     workspaceData?.recommendations?.find((item) => item.status !== "archived")?.title ||
     "Choose one next coach action for the current student.";
+
+  useEffect(() => {
+    if (!shouldOpenFollowUpMessage) {
+      return;
+    }
+    setMessageForm((current) => ({
+      ...current,
+      recipientType: prefillRecipientType === "parent" ? "parent" : "student",
+      subject: prefillMessageSubject || current.subject,
+      body: prefillMessageBody || current.body,
+    }));
+  }, [prefillMessageBody, prefillMessageSubject, prefillRecipientType, shouldOpenFollowUpMessage]);
 
   async function submit(endpoint: string, body: unknown, success: string, reset?: () => void) {
     setActionState({ saving: true, sending: false, error: null, success: null });
@@ -1008,7 +1024,7 @@ export default function CoachDashboardView() {
                   </details>
                 </div>
 
-                <details>
+                <details id="coach-follow-up-message" open={shouldOpenFollowUpMessage}>
                   <summary style={{ fontWeight: 800, cursor: "pointer" }}>Create follow-up message</summary>
                   <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10 }}>
@@ -1098,6 +1114,7 @@ export default function CoachDashboardView() {
             subtitle={`Review ${selectedName}'s curriculum source and completeness before treating scoring as authoritative.`}
             subjectLabel={selectedName}
             selectedStudentProfileId={selectedStudentProfileId}
+            mode="coach"
           />
         ) : null}
 

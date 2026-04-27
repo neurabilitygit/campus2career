@@ -93,7 +93,7 @@ test("Eric can sign out, sign back in, and reopen household administration clean
     (element as HTMLButtonElement).click();
   });
 
-  await expect(page).toHaveURL(/\/$/);
+  await expect(page).toHaveURL(/\/auth\?signed_out=1$/);
   await expect
     .poll(() =>
       page.evaluate((storageKey) => window.localStorage.getItem(storageKey), DEMO_AUTH_STORAGE_KEY)
@@ -154,6 +154,73 @@ test("household administration shows invitation tools for parent accounts", asyn
   await expect(page.getByText(/Invitation created\./)).toBeVisible();
 });
 
+test("household administration capability choices are mutually exclusive between grant and deny", async ({
+  openAs,
+  page,
+}) => {
+  await openAs("parentMaya", "/admin");
+
+  const capabilityRow = page.getByTestId(/capability-row-/).first();
+  const grant = capabilityRow.getByLabel("Grant");
+  const deny = capabilityRow.getByLabel("Deny");
+
+  await grant.check();
+  await expect(grant).toBeChecked();
+  await expect(deny).not.toBeChecked();
+
+  await deny.check();
+  await expect(deny).toBeChecked();
+  await expect(grant).not.toBeChecked();
+});
+
+test("finished updating stays disabled until permissions save succeeds, then returns to the dashboard", async ({
+  openAs,
+  page,
+}) => {
+  await openAs("parentMaya", "/admin");
+
+  const leoCard = page.getByTestId("member-permissions-card-11111111-1111-4111-8111-222222222222");
+  const finishedButton = leoCard.getByTestId("finished-updating-11111111-1111-4111-8111-222222222222");
+  const careerGoalsRow = leoCard.getByTestId(
+    "capability-row-11111111-1111-4111-8111-222222222222-view_career_goals"
+  );
+
+  await expect(finishedButton).toBeDisabled();
+
+  await careerGoalsRow.getByLabel("Deny").check();
+  await leoCard.getByRole("button", { name: "Save permissions" }).click();
+
+  await expect(page.getByText("Permissions updated.")).toBeVisible();
+  await expect(finishedButton).toBeEnabled();
+
+  await finishedButton.click();
+  await expect(page).toHaveURL(/\/app$/);
+});
+
+test("super admin can save household-scoped permission changes from household administration", async ({
+  openAs,
+  page,
+}) => {
+  await openAs("adminEric", "/admin");
+
+  const leoCard = page.getByTestId("member-permissions-card-22222222-2222-4222-8222-111111111111");
+  const dashboardRow = leoCard.getByTestId(
+    "capability-row-22222222-2222-4222-8222-111111111111-view_student_dashboard"
+  );
+
+  await dashboardRow.getByLabel("Deny").check();
+  await leoCard.getByRole("button", { name: "Save permissions" }).click();
+
+  await expect(page.getByText("Permissions updated.")).toBeVisible();
+  await expect(page.getByText('API request failed: 500 {"error":"internal_server_error"}')).toHaveCount(0);
+  await expect(
+    page
+      .getByTestId("member-permissions-card-22222222-2222-4222-8222-111111111111")
+      .getByTestId("capability-row-22222222-2222-4222-8222-111111111111-view_student_dashboard")
+      .getByLabel("Deny")
+  ).toBeChecked();
+});
+
 test("super admin can see the cross-household user directory", async ({ openAs, page }) => {
   await openAs("adminEric", "/admin");
 
@@ -195,7 +262,7 @@ test("super-admin directory shows calm recovery copy instead of raw API errors",
   await expect(page.getByText('API request failed: 500 {"error":"internal_server_error"}')).toHaveCount(0);
 });
 
-test("household setup page explains the live household model without stub language", async ({ openAs, page }) => {
+test("household setup page shows live household setup actions without stub language", async ({ openAs, page }) => {
   await openAs("parentMaya", "/household-setup");
   await dismissIntroIfPresent(page);
 
@@ -211,5 +278,8 @@ test("household setup page explains the live household model without stub langua
       exact: false,
     })
   ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Invite the right accounts" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Current household wiring" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Pending access requests" })).toBeVisible();
   await expect(page.getByText("This stub", { exact: false })).toHaveCount(0);
 });

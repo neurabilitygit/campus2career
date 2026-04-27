@@ -6,7 +6,7 @@ export function GET() {
       {
         id: "google",
         label: "Google",
-        loginUrl: "/",
+        loginUrl: "/auth",
       },
     ],
   });

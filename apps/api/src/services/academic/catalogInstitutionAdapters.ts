@@ -296,6 +296,7 @@ function decodeHtmlEntities(value: string): string {
   return value
     .replace(/&nbsp;/gi, " ")
     .replace(/&amp;/gi, "&")
+    .replace(/&#0*38;/gi, "&")
     .replace(/&quot;/gi, '"')
     .replace(/&#39;/gi, "'")
     .replace(/&apos;/gi, "'")
@@ -322,6 +323,7 @@ function cleanProgramLabel(value: string): string {
       .replace(/\u00ad/g, "")
       .replace(/\u200b/g, "")
       .replace(/\s*\([^)]*minor[^)]*\)\s*/gi, " ")
+      .replace(/\s+\bco[\s-]*major\b$/i, "")
       .replace(/\s+\bmajor\b$/i, "")
       .replace(/\s+\bminor\b$/i, "")
       .replace(/^major in\s+/i, "")
@@ -497,6 +499,35 @@ async function fetchHtmlPageViaCurl(url: string): Promise<HtmlPage | null> {
       url,
       html: stdout,
     };
+  } catch {
+    return null;
+  }
+}
+
+async function postHtmlFragment(
+  url: string,
+  formBody: URLSearchParams,
+  headers?: Record<string, string>
+): Promise<string | null> {
+  const baseHeaders: Record<string, string> = {
+    accept: "text/html,application/xhtml+xml,*/*",
+    "content-type": "application/x-www-form-urlencoded; charset=UTF-8",
+    "user-agent": DISCOVERY_USER_AGENT,
+    "x-requested-with": "XMLHttpRequest",
+    ...headers,
+  };
+
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: baseHeaders,
+      body: formBody,
+      redirect: "follow",
+    });
+    if (!response.ok) {
+      return null;
+    }
+    return await response.text();
   } catch {
     return null;
   }
@@ -1043,27 +1074,321 @@ export function extractJhuProgramsFromHtml(baseUrl: string, html: string) {
 
 export function extractWisconsinProgramsFromHtml(baseUrl: string, html: string) {
   return uniquePrograms(
-    extractAnchors(baseUrl, html)
-      .map((anchor) => ({ href: anchor.href, label: dedupeRepeatedProgramLabel(anchor.text) }))
+    Array.from(
+      html.matchAll(
+        /<li[^>]*id="isotope-item[^"]*"[^>]*>[\s\S]*?<a[^>]*href="([^"]+)"[^>]*>[\s\S]*?(?:<span class="title list"><h3>([\s\S]*?)<\/h3><\/span>|<h3>([\s\S]*?)<\/h3>)[\s\S]*?<\/a>[\s\S]*?<\/li>/gi
+      )
+    )
+      .map((match) => ({
+        href: new URL(match[1] || "", baseUrl).toString(),
+        label: stripTags(match[2] || match[3] || ""),
+      }))
       .filter((entry) => entry.href.includes("/undergraduate/"))
       .filter((entry) => !/certificate/i.test(entry.label))
       .filter((entry) => /,\s*(BA|BS|BFA|BBA|BLS|BM)$/i.test(entry.label))
-      .map((entry) =>
-        createProgram(
-          stripTrailingUndergraduateNotation(entry.label),
-          entry.href,
-          "major",
-          /,\s*BS/i.test(entry.label)
-            ? { degreeType: "BS", programName: DEFAULT_PROGRAM_NAME }
-            : /,\s*BFA/i.test(entry.label)
-              ? { degreeType: "BFA", programName: DEFAULT_PROGRAM_NAME }
-              : /,\s*BBA/i.test(entry.label)
-                ? { degreeType: "BBA", programName: DEFAULT_PROGRAM_NAME }
-                : undefined
-        )
-      )
+      .map((entry) => createProgram(stripTrailingUndergraduateNotation(entry.label), entry.href, "major"))
       .filter((entry): entry is InstitutionAdapterDiscoveredProgram => !!entry)
   );
+}
+
+function cleanBerkeleyProgramLabel(value: string) {
+  return normalizeWhitespace(
+    cleanProgramLabel(value)
+      .replace(/\s*\*+\s*$/g, "")
+      .replace(/\s*\(including [^)]+\)\s*/gi, " ")
+      .replace(/\s+also offered[\s\S]*$/i, "")
+  );
+}
+
+export function extractBerkeleyProgramsFromAdmissionsHtml(baseUrl: string, html: string) {
+  const programs: InstitutionAdapterDiscoveredProgram[] = [];
+
+  for (const section of extractHeadingSections(html, "h5")) {
+    const heading = section.heading.toLowerCase();
+    if (heading !== "majors" && heading !== "minors") {
+      continue;
+    }
+
+    const kind = heading === "minors" ? "minor" : "major";
+    for (const rawLabel of extractLeafListItemTexts(section.sectionHtml)) {
+      const label = cleanBerkeleyProgramLabel(rawLabel);
+      if (!label || /^undeclared\b/i.test(label)) {
+        continue;
+      }
+      const program = createProgram(label, baseUrl, kind);
+      if (program) {
+        programs.push(program);
+      }
+    }
+  }
+
+  return uniquePrograms(programs);
+}
+
+export function extractCaltechProgramsFromCatalogHtml(baseUrl: string, html: string) {
+  const programs: InstitutionAdapterDiscoveredProgram[] = [];
+
+  for (const anchor of extractAnchors(baseUrl, html)) {
+    if (!anchor.href.includes("/current/information-for-undergraduate-students/graduation-requirements-all-options/")) {
+      continue;
+    }
+
+    const rawLabel = cleanProgramLabel(anchor.text);
+    if (
+      !rawLabel ||
+      /^(Graduation Requirements|Core Institute Requirements|Typical First-Year Course Schedule)/i.test(rawLabel)
+    ) {
+      continue;
+    }
+
+    const hasOption = /\boption\b/i.test(rawLabel);
+    const hasMinor = /\bminor\b/i.test(rawLabel);
+    const baseLabel = cleanProgramLabel(
+      rawLabel
+        .replace(/\s+Option\b[\s\S]*$/i, "")
+        .replace(/\s+Minor\b[\s\S]*$/i, "")
+    );
+
+    if (!baseLabel) {
+      continue;
+    }
+
+    if (hasOption) {
+      const major = createProgram(baseLabel, anchor.href, "major");
+      if (major) {
+        programs.push(major);
+      }
+    }
+
+    if (hasMinor) {
+      const minor = createProgram(baseLabel, anchor.href, "minor");
+      if (minor) {
+        programs.push(minor);
+      }
+    }
+  }
+
+  return uniquePrograms(programs);
+}
+
+function isUtAustinGenericContainerLabel(label: string) {
+  return /^(degrees and programs|programs of study|courses|print options|minor and certificate programs)$/i.test(label);
+}
+
+function cleanUtAustinProgramLabel(label: string) {
+  const stripped = normalizeWhitespace(
+    cleanProgramLabel(label)
+      .replace(/^suggested arrangement of courses\s*[:,]?\s*/i, "")
+      .replace(/\s*\((?:B\.?A\.?|B\.?S\.?|BFA|BBA|BJ|BATD|BMusic|BSAdv|BSComm&Lead|BSCommStds|BSPR|BSRTF|BSSLH|BSEd|BSKin&Health|BSAthTrng|BSGE)\)\s*$/i, "")
+      .replace(/^Bachelor of\s+/i, "")
+      .replace(/^(?:BS|BA|BFA|BBA|BJ|BM|BMus)\s+/i, "")
+  );
+  return stripped.replace(/\s+Minor$/i, "");
+}
+
+function extractUtAustinSchoolPageUrls(baseUrl: string, html: string, sectionSlug: "degrees-and-programs" | "minor-and-certificate-programs") {
+  const deduped = new Set<string>();
+  for (const anchor of extractAnchors(baseUrl, html)) {
+    const path = new URL(anchor.href).pathname;
+    if (!new RegExp(`^/undergraduate/[^/]+/${sectionSlug}/$`, "i").test(path)) {
+      continue;
+    }
+    if (sectionSlug === "minor-and-certificate-programs" && path.startsWith("/undergraduate/the-university/")) {
+      continue;
+    }
+    deduped.add(anchor.href);
+  }
+  return Array.from(deduped.values());
+}
+
+export function extractUtAustinMajorProgramsFromHtml(baseUrl: string, html: string) {
+  const pageAnchors = extractAnchors(baseUrl, html)
+    .filter((anchor) => anchor.href.includes("/degrees-and-programs/"))
+    .filter((anchor) => !anchor.href.includes("/minor-and-certificate-programs/"))
+    .filter((anchor) => !anchor.href.endsWith(".pdf"));
+
+  const candidatePaths = pageAnchors.map((anchor) => new URL(anchor.href).pathname);
+  const programs: InstitutionAdapterDiscoveredProgram[] = [];
+
+  for (const anchor of pageAnchors) {
+    const url = new URL(anchor.href);
+    const path = url.pathname;
+    if (/\/degrees-and-programs\/?$/.test(path)) {
+      continue;
+    }
+
+    const rawLabel = normalizeWhitespace(anchor.text);
+    if (!rawLabel || isUtAustinGenericContainerLabel(rawLabel)) {
+      continue;
+    }
+
+    if (/suggested arrangement of courses/i.test(rawLabel)) {
+      if (!/[:,]/.test(rawLabel)) {
+        continue;
+      }
+      const suggestedLabel = cleanUtAustinProgramLabel(rawLabel);
+      const program = createProgram(suggestedLabel, anchor.href, "major");
+      if (program) {
+        programs.push(program);
+      }
+      continue;
+    }
+
+    const normalizedLabel = cleanUtAustinProgramLabel(rawLabel);
+    if (!normalizedLabel || /^Degree Programs$/i.test(normalizedLabel)) {
+      continue;
+    }
+
+    const hasNestedPrograms = candidatePaths.some((otherPath) => {
+      if (otherPath === path) {
+        return false;
+      }
+      return otherPath.startsWith(path.endsWith("/") ? path : `${path}/`);
+    });
+
+    if (hasNestedPrograms && /^(Bachelor of|BS\b|BA\b|BFA\b|BBA\b|BJ\b|BM\b|BMus\b)/i.test(rawLabel)) {
+      continue;
+    }
+
+    const program = createProgram(normalizedLabel, anchor.href, "major");
+    if (program) {
+      programs.push(program);
+    }
+  }
+
+  return uniquePrograms(programs);
+}
+
+export function extractUtAustinMinorProgramsFromHtml(baseUrl: string, html: string) {
+  const minorsSectionMatch = html.match(/<h2[^>]*>[\s\S]*?Minors[\s\S]*?<\/h2>([\s\S]*?)(?=<h2[^>]*>|$)/i);
+  const minorsSection = minorsSectionMatch?.[1] || "";
+  const headings = Array.from(minorsSection.matchAll(/<h4[^>]*>([\s\S]*?)<\/h4>/gi))
+    .map((match) => cleanUtAustinProgramLabel(stripTags(match[1] || "")))
+    .filter((label) => !!label)
+    .filter((label) => !isUtAustinGenericContainerLabel(label))
+    .filter((label) => !/certificate/i.test(label));
+
+  return createProgramsFromLabels(headings, baseUrl, "minor");
+}
+
+function parseGeorgiaSearchPageNumber(html: string) {
+  const match = html.match(/<p class="small gray mw">Page\s+(\d+)<\/p>/i);
+  return match ? Number.parseInt(match[1] || "0", 10) : 0;
+}
+
+export function extractGeorgiaProgramsFromSearchHtml(baseUrl: string, html: string, kind: ProgramKind) {
+  return uniquePrograms(
+    Array.from(
+      html.matchAll(
+        /<div class="program-card">[\s\S]*?<p class="large-mw">([\s\S]*?)<\/p>[\s\S]*?<a href="([^"]+)"[^>]*>([\s\S]*?)<\/a>[\s\S]*?<\/div>\s*<\/div>/gi
+      )
+    )
+      .map((match) => {
+        const label = cleanProgramLabel(stripTags(match[1] || ""));
+        const href = new URL(match[2] || "", baseUrl).toString();
+        return createProgram(label, href, kind);
+      })
+      .filter((entry): entry is InstitutionAdapterDiscoveredProgram => !!entry)
+  );
+}
+
+function cleanBucknellProgramLabel(value: string) {
+  return normalizeWhitespace(
+    cleanProgramLabel(value)
+      .replace(/\s*\(previously [^)]+\)\s*/gi, " ")
+      .replace(/\s*&nbsp;\s*/gi, " ")
+  );
+}
+
+function shouldSkipBucknellProgramLabel(label: string) {
+  const normalized = label.toLowerCase();
+  return (
+    !normalized ||
+    normalized === "interdepartmental" ||
+    normalized === "foundation seminar" ||
+    normalized === "nontraditional study" ||
+    normalized === "residential college" ||
+    normalized === "university courses" ||
+    normalized === "military science"
+  );
+}
+
+function joinBucknellAnchorTexts(texts: string[]) {
+  let combined = "";
+  for (const rawText of texts.map((value) => normalizeWhitespace(value)).filter(Boolean)) {
+    if (!combined) {
+      combined = rawText;
+      continue;
+    }
+
+    if (/[A-Za-z]$/.test(combined) && /^[a-z]$/.test(rawText)) {
+      combined += rawText;
+      continue;
+    }
+
+    combined += ` ${rawText}`;
+  }
+
+  return combined;
+}
+
+function extractBucknellProgramsFromPanelHtml(baseUrl: string, panelHtml: string, kind: ProgramKind) {
+  const programs: InstitutionAdapterDiscoveredProgram[] = [];
+
+  for (const itemMatch of panelHtml.matchAll(/<li[^>]*>([\s\S]*?)<\/li>/gi)) {
+    const itemHtml = itemMatch[1] || "";
+    const anchors = extractAnchors(baseUrl, itemHtml);
+    if (anchors.length === 0) {
+      continue;
+    }
+
+    const label = cleanBucknellProgramLabel(joinBucknellAnchorTexts(anchors.map((anchor) => anchor.text)));
+    if (shouldSkipBucknellProgramLabel(label)) {
+      continue;
+    }
+
+    const sourceUrl =
+      anchors.find((anchor) => !/\/node\/\d+\/?$/i.test(new URL(anchor.href).pathname))?.href ||
+      anchors[0]?.href ||
+      baseUrl;
+    const program = createProgram(label, sourceUrl, kind);
+    if (program) {
+      programs.push(program);
+    }
+  }
+
+  return programs;
+}
+
+export function extractBucknellProgramsFromMajorsMinorsHtml(baseUrl: string, html: string) {
+  const fullListStart = html.search(/id="m_fullList"/i);
+  const relevantHtml = fullListStart >= 0 ? html.slice(fullListStart) : html;
+  const programs: InstitutionAdapterDiscoveredProgram[] = [];
+
+  const panels = [
+    { panelId: "college-of-arts-sciences", kind: "major" as const },
+    { panelId: "freeman-college-of-management", kind: "major" as const },
+    { panelId: "college-of-engineering", kind: "major" as const },
+    { panelId: "minors", kind: "minor" as const },
+  ];
+
+  for (const panel of panels) {
+    const escapedPanelId = panel.panelId.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const panelMatch = relevantHtml.match(
+      new RegExp(
+        `<div\\s+id="${escapedPanelId}"[^>]*class="c-accordion-item__panel c-wysiwyg"[^>]*>([\\s\\S]*?)<span aria-hidden="true">&nbsp;<\\/span>`,
+        "i"
+      )
+    );
+    const panelHtml = panelMatch?.[1] || "";
+    if (!panelHtml) {
+      continue;
+    }
+
+    programs.push(...extractBucknellProgramsFromPanelHtml(baseUrl, panelHtml, panel.kind));
+  }
+
+  return uniquePrograms(programs);
 }
 
 export function extractBostonCollegeProgramsFromHtml(baseUrl: string, html: string) {
@@ -1670,6 +1995,202 @@ export function extractVanderbiltProgramsFromApiPayload(
   );
 }
 
+export function extractCmuProgramsFromFinderHtml(baseUrl: string, html: string) {
+  const programs: InstitutionAdapterDiscoveredProgram[] = [];
+
+  for (const match of html.matchAll(
+    /<a[^>]*class="[^"]*\bprogram-finder__program\b[^"]*"[^>]*href="([^"]+)"[^>]*>[\s\S]*?<h2[^>]*class="[^"]*\bprogram-finder__program__title\b[^"]*"[^>]*>([\s\S]*?)<\/h2>[\s\S]*?<div[^>]*class="[^"]*\bprogram-finder__program__concentrations\b[^"]*"[^>]*>([\s\S]*?)<\/div>[\s\S]*?<\/a>/gi
+  )) {
+    const sourceUrl = new URL(match[1] || "", baseUrl).toString();
+    const title = stripTags(match[2] || "");
+    const concentrationsHtml = match[3] || "";
+    const kinds = new Set<ProgramKind>();
+
+    if (/\bmajor\b/i.test(concentrationsHtml)) {
+      kinds.add("major");
+    }
+    if (/\bminor\b/i.test(concentrationsHtml)) {
+      kinds.add("minor");
+    }
+
+    for (const kind of kinds) {
+      const program = createProgram(title, sourceUrl, kind);
+      if (program) {
+        programs.push(program);
+      }
+    }
+  }
+
+  return uniquePrograms(programs);
+}
+
+export function extractBostonUniversityProgramsFromHtml(baseUrl: string, html: string) {
+  const programs: InstitutionAdapterDiscoveredProgram[] = [];
+
+  for (const match of html.matchAll(/<li\s+class="([^"]+)"[^>]*>([\s\S]*?)<\/li>/gi)) {
+    const className = match[1] || "";
+    const itemHtml = match[2] || "";
+    const hasMajor = /\bmj\b/.test(className);
+    const hasMinor = /\bmi\b/.test(className);
+    if (!hasMajor && !hasMinor) {
+      continue;
+    }
+
+    const rawLabel = stripTags(itemHtml)
+      .replace(/\s+[A-Z]{2,}(?:\/[A-Z]{2,})?\s*\(.*/g, "")
+      .replace(/\s*\(.*/g, "")
+      .replace(/\s*—\s*.*/g, "")
+      .trim();
+    const label = normalizeWhitespace(rawLabel);
+    if (!label) {
+      continue;
+    }
+
+    const sourceUrl = new URL(
+      (itemHtml.match(/href="([^"]+)"/i)?.[1] || "") || baseUrl,
+      baseUrl
+    ).toString();
+
+    if (hasMajor) {
+      const major = createProgram(label, sourceUrl, "major");
+      if (major) {
+        programs.push(major);
+      }
+    }
+    if (hasMinor) {
+      const minor = createProgram(label, sourceUrl, "minor");
+      if (minor) {
+        programs.push(minor);
+      }
+    }
+  }
+
+  return uniquePrograms(programs);
+}
+
+export function extractTuftsProgramsFromAdmissionsHtml(baseUrl: string, html: string) {
+  const programs: InstitutionAdapterDiscoveredProgram[] = [];
+
+  for (const match of html.matchAll(
+    /<div class="js-program program_finder_box[\s\S]*?">[\s\S]*?<\/a>\s*<\/div>/gi
+  )) {
+    const cardHtml = match[0] || "";
+    const title = stripTags(cardHtml.match(/<h3 class="program_finder_heading">([\s\S]*?)<\/h3>/i)?.[1] || "");
+    const kinds = new Set<ProgramKind>();
+
+    for (const labelMatch of cardHtml.matchAll(/<p class="program_finder_label">([\s\S]*?)<\/p>/gi)) {
+      const label = stripTags(labelMatch[1] || "").toLowerCase();
+      if (label.includes("major")) {
+        kinds.add("major");
+      }
+      if (label.includes("minor")) {
+        kinds.add("minor");
+      }
+    }
+
+    const sourceUrl = new URL(
+      (match[0].match(/data-url="([^"]+)"/i)?.[1] || "") || baseUrl,
+      baseUrl
+    ).toString();
+
+    for (const kind of kinds) {
+      const program = createProgram(title, sourceUrl, kind);
+      if (program) {
+        programs.push(program);
+      }
+    }
+  }
+
+  return uniquePrograms(programs);
+}
+
+export function extractRutgersProgramsFromUndergraduateHtml(baseUrl: string, html: string) {
+  return uniquePrograms(
+    Array.from(
+      html.matchAll(
+        /<li class="views-row accordion-list-item">([\s\S]*?)<\/li>/gi
+      )
+    )
+      .map((match) => {
+        const itemHtml = match[1] || "";
+        const title = stripTags(itemHtml.match(/<h3>([\s\S]*?)<\/h3>/i)?.[1] || "");
+        const newBrunswickRow = Array.from(
+          itemHtml.matchAll(
+            /<tr class="program_implementation">[\s\S]*?<td>\s*Rutgers-New Brunswick\s*<\/td>[\s\S]*?<a href="([^"]+)"/gi
+          )
+        )[0];
+        if (!newBrunswickRow) {
+          return null;
+        }
+        const sourceUrl = new URL((newBrunswickRow[1] || "") || baseUrl, baseUrl).toString();
+        return createProgram(title, sourceUrl, "major");
+      })
+      .filter((entry): entry is InstitutionAdapterDiscoveredProgram => !!entry)
+  );
+}
+
+export function extractMichiganProgramsFromHtml(baseUrl: string, html: string) {
+  return uniquePrograms(
+    Array.from(
+      html.matchAll(
+        /<tr[^>]*id="[^"]+"[^>]*>\s*<td[^>]*class="dept-name"[^>]*>[\s\S]*?<a[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>[\s\S]*?<\/td>/gi
+      )
+    )
+      .map((match) => {
+        const rawLabel = stripTags(match[2] || "");
+        const rawLower = rawLabel.toLowerCase();
+        const label = cleanProgramLabel(
+          rawLabel
+            .replace(/\s+\(Sub-Major\)$/i, "")
+            .replace(/\s+\((Major|Minor)\)$/i, "")
+            .replace(/\s+\[[^\]]+\]$/i, "")
+        );
+        if (!label || rawLower.includes("sub-major")) {
+          return null;
+        }
+        const href = new URL(match[1] || "", baseUrl).toString();
+        if (rawLower.includes("(major)")) {
+          return createProgram(label, href, "major");
+        }
+        if (rawLower.includes("(minor)")) {
+          return createProgram(label, href, "minor");
+        }
+        if (/-min$/i.test(match[1] || "")) {
+          return createProgram(label, href, "minor");
+        }
+        if (/-maj$/i.test(match[1] || "")) {
+          return createProgram(label, href, "major");
+        }
+        return null;
+      })
+      .filter((entry): entry is InstitutionAdapterDiscoveredProgram => !!entry)
+  );
+}
+
+export function extractUncProgramsFromCatalogHtml(baseUrl: string, html: string) {
+  return uniquePrograms(
+    extractAnchors(baseUrl, html)
+      .filter((link) => link.href.includes("/undergraduate/programs-study/"))
+      .map((link) => {
+        const lower = link.text.toLowerCase();
+        if (!lower.includes("major") && !lower.includes("minor")) {
+          return null;
+        }
+        const kind = lower.includes("minor") ? "minor" : "major";
+        const label = cleanProgramLabel(
+          link.text
+            .replace(/\s*[–-]\s*.*(?:Concentration|Track)$/i, "")
+            .replace(/\s+Major,\s*B\.[A-Z.]+$/i, "")
+            .replace(/\s*,\s*B\.[A-Z.]+$/i, "")
+            .replace(/\s+Major$/i, "")
+            .replace(/\s+Minor$/i, "")
+        );
+        return createProgram(label, link.href, kind);
+      })
+      .filter((entry): entry is InstitutionAdapterDiscoveredProgram => !!entry)
+  );
+}
+
 export function extractPennProgramsFromCatalogHtml(baseUrl: string, html: string, kind: ProgramKind) {
   return uniquePrograms(
     extractAnchors(baseUrl, html)
@@ -2028,25 +2549,11 @@ const berkeleyAdapter: InstitutionCatalogAdapter = {
       return null;
     }
 
-    const programs: InstitutionAdapterDiscoveredProgram[] = [];
-    for (const section of extractHeadingSections(page.html, "h5")) {
-      const heading = section.heading.toLowerCase();
-      if (heading !== "majors" && heading !== "minors") {
-        continue;
-      }
-
-      const kind = heading === "minors" ? "minor" : "major";
-      for (const label of extractLeafListItemTexts(section.sectionHtml)) {
-        const program = createProgram(label, page.url, kind);
-        if (program) {
-          programs.push(program);
-        }
-      }
-    }
+    const programs = extractBerkeleyProgramsFromAdmissionsHtml(page.url, page.html);
 
     return programs.length > 0
       ? {
-          programs: uniquePrograms(programs),
+          programs,
           sourcePages: [page.url],
         }
       : null;
@@ -2341,6 +2848,27 @@ const wisconsinAdapter: InstitutionCatalogAdapter = {
 
     const programs = extractWisconsinProgramsFromHtml(page.url, page.html);
 
+    return programs.length > 0
+      ? {
+          programs,
+          sourcePages: [page.url],
+        }
+      : null;
+  },
+};
+
+const caltechAdapter: InstitutionCatalogAdapter = {
+  name: "caltech-catalog",
+  matches(input) {
+    return input.institutionCanonicalName.includes("california-institute-of-technology");
+  },
+  async discover() {
+    const page = await fetchHtmlPage("https://catalog.caltech.edu/current/");
+    if (!page) {
+      return null;
+    }
+
+    const programs = extractCaltechProgramsFromCatalogHtml(page.url, page.html);
     return programs.length > 0
       ? {
           programs,
@@ -2848,6 +3376,125 @@ const mitAdapter: InstitutionCatalogAdapter = {
   },
 };
 
+const carnegieMellonAdapter: InstitutionCatalogAdapter = {
+  name: "carnegie-mellon-program-finder",
+  matches(input) {
+    return input.institutionCanonicalName.includes("carnegie-mellon");
+  },
+  async discover() {
+    const page = await fetchHtmlPage("https://www.cmu.edu/admission/majors-programs/undergraduate-program-finder");
+    if (!page) {
+      return null;
+    }
+
+    const programs = extractCmuProgramsFromFinderHtml(page.url, page.html);
+    return programs.length > 0
+      ? {
+          programs,
+          sourcePages: [page.url],
+        }
+      : null;
+  },
+};
+
+const bostonUniversityAdapter: InstitutionCatalogAdapter = {
+  name: "boston-university-degree-programs",
+  matches(input) {
+    return input.institutionCanonicalName.includes("boston-university");
+  },
+  async discover() {
+    const page = await fetchHtmlPage("https://www.bu.edu/academics/degree-programs/");
+    if (!page) {
+      return null;
+    }
+
+    const programs = extractBostonUniversityProgramsFromHtml(page.url, page.html);
+    return programs.length > 0
+      ? {
+          programs,
+          sourcePages: [page.url],
+        }
+      : null;
+  },
+};
+
+const tuftsAdapter: InstitutionCatalogAdapter = {
+  name: "tufts-admissions-program-finder",
+  matches(input) {
+    return input.institutionCanonicalName.includes("tufts-university");
+  },
+  async discover() {
+    const page = await fetchHtmlPage("https://admissions.tufts.edu/discover-tufts/academics/majors-and-minors/");
+    if (!page) {
+      return null;
+    }
+
+    const programs = extractTuftsProgramsFromAdmissionsHtml(page.url, page.html);
+    return programs.length > 0
+      ? {
+          programs,
+          sourcePages: [page.url],
+        }
+      : null;
+  },
+};
+
+const bucknellAdapter: InstitutionCatalogAdapter = {
+  name: "bucknell-majors-minors",
+  matches(input) {
+    return input.institutionCanonicalName.includes("bucknell-university");
+  },
+  async discover() {
+    const page = await fetchHtmlPage("https://www.bucknell.edu/academics/majors-minors");
+    if (!page) {
+      return null;
+    }
+
+    const programs = extractBucknellProgramsFromMajorsMinorsHtml(page.url, page.html);
+    return programs.length > 0
+      ? {
+          programs,
+          sourcePages: [page.url],
+        }
+      : null;
+  },
+};
+
+const rutgersAdapter: InstitutionCatalogAdapter = {
+  name: "rutgers-undergraduate-programs",
+  matches(input) {
+    return input.institutionCanonicalName.includes("rutgers-university-new-brunswick");
+  },
+  async discover() {
+    const sourcePages: string[] = [];
+    const programs: InstitutionAdapterDiscoveredProgram[] = [];
+
+    for (let pageNumber = 0; pageNumber < 25; pageNumber += 1) {
+      const page = await fetchHtmlPage(
+        `https://www.rutgers.edu/academics/explore-undergraduate-programs?page=${pageNumber}`
+      );
+      if (!page) {
+        break;
+      }
+
+      const pagePrograms = extractRutgersProgramsFromUndergraduateHtml(page.url, page.html);
+      if (pagePrograms.length === 0) {
+        break;
+      }
+
+      sourcePages.push(page.url);
+      programs.push(...pagePrograms);
+    }
+
+    return programs.length > 0
+      ? {
+          programs: uniquePrograms(programs),
+          sourcePages: Array.from(new Set(sourcePages)),
+        }
+      : null;
+  },
+};
+
 const vanderbiltAdapter: InstitutionCatalogAdapter = {
   name: "vanderbilt-program-finder",
   matches(input) {
@@ -3004,27 +3651,40 @@ const utAustinAdapter: InstitutionCatalogAdapter = {
     return input.institutionCanonicalName.includes("texas-at-austin");
   },
   async discover() {
-    const page = await fetchHtmlPage("https://catalog.utexas.edu/undergraduate/");
-    if (!page) {
+    const majorsIndexPage = await fetchHtmlPage("https://catalog.utexas.edu/undergraduate/the-university/degree-programs/");
+    const minorsIndexPage = await fetchHtmlPage("https://catalog.utexas.edu/undergraduate/the-university/minor-and-certificate-programs/");
+    if (!majorsIndexPage && !minorsIndexPage) {
       return null;
     }
 
-    const programs = uniquePrograms(
-      extractAnchors(page.url, page.html)
-        .filter((link) => link.href.includes("/undergraduate/"))
-        .filter((link) => link.href.includes("/degrees-and-programs/") || link.href.includes("/minor-and-certificate-programs/"))
-        .filter((link) => !/suggested arrangement|degrees and programs|minor and certificate programs|courses|faculty|graduation|academic policies/i.test(link.text))
-        .map((link) => {
-          const kind = /minor/i.test(link.text) ? "minor" : "major";
-          return createProgram(link.text, link.href, kind);
-        })
-        .filter((entry): entry is InstitutionAdapterDiscoveredProgram => !!entry)
-    );
+    const degreeSchoolPages = majorsIndexPage
+      ? extractUtAustinSchoolPageUrls(majorsIndexPage.url, majorsIndexPage.html, "degrees-and-programs")
+      : [];
+    const minorSchoolPages = minorsIndexPage
+      ? extractUtAustinSchoolPageUrls(minorsIndexPage.url, minorsIndexPage.html, "minor-and-certificate-programs")
+      : [];
+
+    const loadedDegreePages = (
+      await mapWithConcurrency(degreeSchoolPages, 4, async (url) => fetchHtmlPage(url))
+    ).filter((page): page is HtmlPage => !!page);
+    const loadedMinorPages = (
+      await mapWithConcurrency(minorSchoolPages, 4, async (url) => fetchHtmlPage(url))
+    ).filter((page): page is HtmlPage => !!page);
+
+    const programs = uniquePrograms([
+      ...loadedDegreePages.flatMap((page) => extractUtAustinMajorProgramsFromHtml(page.url, page.html)),
+      ...loadedMinorPages.flatMap((page) => extractUtAustinMinorProgramsFromHtml(page.url, page.html)),
+    ]);
 
     return programs.length > 0
       ? {
           programs,
-          sourcePages: [page.url],
+          sourcePages: [
+            majorsIndexPage?.url,
+            minorsIndexPage?.url,
+            ...loadedDegreePages.map((page) => page.url),
+            ...loadedMinorPages.map((page) => page.url),
+          ].filter((value): value is string => !!value),
         }
       : null;
   },
@@ -3111,25 +3771,7 @@ const michiganAdapter: InstitutionCatalogAdapter = {
       return null;
     }
 
-    const programs = uniquePrograms(
-      Array.from(
-        page.html.matchAll(
-          /<tr[^>]*id="[^"]+"[^>]*>\s*<td[^>]*class="dept-name"[^>]*>[\s\S]*?<a[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>[\s\S]*?<\/td>/gi
-        )
-      )
-        .map((match) => {
-          const label = stripTags(match[2] || "");
-          const lower = label.toLowerCase();
-          if (lower.includes("(major)")) {
-            return createProgram(label, new URL(match[1] || "", page.url).toString(), "major");
-          }
-          if (lower.includes("(minor)")) {
-            return createProgram(label, new URL(match[1] || "", page.url).toString(), "minor");
-          }
-          return null;
-        })
-        .filter((entry): entry is InstitutionAdapterDiscoveredProgram => !!entry)
-    );
+    const programs = extractMichiganProgramsFromHtml(page.url, page.html);
 
     return programs.length > 0
       ? {
@@ -3151,23 +3793,63 @@ const uncAdapter: InstitutionCatalogAdapter = {
       return null;
     }
 
-    const programs = uniquePrograms(
-      extractAnchors(page.url, page.html)
-        .filter((link) => link.href.includes("/undergraduate/programs-study/"))
-        .map((link) => {
-          const lower = link.text.toLowerCase();
-          if (!lower.includes("major") && !lower.includes("minor")) {
-            return null;
-          }
-          return createProgram(link.text, link.href, lower.includes("minor") ? "minor" : "major");
-        })
-        .filter((entry): entry is InstitutionAdapterDiscoveredProgram => !!entry)
-    );
+    const programs = extractUncProgramsFromCatalogHtml(page.url, page.html);
 
     return programs.length > 0
       ? {
           programs,
           sourcePages: [page.url],
+        }
+      : null;
+  },
+};
+
+const georgiaAdapter: InstitutionCatalogAdapter = {
+  name: "georgia",
+  matches(input) {
+    return input.institutionCanonicalName.includes("university-of-georgia");
+  },
+  async discover() {
+    const baseUrl = "https://bulletin.uga.edu/Program/Index";
+    const searchUrl = "https://bulletin.uga.edu/Program/_ViewAllPrograms";
+    const programs: InstitutionAdapterDiscoveredProgram[] = [];
+
+    for (const [kind, category] of [
+      ["major", "UG"],
+      ["minor", "MINOR"],
+    ] as const) {
+      for (let pageNumber = 1; pageNumber <= 20; pageNumber += 1) {
+        const formBody = new URLSearchParams();
+        formBody.append("keyword", "");
+        formBody.append("programCategory", category);
+        formBody.append("page", String(pageNumber));
+
+        const html = await postHtmlFragment(searchUrl, formBody);
+        if (!html) {
+          break;
+        }
+
+        const renderedPageNumber = parseGeorgiaSearchPageNumber(html);
+        if (renderedPageNumber && renderedPageNumber < pageNumber) {
+          break;
+        }
+
+        const pagePrograms = extractGeorgiaProgramsFromSearchHtml(baseUrl, html, kind);
+        if (pagePrograms.length === 0) {
+          break;
+        }
+
+        programs.push(...pagePrograms);
+        if (pagePrograms.length < 18) {
+          break;
+        }
+      }
+    }
+
+    return programs.length > 0
+      ? {
+          programs: uniquePrograms(programs),
+          sourcePages: [baseUrl, searchUrl],
         }
       : null;
   },
@@ -3187,6 +3869,7 @@ const ADAPTERS: InstitutionCatalogAdapter[] = [
   northeasternAdapter,
   washuAdapter,
   wisconsinAdapter,
+  caltechAdapter,
   ucsbAdapter,
   ucdavisAdapter,
   ucsdAdapter,
@@ -3206,6 +3889,11 @@ const ADAPTERS: InstitutionCatalogAdapter[] = [
   rochesterAdapter,
   uchicagoAdapter,
   mitAdapter,
+  carnegieMellonAdapter,
+  bostonUniversityAdapter,
+  tuftsAdapter,
+  bucknellAdapter,
+  rutgersAdapter,
   vanderbiltAdapter,
   pennAdapter,
   dukeAdapter,
@@ -3215,6 +3903,7 @@ const ADAPTERS: InstitutionCatalogAdapter[] = [
   michiganAdapter,
   utAustinAdapter,
   uncAdapter,
+  georgiaAdapter,
 ];
 
 export async function discoverProgramsViaInstitutionAdapter(input: AdapterInput): Promise<AdapterDiscoveryResult | null> {

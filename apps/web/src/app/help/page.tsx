@@ -449,7 +449,7 @@ const topics: HelpTopic[] = [
     youNeed: "A configured sign-in provider for real auth. Persona preview only appears for specifically allowed testing accounts.",
     howToUse: [
       "Open the menu in the upper-right corner.",
-      "Use Continue with Google if you are signed out.",
+      "Use Open sign-in if you are signed out, then continue through the dedicated Google sign-in screen.",
       "Use Profile to edit role-specific account details and optional personalization fields.",
       "Use Messages & chat when you need communication tools without digging into another workspace first.",
       "Use Switch workspace/persona only if your account explicitly allows preview mode.",

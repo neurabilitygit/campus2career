@@ -125,7 +125,7 @@ test("Eric can sign out, sign back in, replay the shared intro from admin, and f
     (element as HTMLButtonElement).click();
   });
 
-  await expect(page).toHaveURL(/\/$/);
+  await expect(page).toHaveURL(/\/auth\?signed_out=1$/);
   await expect
     .poll(() => page.evaluate((storageKey) => window.localStorage.getItem(storageKey), DEMO_AUTH_STORAGE_KEY))
     .toBeNull();
@@ -134,7 +134,11 @@ test("Eric can sign out, sign back in, replay the shared intro from admin, and f
   await expect(page.getByRole("heading", { name: "Household administration" }).first()).toBeVisible();
 
   await page.getByRole("button", { name: /Account Eric Bass/i }).click();
-  await page.getByRole("button", { name: "Replay intro" }).click();
+  const replayIntroButton = page.getByRole("button", { name: "Replay intro" });
+  await replayIntroButton.scrollIntoViewIfNeeded();
+  await replayIntroButton.evaluate((element) => {
+    (element as HTMLButtonElement).click();
+  });
 
   await expect(page.getByRole("heading", { name: "Welcome to Rising Senior" })).toBeVisible();
   await page.getByRole("button", { name: "Continue" }).click();

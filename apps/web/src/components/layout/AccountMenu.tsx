@@ -2,13 +2,18 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { getCurrentAppRoute, redirectToAuth } from "../../lib/authFlow";
 import { clearStoredDemoAuth } from "../../lib/demoAuth";
 import { launchIntroOnboardingReplay } from "../../lib/introOnboarding";
 import { launchRoleIntroOnboardingReplay } from "../../lib/roleIntroOnboarding";
+import { clearSessionState } from "../../lib/sessionStore";
 import { getSupabaseBrowserClient, getSupabaseConfigError } from "../../lib/supabaseClient";
 import {
   getStoredTestContextRole,
+  getStoredTestContextStudentProfileId,
   setStoredTestContextRole,
+  setStoredTestContextStudentProfileId,
+  subscribeToTestContextStudentProfileId,
   subscribeToTestContextRole,
   type TestContextRole,
 } from "../../lib/testContext";
@@ -17,14 +22,14 @@ import { useAuthContext } from "../../hooks/useAuthContext";
 type WorkspaceItem = {
   key: "student" | "parent" | "coach" | "admin";
   label: string;
-  href: string;
+  baseHref: string;
 };
 
 const workspaceItems: WorkspaceItem[] = [
-  { key: "student", label: "Student", href: "/student?section=strategy" },
-  { key: "parent", label: "Parent", href: "/parent" },
-  { key: "coach", label: "Coach", href: "/coach" },
-  { key: "admin", label: "Administration", href: "/admin" },
+  { key: "student", label: "Student", baseHref: "/student?section=strategy" },
+  { key: "parent", label: "Parent", baseHref: "/parent" },
+  { key: "coach", label: "Coach", baseHref: "/coach" },
+  { key: "admin", label: "Administration", baseHref: "/admin" },
 ];
 
 function displayName(input: {
@@ -56,11 +61,17 @@ export function AccountMenu() {
   const [open, setOpen] = useState(false);
   const [busyAction, setBusyAction] = useState<"sign_in" | "sign_out" | null>(null);
   const [selectedPreviewRole, setSelectedPreviewRole] = useState<TestContextRole | null>(null);
+  const [selectedPreviewStudentProfileId, setSelectedPreviewStudentProfileId] = useState<string | null>(null);
   const rootRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     setSelectedPreviewRole(getStoredTestContextRole());
     return subscribeToTestContextRole(setSelectedPreviewRole);
+  }, []);
+
+  useEffect(() => {
+    setSelectedPreviewStudentProfileId(getStoredTestContextStudentProfileId());
+    return subscribeToTestContextStudentProfileId(setSelectedPreviewStudentProfileId);
   }, []);
 
   useEffect(() => {
@@ -94,19 +105,39 @@ export function AccountMenu() {
   const allowedPreviewRoles = context?.testContextAllowedRoles || [];
   const canPreview = !!context?.testContextSwitchingEnabled && allowedPreviewRoles.length > 0;
   const currentRole = context?.authenticatedRoleType || null;
+  const previewStudentOptions = context?.testContextPreviewStudents || [];
+  const activePreviewStudentProfileId =
+    selectedPreviewStudentProfileId ||
+    context?.studentProfileId ||
+    previewStudentOptions[0]?.studentProfileId ||
+    null;
   const availableWorkspaces = useMemo(() => {
+    const studentProfileId = activePreviewStudentProfileId;
+    const addStudentContext = (item: WorkspaceItem) => {
+      if (!studentProfileId || item.key === "admin") {
+        return { ...item, href: item.baseHref };
+      }
+
+      const url = new URL(item.baseHref, "http://localhost");
+      url.searchParams.set("studentProfileId", studentProfileId);
+      return {
+        ...item,
+        href: `${url.pathname}${url.search}`,
+      };
+    };
+
     if (canPreview) {
       return workspaceItems.filter((item) =>
         allowedPreviewRoles.includes(item.key as TestContextRole)
-      );
+      ).map(addStudentContext);
     }
 
     if (currentRole === "student" || currentRole === "parent" || currentRole === "coach" || currentRole === "admin") {
-      return workspaceItems.filter((item) => item.key === currentRole);
+      return workspaceItems.filter((item) => item.key === currentRole).map(addStudentContext);
     }
 
     return [];
-  }, [allowedPreviewRoles, canPreview, currentRole]);
+  }, [activePreviewStudentProfileId, allowedPreviewRoles, canPreview, currentRole]);
 
   const userLabel = displayName({
     preferredName: context?.authenticatedPreferredName,
@@ -122,15 +153,9 @@ export function AccountMenu() {
     .toUpperCase();
 
   async function signInWithGoogle() {
-    if (!supabase) return;
     setBusyAction("sign_in");
     try {
-      await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
-        },
-      });
+      redirectToAuth({ returnTo: getCurrentAppRoute() });
     } finally {
       setBusyAction(null);
     }
@@ -141,10 +166,12 @@ export function AccountMenu() {
     try {
       clearStoredDemoAuth();
       if (supabase) {
-        await supabase.auth.signOut();
+        await supabase.auth.signOut({ scope: "global" });
       }
+      clearSessionState();
       setStoredTestContextRole(null);
-      window.location.href = "/";
+      setStoredTestContextStudentProfileId(null);
+      redirectToAuth({ returnTo: getCurrentAppRoute(), signedOut: true, replace: true });
     } finally {
       setBusyAction(null);
     }
@@ -152,8 +179,32 @@ export function AccountMenu() {
 
   function handlePreviewSelection(role: TestContextRole | null) {
     setStoredTestContextRole(role);
+    if (!role) {
+      setStoredTestContextStudentProfileId(null);
+    }
     setOpen(false);
     window.location.reload();
+  }
+
+  function handleWorkspaceSelection(item: WorkspaceItem) {
+    if (canPreview && item.key !== "admin") {
+      setStoredTestContextRole(item.key);
+    }
+    if (canPreview && item.key === "admin") {
+      setStoredTestContextRole(null);
+      setStoredTestContextStudentProfileId(null);
+    }
+    setOpen(false);
+  }
+
+  function previewStudentLabel(item: NonNullable<typeof previewStudentOptions>[number]) {
+    const name =
+      item.studentPreferredName?.trim() ||
+      item.studentFirstName?.trim() ||
+      item.studentLastName?.trim() ||
+      "Student";
+    const household = item.householdName?.trim();
+    return household ? `${name} • ${household}` : name;
   }
 
   return (
@@ -199,6 +250,22 @@ export function AccountMenu() {
                       {selectedPreviewRole || currentRole || "default"}
                     </strong>
                   </span>
+                  {activePreviewStudentProfileId ? (
+                    <span>
+                      Preview student:{" "}
+                      <strong>
+                        {previewStudentLabel(
+                          previewStudentOptions.find((item) => item.studentProfileId === activePreviewStudentProfileId) || {
+                            studentProfileId: activePreviewStudentProfileId,
+                            studentFirstName: context?.studentFirstName || null,
+                            studentLastName: context?.studentLastName || null,
+                            studentPreferredName: context?.studentPreferredName || null,
+                            householdName: null,
+                          }
+                        )}
+                      </strong>
+                    </span>
+                  ) : null}
                 </div>
               </div>
 
@@ -212,7 +279,7 @@ export function AccountMenu() {
                         href={item.href}
                         className="account-menu__link"
                         role="menuitem"
-                        onClick={() => setOpen(false)}
+                        onClick={() => handleWorkspaceSelection(item)}
                       >
                         {item.label}
                       </Link>
@@ -222,6 +289,30 @@ export function AccountMenu() {
                   )}
                 </div>
               </div>
+
+              {canPreview && previewStudentOptions.length ? (
+                <div className="account-menu__section">
+                  <div className="account-menu__section-label">Preview student</div>
+                  <label className="field">
+                    <span className="field__label">Selected student</span>
+                    <select
+                      className="field__select"
+                      value={activePreviewStudentProfileId || ""}
+                      onChange={(event) => {
+                        setStoredTestContextStudentProfileId(event.target.value || null);
+                        setOpen(false);
+                        window.location.reload();
+                      }}
+                    >
+                      {previewStudentOptions.map((item) => (
+                        <option key={item.studentProfileId} value={item.studentProfileId}>
+                          {previewStudentLabel(item)}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+              ) : null}
 
               <div className="account-menu__section">
                 <div className="account-menu__section-label">Profile and tools</div>
@@ -340,13 +431,13 @@ export function AccountMenu() {
                   onClick={() => {
                     void signInWithGoogle();
                   }}
-                  disabled={!supabase || busyAction !== null || auth.sessionLoading}
+                  disabled={busyAction !== null || auth.sessionLoading}
                 >
                   {busyAction === "sign_in"
-                    ? "Opening Google..."
+                    ? "Opening sign-in..."
                     : auth.sessionLoading
                       ? "Checking session..."
-                      : "Continue with Google"}
+                      : "Open sign-in"}
                 </button>
               </div>
               {configError ? <div className="account-menu__error">{configError}</div> : null}

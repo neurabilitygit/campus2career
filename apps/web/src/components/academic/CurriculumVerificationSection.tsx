@@ -98,12 +98,53 @@ function statusTone(status: string) {
   }
 }
 
+function buildStudentCurriculumReviewHref() {
+  return "/student?section=evidence#curriculum-review";
+}
+
+function buildParentCurriculumNudgeHref(subjectLabel: string, studentProfileId?: string | null) {
+  const params = new URLSearchParams({
+    section: "translator",
+    prefillGoal: "reminder",
+    prefillTone: "gentle",
+    prefillMessage: `${subjectLabel} still needs to review and approve the degree requirements so the readiness score is working from accurate curriculum information. Please complete that review this week and flag anything that looks incomplete or wrong.`,
+  });
+  if (studentProfileId) {
+    params.set("studentProfileId", studentProfileId);
+  }
+  return `/communication?${params.toString()}`;
+}
+
+function buildCoachCommunicationContextHref(studentProfileId?: string | null) {
+  const params = new URLSearchParams({
+    section: "context",
+    coachPrompt: "curriculum_review_nudge",
+  });
+  if (studentProfileId) {
+    params.set("studentProfileId", studentProfileId);
+  }
+  return `/communication?${params.toString()}`;
+}
+
+function buildCoachReminderDraftHref(subjectLabel: string, studentProfileId?: string | null) {
+  const params = new URLSearchParams({
+    prefillRecipientType: "student",
+    prefillMessageSubject: "Please review your degree requirements",
+    prefillMessageBody: `${subjectLabel} still needs to review and approve the degree requirements so scoring can be trusted. Please complete that review and confirm whether anything looks incomplete, outdated, or inaccurate.`,
+  });
+  if (studentProfileId) {
+    params.set("studentProfileId", studentProfileId);
+  }
+  return `/coach?${params.toString()}#coach-follow-up-message`;
+}
+
 export function CurriculumVerificationSection(props: {
   title?: string;
   subtitle?: string;
   uploadHref?: string;
   subjectLabel?: string;
   selectedStudentProfileId?: string | null;
+  mode?: "student" | "parent" | "coach";
 }) {
   const saveNavigation = useSaveNavigation();
   const [refreshNonce, setRefreshNonce] = useState(0);
@@ -148,6 +189,12 @@ export function CurriculumVerificationSection(props: {
   const alert = curriculum?.alerts?.[0];
   const details = curriculum?.details;
   const uploadHref = props.uploadHref || "/uploads/catalog";
+  const mode = props.mode || "student";
+  const subjectLabel = props.subjectLabel || "this student";
+  const studentReviewHref = buildStudentCurriculumReviewHref();
+  const parentNudgeHref = buildParentCurriculumNudgeHref(subjectLabel, props.selectedStudentProfileId);
+  const coachCommunicationContextHref = buildCoachCommunicationContextHref(props.selectedStudentProfileId);
+  const coachReminderDraftHref = buildCoachReminderDraftHref(subjectLabel, props.selectedStudentProfileId);
 
   async function saveVerification() {
     if (!confirmReviewed) {
@@ -245,7 +292,7 @@ export function CurriculumVerificationSection(props: {
   );
 
   return (
-    <div data-intro-target="curriculum-review">
+    <div id="curriculum-review" data-intro-target="curriculum-review">
       <SectionCard
       title={props.title || "Curriculum Verification"}
       subtitle={
@@ -290,11 +337,60 @@ export function CurriculumVerificationSection(props: {
 
           <KeyValueList items={summaryRows} columns={2} />
 
-          {curriculum.verification.effectiveStatus === "missing" ? (
-            <div style={{ display: "grid", gap: 12 }}>
-              <p style={{ margin: 0, color: "#4b5d79", lineHeight: 1.6 }}>
+          {curriculum.verification.effectiveStatus !== "verified" ? (
+            <div
+              style={{
+                display: "grid",
+                gap: 12,
+                padding: 16,
+                borderRadius: 18,
+                border: "1px solid #f2d9ad",
+                background: "#fff8e7",
+                color: "#7a5817",
+              }}
+            >
+              <p style={{ margin: 0, lineHeight: 1.6 }}>
                 Degree requirements must be reviewed before scoring because the readiness score depends on accurate curriculum information.
               </p>
+              {mode === "student" ? (
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                  <Link href={studentReviewHref} className="ui-button ui-button--primary">
+                    Review degree requirements now
+                  </Link>
+                </div>
+              ) : null}
+              {mode === "parent" ? (
+                <div style={{ display: "grid", gap: 10 }}>
+                  <p style={{ margin: 0, lineHeight: 1.6 }}>
+                    {`Want the system to help nudge ${subjectLabel} to finish this review so scoring can be trusted?`}
+                  </p>
+                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                    <Link href={parentNudgeHref} className="ui-button ui-button--primary">
+                      Open communication translator
+                    </Link>
+                  </div>
+                </div>
+              ) : null}
+              {mode === "coach" ? (
+                <div style={{ display: "grid", gap: 10 }}>
+                  <p style={{ margin: 0, lineHeight: 1.6 }}>
+                    {`Want to nudge ${subjectLabel} to complete this review? Start from the communication context, then draft a calm follow-up for the student.`}
+                  </p>
+                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                    <Link href={coachCommunicationContextHref} className="ui-button ui-button--secondary">
+                      Open communication context
+                    </Link>
+                    <Link href={coachReminderDraftHref} className="ui-button ui-button--primary">
+                      Draft coach reminder
+                    </Link>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
+          {curriculum.verification.effectiveStatus === "missing" ? (
+            <div style={{ display: "grid", gap: 12 }}>
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                 {curriculum.verification.canRequestPopulation ? (
                   <button

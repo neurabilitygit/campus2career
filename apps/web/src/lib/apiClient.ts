@@ -1,6 +1,10 @@
 import { getSupabaseBrowserClient } from "./supabaseClient";
 import { demoAuthHeaders, readStoredDemoAuth } from "./demoAuth";
-import { getStoredTestContextRole, inferTestContextRoleFromPath } from "./testContext";
+import {
+  getStoredTestContextRole,
+  getStoredTestContextStudentProfileId,
+  inferTestContextRoleFromBrowserState,
+} from "./testContext";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080";
@@ -39,9 +43,20 @@ export async function apiFetch(path: string, init: ApiRequestInit = {}) {
 
   const testContextRole =
     getStoredTestContextRole() ||
-    inferTestContextRoleFromPath(typeof window !== "undefined" ? window.location.pathname : null);
+    inferTestContextRoleFromBrowserState(
+      typeof window !== "undefined" ? window.location.pathname : null
+    );
   if (testContextRole) {
     headers.set("x-test-context-role", testContextRole);
+  }
+
+  if (typeof window !== "undefined") {
+    const searchStudentProfileId = new URLSearchParams(window.location.search).get("studentProfileId")?.trim() || null;
+    const storedStudentProfileId = getStoredTestContextStudentProfileId();
+    const studentProfileId = searchStudentProfileId || storedStudentProfileId;
+    if (studentProfileId) {
+      headers.set("x-test-context-student-profile-id", studentProfileId);
+    }
   }
 
   const timeoutMs = init.timeoutMs ?? DEFAULT_API_TIMEOUT_MS;

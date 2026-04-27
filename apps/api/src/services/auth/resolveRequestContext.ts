@@ -1,10 +1,8 @@
-import crypto from "node:crypto";
 import type { IncomingMessage } from "node:http";
 import type { CapabilityKey, Persona } from "../../../../../packages/shared/src/capabilities";
 import { getAuthenticatedUser } from "../../middleware/auth";
 import { permissionRepository } from "../../repositories/auth/permissionRepository";
 import { UserContextRepository } from "../../repositories/auth/userContextRepository";
-import { StudentWriteRepository } from "../../repositories/student/studentWriteRepository";
 import { AppError } from "../../utils/appError";
 import { buildIntroOnboardingView } from "./introOnboarding";
 import { buildEffectivePermissions, resolvePrimaryMembership } from "./permissions";
@@ -46,20 +44,24 @@ export interface RequestContext {
   testContextSwitchingEnabled?: boolean;
   testContextAllowedRoles?: Array<"student" | "parent" | "coach">;
   testContextOverrideRole?: "student" | "parent" | "coach" | null;
+  testContextPreviewStudents?: Array<{
+    studentProfileId: string;
+    studentUserId: string | null;
+    householdId: string | null;
+    householdName: string | null;
+    studentFirstName: string | null;
+    studentLastName: string | null;
+    studentPreferredName: string | null;
+  }>;
 }
 
 const repo = new UserContextRepository();
-const studentWriteRepo = new StudentWriteRepository();
 
 function normalizeRole(role: string | null | undefined): RequestContext["authenticatedRoleType"] | null {
   if (role === "student" || role === "parent" || role === "coach" || role === "admin") {
     return role;
   }
   return null;
-}
-
-function stableId(namespace: string, key: string): string {
-  return crypto.createHash("sha256").update(`${namespace}:${key}`).digest("hex").slice(0, 32);
 }
 
 function parseAllowedTestSuperuserEmails(): string[] {
@@ -92,6 +94,17 @@ function readRequestedTestRole(req: IncomingMessage): "student" | "parent" | "co
   }
 
   return null;
+}
+
+function readRequestedPreviewStudentProfileId(req: IncomingMessage): string | null {
+  const headerValue = req.headers["x-test-context-student-profile-id"];
+  if (typeof headerValue === "string" && headerValue.trim()) {
+    return headerValue.trim();
+  }
+
+  const requestUrl = new URL(req.url || "/", "http://localhost");
+  const queryValue = requestUrl.searchParams.get("studentProfileId");
+  return queryValue?.trim() || null;
 }
 
 export async function resolveRequestContext(req: IncomingMessage): Promise<RequestContext> {
@@ -147,22 +160,40 @@ export async function resolveRequestContext(req: IncomingMessage): Promise<Reque
   }
   const testContextAllowed = canUseTestContextSwitching(auth.email);
   const requestedTestRole = testContextAllowed ? readRequestedTestRole(req) : null;
+  const requestedPreviewStudentProfileId =
+    testContextAllowed && requestedTestRole ? readRequestedPreviewStudentProfileId(req) : null;
+  const defaultPreviewStudentProfileId =
+    testContextAllowed && requestedTestRole
+      ? process.env.TEST_DEFAULT_PREVIEW_STUDENT_PROFILE_ID?.trim() || null
+      : null;
+  const previewStudentProfileId = requestedPreviewStudentProfileId ?? defaultPreviewStudentProfileId;
   const resolvedRole = requestedTestRole ?? defaultRole;
 
   // run shared lookup once
   const householdPromise = repo.resolveHouseholdStudentContextForUser(canonicalUserId);
   const studentProfilePromise = repo.resolveStudentProfileForStudentUser(canonicalUserId);
   const authenticatedUserPromise = repo.resolveUserBasicInfo(canonicalUserId);
+  const previewStudentOptionsPromise =
+    testContextAllowed ? repo.listPreviewStudentContexts() : Promise.resolve([]);
   const previewStudentContextPromise =
-    testContextAllowed && requestedTestRole ? repo.resolveDefaultPreviewStudentContext() : Promise.resolve(null);
+    previewStudentProfileId ? repo.resolvePreviewStudentContext(previewStudentProfileId) : Promise.resolve(null);
 
   if (resolvedRole === "student") {
-    let [student, household, authenticatedUser, previewStudentContext] = await Promise.all([
+    let [student, household, authenticatedUser, previewStudentContext, previewStudentOptions] = await Promise.all([
       studentProfilePromise,
       householdPromise,
       authenticatedUserPromise,
       previewStudentContextPromise,
+      previewStudentOptionsPromise,
     ]);
+    const previewStudentNames =
+      requestedTestRole === "student" && previewStudentContext
+        ? {
+            firstName: previewStudentContext.studentFirstName ?? null,
+            lastName: previewStudentContext.studentLastName ?? null,
+            preferredName: previewStudentContext.studentPreferredName ?? null,
+          }
+        : null;
 
     if (!student?.studentProfileId && requestedTestRole === "student" && previewStudentContext?.studentProfileId) {
       student = { studentProfileId: previewStudentContext.studentProfileId };
@@ -175,17 +206,6 @@ export async function resolveRequestContext(req: IncomingMessage): Promise<Reque
         studentLastName: previewStudentContext.studentLastName ?? null,
         studentPreferredName: previewStudentContext.studentPreferredName ?? null,
       };
-    }
-
-    if (!student?.studentProfileId) {
-      const studentProfileId = stableId("student_profile", auth.userId);
-      await studentWriteRepo.upsertStudentProfile({
-        studentProfileId,
-        userId: canonicalUserId,
-        householdId: household?.householdId ?? null,
-      });
-
-      student = await repo.resolveStudentProfileForStudentUser(canonicalUserId);
     }
 
     const introOnboarding = buildIntroOnboardingView(authenticatedUser);
@@ -223,20 +243,44 @@ export async function resolveRequestContext(req: IncomingMessage): Promise<Reque
       introOnboardingStatus: introOnboarding.introOnboardingStatus,
       introOnboardingShouldAutoShow: introOnboarding.shouldAutoShow,
       currentIntroOnboardingVersion: introOnboarding.currentVersion,
-      studentFirstName: authenticatedUser?.firstName ?? household?.studentFirstName ?? null,
-      studentLastName: authenticatedUser?.lastName ?? household?.studentLastName ?? null,
-      studentPreferredName: authenticatedUser?.preferredName ?? household?.studentPreferredName ?? null,
+      studentFirstName:
+        previewStudentNames?.firstName ??
+        household?.studentFirstName ??
+        authenticatedUser?.firstName ??
+        null,
+      studentLastName:
+        previewStudentNames?.lastName ??
+        household?.studentLastName ??
+        authenticatedUser?.lastName ??
+        null,
+      studentPreferredName:
+        previewStudentNames?.preferredName ??
+        household?.studentPreferredName ??
+        authenticatedUser?.preferredName ??
+        null,
       testContextSwitchingEnabled: testContextAllowed,
       testContextAllowedRoles: testContextAllowed ? ["student", "parent", "coach"] : [],
       testContextOverrideRole: requestedTestRole,
+      testContextPreviewStudents: previewStudentOptions
+        .filter((item) => !!item.studentProfileId)
+        .map((item) => ({
+          studentProfileId: item.studentProfileId!,
+          studentUserId: item.studentUserId ?? null,
+          householdId: item.householdId ?? null,
+          householdName: item.householdName ?? null,
+          studentFirstName: item.studentFirstName ?? null,
+          studentLastName: item.studentLastName ?? null,
+          studentPreferredName: item.studentPreferredName ?? null,
+        })),
     };
   }
 
-  let [household, student, authenticatedUser, previewStudentContext] = await Promise.all([
+  let [household, student, authenticatedUser, previewStudentContext, previewStudentOptions] = await Promise.all([
     householdPromise,
     studentProfilePromise,
     authenticatedUserPromise,
     previewStudentContextPromise,
+    previewStudentOptionsPromise,
   ]);
 
   if (!household?.studentProfileId && requestedTestRole && previewStudentContext?.studentProfileId) {
@@ -295,5 +339,16 @@ export async function resolveRequestContext(req: IncomingMessage): Promise<Reque
     testContextSwitchingEnabled: testContextAllowed,
     testContextAllowedRoles: testContextAllowed ? ["student", "parent", "coach"] : [],
     testContextOverrideRole: requestedTestRole,
+    testContextPreviewStudents: previewStudentOptions
+      .filter((item) => !!item.studentProfileId)
+      .map((item) => ({
+        studentProfileId: item.studentProfileId!,
+        studentUserId: item.studentUserId ?? null,
+        householdId: item.householdId ?? null,
+        householdName: item.householdName ?? null,
+        studentFirstName: item.studentFirstName ?? null,
+        studentLastName: item.studentLastName ?? null,
+        studentPreferredName: item.studentPreferredName ?? null,
+      })),
   };
 }

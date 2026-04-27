@@ -14,9 +14,7 @@ export interface UpsertUserInput {
 export class AuthUserRepository {
   async upsertUserFromAuth(input: UpsertUserInput): Promise<string> {
     const normalizedEmail = input.email.trim().toLowerCase();
-    const isEricBass =
-      normalizedEmail === "eric.bassman@gmail.com" ||
-      `${input.firstName || ""} ${input.lastName || ""}`.trim().toLowerCase() === "eric bass";
+    const isEricBass = normalizedEmail === "eric.bassman@gmail.com";
     const resolvedRoleType = isEricBass ? "admin" : input.roleType || "student";
     const defaultAccountStatus = isEricBass ? "active" : "pending_setup";
     const existingByEmail = await query<{ userId: string }>(

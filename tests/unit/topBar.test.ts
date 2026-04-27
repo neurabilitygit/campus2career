@@ -108,7 +108,9 @@ test("Needs Attention appears only when attention items exist", () => {
     attentionItems: [],
   });
 
-  assert.ok(withAttention.some((item) => item.key === "needs-attention"));
+  const attentionItem = withAttention.find((item) => item.key === "needs-attention");
+  assert.ok(attentionItem);
+  assert.equal(attentionItem.shortLabel, undefined);
   assert.equal(withoutAttention.some((item) => item.key === "needs-attention"), false);
 });
 
